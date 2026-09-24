@@ -4,7 +4,13 @@ export type ClassLevel = '6th' | '7th' | '8th' | '9th' | '10th' | '11th' | '12th
 
 export type PaperCategory = 'pyq' | 'model' | 'important' | 'book';
 
-export type TestType = 'oneword' | 'concept';
+export type TestType = 'oneword' | 'concept' | 'daily';
+
+export type StudentStream =
+  | 'Science — Maths'
+  | 'Science — Biology'
+  | 'Commerce'
+  | 'Arts';
 
 export interface Paper {
   id: string;
@@ -44,11 +50,34 @@ export interface Question {
   medium: Medium;
 }
 
+export interface DailyQuiz {
+  id: string;
+  classLevel: string;
+  stream?: string;
+  medium: Medium;
+  subject: string;
+  chapter?: string;
+  question: string;
+  options: string[];
+  answerIndex: number;
+  explanation: string;
+  date?: string;
+}
+
+export interface LeaderboardEntry {
+  name: string;
+  district: string;
+  points: number;
+  tests: number;
+  me?: boolean;
+}
+
 export interface StudentProfile {
   name: string;
   phone: string;
   district: string;
   standard: string;
+  stream?: StudentStream | string;
   medium: Medium;
   registeredAt?: string;
 }
@@ -73,4 +102,17 @@ export interface QuizResult {
   totalTimeSeconds: number;
   answers: UserAnswerRecord[];
   completedAt: string;
+}
+
+export interface ScorePayload {
+  phone: string;
+  name: string;
+  district: string;
+  standard: string;
+  subject: string;
+  chapter: string;
+  testType: string;
+  score: number;
+  total: number;
+  seconds: number;
 }

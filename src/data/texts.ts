@@ -18,6 +18,12 @@ export const texts = {
     soonBadge: 'soon 👀',
     cookingToast: 'chill, cooking this one 👨‍🍳',
   },
+  streams: {
+    scienceMaths: 'Science — Maths',
+    scienceBio: 'Science — Biology',
+    commerce: 'Commerce',
+    arts: 'Arts',
+  },
   categories: {
     pyq: 'PYQ Papers 📄',
     model: 'Model Papers 📝',
@@ -27,6 +33,7 @@ export const texts = {
   testTypes: {
     oneword: 'Book-back One-words 📖',
     concept: 'Concept Quiz 🧠',
+    daily: 'Quiz of the Day 🎯',
   },
   nav: {
     home: 'Home',
@@ -42,9 +49,25 @@ export const texts = {
     phoneLabel: 'Mobile number',
     phonePlaceholder: '10-digit number',
     standardLabel: 'Standard',
+    streamLabel: 'Stream',
     districtLabel: 'District',
     button: 'Unlock everything ✨',
     saving: 'unlocking... 🚀',
+  },
+  home: {
+    streakActive: 'days streak 🔥',
+    streakZero: '0 days — restart? 💀',
+    streakSafe: 'streak safe 🔥',
+    dailyQuizTitle: 'Quiz of the Day 🎯',
+    dailyLockIn: 'Lock in ⚡',
+    dailySolved: 'daily solved ✨',
+    leaderboardTitle: 'Leaderboard 🏆',
+    windowLabel: 'this week',
+    points: 'pts',
+    testsDone: 'tests',
+    you: 'you',
+    exploreOtherClasses: 'explore other classes 👀',
+    backToMyHome: 'back to my dashboard 🏠',
   },
   states: {
     empty: 'nothing here 🐶',

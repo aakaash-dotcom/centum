@@ -7,17 +7,27 @@ import { TN_DISTRICTS } from '@/data/districts';
 import { X, Sparkles, ShieldCheck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
+const STREAMS = [
+  'Science — Maths',
+  'Science — Biology',
+  'Commerce',
+  'Arts',
+] as const;
+
 export const GateSheet: React.FC = () => {
-  const { isGateOpen, closeGate, registerStudent, showToast } = useApp();
+  const { isGateOpen, closeGate, registerStudent, showToast, medium } = useApp();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [standard, setStandard] = useState('10th');
+  const [stream, setStream] = useState<string>('Science — Maths');
   const [district, setDistrict] = useState('Chennai');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isGateOpen) return null;
+
+  const isHigherSecondary = standard === '11th' || standard === '12th';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +52,7 @@ export const GateSheet: React.FC = () => {
         name: cleanName,
         phone: cleanPhone,
         standard,
+        stream: isHigherSecondary ? stream : undefined,
         district,
       });
 
@@ -144,7 +155,7 @@ export const GateSheet: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid ${isHigherSecondary ? 'grid-cols-2' : 'grid-cols-2'} gap-3`}>
             <div>
               <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
                 {texts.gate.standardLabel}
@@ -179,6 +190,26 @@ export const GateSheet: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {/* Conditional Stream Dropdown for 11th & 12th only */}
+          {isHigherSecondary && (
+            <div className="animate-fade-in">
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
+                {texts.gate.streamLabel}
+              </label>
+              <select
+                value={stream}
+                onChange={(e) => setStream(e.target.value)}
+                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] bg-[#FAF5FF] text-[#2E1065] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:bg-white transition-all cursor-pointer"
+              >
+                {STREAMS.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Big Lime Accent Button with Dark Text */}
           <button

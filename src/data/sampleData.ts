@@ -1,4 +1,4 @@
-import { Paper, News, Question } from '@/types';
+import { Paper, News, Question, DailyQuiz, LeaderboardEntry } from '@/types';
 
 export const SAMPLE_PAPERS: Paper[] = [
   // 10th Maths
@@ -659,3 +659,97 @@ export const SAMPLE_QUESTIONS: Question[] = [
     medium: 'english',
   },
 ];
+
+export const SAMPLE_DAILY_QUIZZES: DailyQuiz[] = [
+  {
+    id: 'dq-10th-en',
+    classLevel: '10th',
+    medium: 'english',
+    subject: 'Maths',
+    chapter: 'Relations and Functions',
+    question: 'If f: R → R is defined by f(x) = 3x - 5, then f^(-1)(x) is:',
+    options: ['(x + 5) / 3', '(x - 5) / 3', '3x + 5', '(5 - x) / 3'],
+    answerIndex: 0,
+    explanation: 'Let y = 3x - 5 ⇒ 3x = y + 5 ⇒ x = (y + 5) / 3. Hence f^(-1)(x) = (x + 5) / 3.',
+  },
+  {
+    id: 'dq-10th-tm',
+    classLevel: '10th',
+    medium: 'tamil',
+    subject: 'கணிதம்',
+    chapter: 'உறவுகளும் சார்புகளும்',
+    question: 'f: R → R ஆனது f(x) = 3x - 5 என வரையறுக்கப்பட்டால், f^(-1)(x) என்பது:',
+    options: ['(x + 5) / 3', '(x - 5) / 3', '3x + 5', '(5 - x) / 3'],
+    answerIndex: 0,
+    explanation: 'y = 3x - 5 எனில், 3x = y + 5 ⇒ x = (y + 5)/3. எனவே f^(-1)(x) = (x + 5)/3.',
+  },
+  {
+    id: 'dq-12th-sci-maths-en',
+    classLevel: '12th',
+    stream: 'Science — Maths',
+    medium: 'english',
+    subject: 'Physics',
+    chapter: 'Electrostatics',
+    question: 'The electric field between two oppositely charged large parallel conducting plates with surface charge density σ is:',
+    options: ['σ / ε0', 'σ / (2ε0)', '2σ / ε0', 'Zero'],
+    answerIndex: 0,
+    explanation: 'Fields from both plates add up: E = σ/(2ε0) + σ/(2ε0) = σ/ε0.',
+  },
+  {
+    id: 'dq-12th-sci-bio-en',
+    classLevel: '12th',
+    stream: 'Science — Biology',
+    medium: 'english',
+    subject: 'Biology',
+    chapter: 'Reproduction in Plants',
+    question: 'The innermost wall layer of microsporangium which nourishes developing pollen grains is:',
+    options: ['Tapetum', 'Endothecium', 'Middle layers', 'Epidermis'],
+    answerIndex: 0,
+    explanation: 'Tapetum is the nutritive tissue lining the sporangial wall.',
+  },
+  {
+    id: 'dq-12th-comm-en',
+    classLevel: '12th',
+    stream: 'Commerce',
+    medium: 'english',
+    subject: 'Commerce',
+    chapter: 'Financial Markets',
+    question: 'Treasury Bills are issued by which of the following institutions?',
+    options: ['RBI on behalf of Government', 'SEBI', 'Commercial Banks', 'State Governments'],
+    answerIndex: 0,
+    explanation: 'Treasury bills are short-term promissory notes issued by RBI on behalf of the Central Government.',
+  },
+  {
+    id: 'dq-12th-arts-en',
+    classLevel: '12th',
+    stream: 'Arts',
+    medium: 'english',
+    subject: 'Economics',
+    chapter: 'Macroeconomics',
+    question: 'Who is regarded as the father of modern Macroeconomics?',
+    options: ['J.M. Keynes', 'Adam Smith', 'Lionel Robbins', 'Alfred Marshall'],
+    answerIndex: 0,
+    explanation: 'John Maynard Keynes revolutionised macroeconomic thought in 1936.',
+  },
+];
+
+export const SAMPLE_LEADERBOARDS: Record<string, LeaderboardEntry[]> = {
+  '10th': [
+    { name: 'Kavin', district: 'Coimbatore', points: 940, tests: 24 },
+    { name: 'Subhashini', district: 'Madurai', points: 910, tests: 22 },
+    { name: 'Vignesh', district: 'Chennai', points: 885, tests: 21 },
+    { name: 'Nithya', district: 'Tiruchirappalli', points: 860, tests: 20 },
+    { name: 'Anirudh', district: 'Salem', points: 840, tests: 19 },
+    { name: 'Pooja', district: 'Thanjavur', points: 810, tests: 18 },
+    { name: 'Siddharth', district: 'Erode', points: 790, tests: 17 },
+  ],
+  '12th': [
+    { name: 'Harish', district: 'Chennai', points: 980, tests: 28 },
+    { name: 'Keerthana', district: 'Coimbatore', points: 950, tests: 26 },
+    { name: 'Manojkumar', district: 'Dindigul', points: 920, tests: 24 },
+    { name: 'Lavanya', district: 'Tirunelveli', points: 890, tests: 23 },
+    { name: 'Abishek', district: 'Vellore', points: 870, tests: 21 },
+    { name: 'Sowmya', district: 'Kancheepuram', points: 840, tests: 19 },
+  ],
+};
+

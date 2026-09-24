@@ -1,7 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Medium, StudentProfile, QuizResult } from '@/types';
+import { Medium, StudentProfile, QuizResult, ScorePayload } from '@/types';
+import { calculateStreak } from '@/utils/streak';
 
 interface AppContextType {
   medium: Medium;
@@ -12,12 +13,23 @@ interface AppContextType {
   isGateOpen: boolean;
   openGate: (pendingAction?: () => void) => void;
   closeGate: () => void;
-  registerStudent: (data: { name: string; phone: string; standard: string; district: string }) => Promise<void>;
+  registerStudent: (data: {
+    name: string;
+    phone: string;
+    standard: string;
+    stream?: string;
+    district: string;
+  }) => Promise<void>;
   logout: () => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
   quizResults: QuizResult[];
-  saveQuizResult: (res: QuizResult) => void;
+  saveQuizResult: (res: QuizResult) => Promise<void>;
+  streakInfo: {
+    streak: number;
+    hasTakenTestToday: boolean;
+    isBroken: boolean;
+  };
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -45,7 +57,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const savedStudent = localStorage.getItem(STUDENT_STORAGE_KEY);
       if (savedStudent) {
-        setStudent(JSON.parse(savedStudent));
+        const parsed = JSON.parse(savedStudent);
+        setStudent(parsed);
+        // Automatically sync medium from stored student profile if present
+        if (parsed.medium) {
+          setMediumState(parsed.medium);
+        }
       }
 
       const savedQuizzes = localStorage.getItem(QUIZ_RESULTS_KEY);
@@ -63,6 +80,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMediumState(newMedium);
     try {
       localStorage.setItem(MEDIUM_STORAGE_KEY, newMedium);
+      // Update student profile medium too if registered
+      if (student) {
+        const updated = { ...student, medium: newMedium };
+        setStudent(updated);
+        localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(updated));
+      }
     } catch (e) {
       console.error('Storage error', e);
     }
@@ -86,7 +109,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPendingAction(null);
   };
 
-  const registerStudent = async (data: { name: string; phone: string; standard: string; district: string }) => {
+  const registerStudent = async (data: {
+    name: string;
+    phone: string;
+    standard: string;
+    stream?: string;
+    district: string;
+  }) => {
     const newProfile: StudentProfile = {
       ...data,
       medium,
@@ -112,6 +141,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           phone: newProfile.phone,
           district: newProfile.district,
           standard: newProfile.standard,
+          stream: newProfile.stream,
           medium: newProfile.medium,
         }),
       });
@@ -151,7 +181,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  const saveQuizResult = (res: QuizResult) => {
+  const saveQuizResult = async (res: QuizResult) => {
+    // 1. Save to local storage
     setQuizResults((prev) => {
       const updated = [res, ...prev];
       try {
@@ -161,7 +192,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return updated;
     });
+
+    // 2. Post score to Apps Script backend (silenced error, never block UX)
+    if (student) {
+      try {
+        const payload: ScorePayload = {
+          phone: student.phone,
+          name: student.name,
+          district: student.district,
+          standard: student.standard,
+          subject: res.subject,
+          chapter: res.chapter,
+          testType: res.type,
+          score: res.score,
+          total: res.total,
+          seconds: res.totalTimeSeconds,
+        };
+
+        fetch('/api/score', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch((err) => console.warn('Score POST failed (silenced)', err));
+      } catch (err) {
+        // Silenced
+      }
+    }
   };
+
+  const streakInfo = calculateStreak(quizResults);
 
   return (
     <AppContext.Provider
@@ -180,6 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         quizResults,
         saveQuizResult,
+        streakInfo,
       }}
     >
       {children}

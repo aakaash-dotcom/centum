@@ -3,7 +3,18 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, phone, district, standard, stream, medium } = body;
+    const {
+      phone,
+      name,
+      district,
+      standard,
+      subject,
+      chapter,
+      testType,
+      score,
+      total,
+      seconds,
+    } = body;
 
     const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
     const secretKey = process.env.APPS_SCRIPT_SECRET;
@@ -11,14 +22,19 @@ export async function POST(request: Request) {
     if (scriptUrl && secretKey) {
       try {
         const payload = {
-          type: 'student',
+          type: 'score',
           key: secretKey,
-          name,
           phone,
+          name,
           district,
           standard,
-          stream,
-          medium,
+          subject,
+          chapter,
+          testType,
+          score,
+          total,
+          seconds,
+          timestamp: new Date().toISOString(),
         };
 
         const res = await fetch(scriptUrl, {
@@ -32,20 +48,18 @@ export async function POST(request: Request) {
           return NextResponse.json({ ok: true, ...resData });
         }
       } catch (err) {
-        console.warn('Apps Script registration failed, returning local success', err);
+        console.warn('Score submission to Apps Script failed', err);
       }
     }
 
-    // Local success response if env vars missing or external endpoint offline
+    // Return success to never block UX
     return NextResponse.json({
       ok: true,
-      registered: true,
+      recorded: true,
       source: 'local_mock',
     });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: 'Registration failed' },
-      { status: 400 }
-    );
+    // Silenced error - return ok so UX is never blocked
+    return NextResponse.json({ ok: true, error: 'Silenced score error' });
   }
 }

@@ -8,6 +8,7 @@ import { Toast } from '@/components/Toast';
 export const metadata: Metadata = {
   title: 'Centum - Tamil Nadu Board Question Papers & Tests',
   description: 'Tamil Nadu State Board 10th and 12th question papers, model papers, books, and chapter tests.',
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
