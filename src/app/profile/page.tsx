@@ -145,11 +145,19 @@ export default function ProfilePage() {
 
           <button
             type="button"
-            onClick={() => openGate()}
+            onClick={() => openGate(undefined, 'register')}
             className="w-full min-h-[50px] flex items-center justify-center gap-2 font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] rounded-2xl shadow-md shadow-[#A3E635]/25 transition-all cursor-pointer"
           >
             <Sparkles className="w-5 h-5" />
             <span>{texts.profile.unlockCta}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openGate(undefined, 'login')}
+            className="w-full min-h-[44px] mt-2.5 flex items-center justify-center gap-1.5 font-bold text-xs text-[#7C3AED] dark:text-[#A3E635] hover:underline cursor-pointer"
+          >
+            <span>{texts.profile.loginLink}</span>
           </button>
         </div>
       )}
@@ -381,6 +389,18 @@ export default function ProfilePage() {
               </span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Subtle Founder Console Link (ONLY when isAdmin was returned by login) */}
+      {isRegistered && student?.isAdmin && (
+        <div className="text-center pt-1">
+          <Link
+            href="/admin"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#7C3AED]/70 dark:text-[#A3E635]/80 hover:text-[#7C3AED] dark:hover:text-[#A3E635] py-2 px-3 rounded-full hover:bg-[#FAF5FF] dark:hover:bg-[#230542] transition-colors"
+          >
+            <span>{texts.profile.adminLink}</span>
+          </Link>
         </div>
       )}
 

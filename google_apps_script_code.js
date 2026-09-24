@@ -326,6 +326,173 @@ function doGet(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 
+  // 9. Student & Founder Login: action=login&phone=...&password=...
+  if (action === "login") {
+    const phone = String(params.phone || "").trim();
+    const password = String(params.password || "");
+
+    const studentSheet = ss.getSheetByName("Students");
+    if (!studentSheet) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "no-account" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const data = studentSheet.getDataRange().getValues();
+    let foundRow = null;
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][2]).trim() === phone) {
+        foundRow = data[i];
+        break;
+      }
+    }
+
+    if (!foundRow) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "no-account" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const storedHash = String(foundRow[8] || "").trim();
+    if (!storedHash) {
+      // Pre-v4 user: needs password setup once
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "needs-password-setup" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const inputHash = computeHash(password);
+    if (storedHash !== inputHash && storedHash !== password) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "wrong-password" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const isAdmin = Boolean(foundRow[9] === true || String(foundRow[9]).toLowerCase() === "true");
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      student: {
+        name: foundRow[1],
+        phone: foundRow[2],
+        district: foundRow[3],
+        standard: foundRow[4],
+        stream: foundRow[5] || "",
+        medium: foundRow[6] || "english",
+        plan: (foundRow[7] || "free").toString().toLowerCase(),
+        isAdmin: isAdmin
+      }
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 10. Admin Telemetry Stats: action=stats&phone=...&password=...
+  if (action === "stats") {
+    const adminPhone = String(params.phone || params.adminPhone || "").trim();
+    const adminPass = String(params.password || params.adminPassword || "");
+
+    if (!verifyAdmin(ss, adminPhone, adminPass)) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Compute stats
+    let studentsTotal = 0;
+    let proTotal = 0;
+    let liveTotal = 0;
+    const studentSheet = ss.getSheetByName("Students");
+    if (studentSheet) {
+      const sData = studentSheet.getDataRange().getValues();
+      studentsTotal = Math.max(0, sData.length - 1);
+      for (let i = 1; i < sData.length; i++) {
+        const p = String(sData[i][7] || "").toLowerCase();
+        if (p === "pro") proTotal++;
+        if (p === "live") liveTotal++;
+      }
+    }
+
+    let testsTaken = 0;
+    const scoresSheet = ss.getSheetByName("Scores");
+    if (scoresSheet) {
+      testsTaken = Math.max(0, scoresSheet.getDataRange().getValues().length - 1);
+    }
+
+    let revenueTotal = 0;
+    let revenueThisMonth = 0;
+    let paymentsCount = 0;
+    let couponsUsed = 0;
+
+    const subSheet = ss.getSheetByName("Subscriptions");
+    if (subSheet) {
+      const subData = subSheet.getDataRange().getValues();
+      paymentsCount = Math.max(0, subData.length - 1);
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+
+      for (let i = 1; i < subData.length; i++) {
+        const amt = parseInt(subData[i][3] || "0", 10) || 0;
+        revenueTotal += amt;
+        const rowDate = subData[i][0] ? new Date(subData[i][0]) : null;
+        if (rowDate && rowDate.getFullYear() === currentYear && rowDate.getMonth() === currentMonth) {
+          revenueThisMonth += amt;
+        }
+        if (subData[i][6]) {
+          couponsUsed++;
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      stats: {
+        studentsTotal: studentsTotal,
+        proTotal: proTotal,
+        liveTotal: liveTotal,
+        testsTaken: testsTaken,
+        revenueTotal: revenueTotal,
+        revenueThisMonth: revenueThisMonth,
+        paymentsCount: paymentsCount,
+        couponsUsed: couponsUsed
+      }
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 11. Admin Students List: action=adminstudents&phone=...&password=...
+  if (action === "adminstudents") {
+    const adminPhone = String(params.phone || params.adminPhone || "").trim();
+    const adminPass = String(params.password || params.adminPassword || "");
+
+    if (!verifyAdmin(ss, adminPhone, adminPass)) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const studentSheet = ss.getSheetByName("Students");
+    const studentsList = [];
+    if (studentSheet) {
+      const data = studentSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const rawPhone = String(data[i][2] || "").trim();
+        // Mask phone server-side: xxxxx4830
+        const masked = rawPhone.length >= 10
+          ? "xxxxx" + rawPhone.slice(-4)
+          : "xxxxx";
+
+        studentsList.push({
+          joined: data[i][0] ? new Date(data[i][0]).toISOString().split("T")[0] : "Recent",
+          name: data[i][1],
+          phone: masked,
+          standard: data[i][4],
+          stream: data[i][5] || "—",
+          medium: data[i][6] || "english",
+          plan: (data[i][7] || "free").toString().toLowerCase()
+        });
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      students: studentsList
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Invalid action" }))
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -342,13 +509,15 @@ function doPost(e) {
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 1. Register Student
+    // 1. Register Student (v4: with password hash)
     if (payload.type === "student") {
       let sheet = ss.getSheetByName("Students");
       if (!sheet) {
         sheet = ss.insertSheet("Students");
-        sheet.appendRow(["Timestamp", "Name", "Phone", "District", "Standard", "Stream", "Medium", "Plan"]);
+        sheet.appendRow(["Timestamp", "Name", "Phone", "District", "Standard", "Stream", "Medium", "Plan", "PasswordHash", "IsAdmin"]);
       }
+
+      const passHash = payload.password ? computeHash(payload.password) : "";
 
       sheet.appendRow([
         new Date().toISOString(),
@@ -358,7 +527,9 @@ function doPost(e) {
         payload.standard,
         payload.stream || "",
         payload.medium,
-        "free"
+        "free",
+        passHash,
+        false
       ]);
 
       return ContentService.createTextOutput(JSON.stringify({ ok: true }))
@@ -500,10 +671,198 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 5. Set Student Password: type=set-password
+    if (payload.type === "set-password") {
+      const studentSheet = ss.getSheetByName("Students");
+      if (!studentSheet) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "no-account" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const data = studentSheet.getDataRange().getValues();
+      const phone = String(payload.phone || "").trim();
+      const newHash = computeHash(payload.password);
+      let updated = false;
+
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][2]).trim() === phone) {
+          studentSheet.getRange(i + 1, 9).setValue(newHash);
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "no-account" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 6. Change Admin Password: type=admin-password
+    if (payload.type === "admin-password") {
+      const adminPhone = String(payload.adminPhone || "").trim();
+      const oldPassword = String(payload.oldPassword || "");
+      const newPassword = String(payload.newPassword || "");
+
+      if (!verifyAdmin(ss, adminPhone, oldPassword)) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const studentSheet = ss.getSheetByName("Students");
+      const newHash = computeHash(newPassword);
+
+      if (studentSheet) {
+        const data = studentSheet.getDataRange().getValues();
+        for (let i = 1; i < data.length; i++) {
+          if (String(data[i][2]).trim() === adminPhone) {
+            studentSheet.getRange(i + 1, 9).setValue(newHash);
+            break;
+          }
+        }
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 7. Add Material from Founder Console: type=admin-material
+    if (payload.type === "admin-material") {
+      const adminPhone = String(payload.adminPhone || "").trim();
+      const adminPass = String(payload.adminPassword || "");
+
+      if (!verifyAdmin(ss, adminPhone, adminPass)) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const tab = payload.tab;
+      const row = payload.row || {};
+
+      if (tab === "Papers") {
+        let sheet = ss.getSheetByName("Papers");
+        if (!sheet) {
+          sheet = ss.insertSheet("Papers");
+          sheet.appendRow(["ID", "ClassLevel", "Category", "Subject", "Exam", "Year", "Medium", "Title", "DriveFileId", "Featured", "Plan"]);
+        }
+        const id = `paper-${Date.now()}`;
+        sheet.appendRow([
+          id,
+          row.classLevel,
+          row.category,
+          row.subject,
+          row.exam || "Public",
+          row.year || "2024",
+          row.medium || "tamil",
+          row.title,
+          row.driveFileId,
+          false,
+          row.plan || "free"
+        ]);
+        return ContentService.createTextOutput(JSON.stringify({ ok: true, id: id }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      if (tab === "News") {
+        let sheet = ss.getSheetByName("News");
+        if (!sheet) {
+          sheet = ss.insertSheet("News");
+          sheet.appendRow(["ID", "Title", "Date", "Category", "Summary", "Body", "SourceUrl", "ImageUrl", "Pinned"]);
+        }
+        const id = `news-${Date.now()}`;
+        sheet.appendRow([
+          id,
+          row.title,
+          row.date || new Date().toISOString().split("T")[0],
+          row.category || "General",
+          row.summary,
+          row.body || "",
+          row.sourceUrl || "",
+          row.imageUrl || "",
+          Boolean(row.pinned)
+        ]);
+        return ContentService.createTextOutput(JSON.stringify({ ok: true, id: id }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      if (tab === "Questions") {
+        let sheet = ss.getSheetByName("Questions");
+        if (!sheet) {
+          sheet = ss.insertSheet("Questions");
+          sheet.appendRow(["ID", "ClassLevel", "Subject", "Chapter", "Type", "Options", "Ans1", "Ans2", "Ans3", "AnswerIndex", "Explanation", "Medium", "Plan"]);
+        }
+        const id = `q-${Date.now()}`;
+        const optionsStr = JSON.stringify(row.options || []);
+        sheet.appendRow([
+          id,
+          row.classLevel,
+          row.subject,
+          row.chapter || "",
+          row.type || "oneword",
+          optionsStr,
+          "",
+          "",
+          "",
+          row.answerIndex || 0,
+          row.explanation || "",
+          row.medium || "tamil",
+          row.plan || "free"
+        ]);
+        return ContentService.createTextOutput(JSON.stringify({ ok: true, id: id }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Invalid tab" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unknown payload type" }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * SHA-256 password hash utility for Google Apps Script
+ */
+function computeHash(input) {
+  if (!input) return "";
+  const rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(input), Utilities.Charset.UTF_8);
+  let hashStr = "";
+  for (let i = 0; i < rawHash.length; i++) {
+    let byteVal = rawHash[i];
+    if (byteVal < 0) byteVal += 256;
+    let hex = byteVal.toString(16);
+    if (hex.length === 1) hex = "0" + hex;
+    hashStr += hex;
+  }
+  return hashStr;
+}
+
+/**
+ * Verify founder admin credentials from Students sheet
+ */
+function verifyAdmin(ss, phone, password) {
+  if (!phone || !password) return false;
+  const sheet = ss.getSheetByName("Students");
+  if (!sheet) return false;
+  const data = sheet.getDataRange().getValues();
+  const inputHash = computeHash(password);
+
+  for (let i = 1; i < data.length; i++) {
+    const rowPhone = String(data[i][2]).trim();
+    if (rowPhone === phone) {
+      const storedHash = String(data[i][8] || "").trim();
+      const isAdmin = data[i][9] === true || String(data[i][9]).toLowerCase() === "true";
+      if (isAdmin && (storedHash === inputHash || storedHash === password)) {
+        return true;
+      }
+    }
+  }
+  return false;
 }

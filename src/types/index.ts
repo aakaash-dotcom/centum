@@ -85,6 +85,28 @@ export interface StudentProfile {
   medium: Medium;
   plan?: PlanType;
   registeredAt?: string;
+  isAdmin?: boolean;
+}
+
+export interface AdminStats {
+  studentsTotal: number;
+  proTotal: number;
+  liveTotal: number;
+  testsTaken: number;
+  revenueTotal: number;
+  revenueThisMonth: number;
+  paymentsCount: number;
+  couponsUsed: number;
+}
+
+export interface AdminStudentRow {
+  joined: string;
+  name: string;
+  phone: string; // masked server-side, e.g. xxxxx4830
+  standard: string;
+  stream: string;
+  medium: string;
+  plan: PlanType | string;
 }
 
 export interface UserAnswerRecord {

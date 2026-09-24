@@ -11,7 +11,9 @@ interface AppContextType {
   student: StudentProfile | null;
   isRegistered: boolean;
   isGateOpen: boolean;
-  openGate: (pendingAction?: () => void) => void;
+  gateMode: 'register' | 'login';
+  setGateMode: (mode: 'register' | 'login') => void;
+  openGate: (pendingAction?: () => void, mode?: 'register' | 'login') => void;
   closeGate: () => void;
   registerStudent: (data: {
     name: string;
@@ -19,7 +21,16 @@ interface AppContextType {
     standard: string;
     stream?: string;
     district: string;
+    password?: string;
   }) => Promise<void>;
+  login: (
+    phone: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string; student?: StudentProfile }>;
+  setupPassword: (
+    phone: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
@@ -65,6 +76,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [theme, setThemeState] = useState<'light' | 'dark'>('light');
   const [guestStandard, setGuestStandardState] = useState<string | null>(null);
   const [isGateOpen, setIsGateOpen] = useState(false);
+  const [gateMode, setGateMode] = useState<'register' | 'login'>('register');
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -200,12 +212,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMedium(medium === 'english' ? 'tamil' : 'english');
   };
 
-  const openGate = (action?: () => void) => {
+  const openGate = (action?: () => void, mode: 'register' | 'login' = 'register') => {
     if (action) {
       setPendingAction(() => action);
     } else {
       setPendingAction(null);
     }
+    setGateMode(mode);
     setIsGateOpen(true);
   };
 
@@ -228,14 +241,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     standard: string;
     stream?: string;
     district: string;
+    password?: string;
   }) => {
+    const { password, ...profileFields } = data;
     const newProfile: StudentProfile = {
-      ...data,
+      ...profileFields,
       medium,
       plan: 'free',
       registeredAt: new Date().toISOString(),
     };
 
+    // Password is NEVER stored client-side in localStorage/state
     setStudent(newProfile);
     try {
       localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(newProfile));
@@ -255,6 +271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           standard: newProfile.standard,
           stream: newProfile.stream,
           medium: newProfile.medium,
+          password: password || undefined,
         }),
       });
     } catch (err) {
@@ -271,6 +288,93 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTimeout(() => {
         actionToExecute();
       }, 100);
+    }
+  };
+
+  const login = async (
+    phone: string,
+    password: string
+  ): Promise<{ ok: boolean; error?: string; student?: StudentProfile }> => {
+    try {
+      const res = await fetch(
+        `/api/login?phone=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`
+      );
+      const data = await res.json();
+
+      if (data.ok && data.student) {
+        const loggedStudent: StudentProfile = {
+          name: data.student.name,
+          phone: data.student.phone,
+          district: data.student.district,
+          standard: data.student.standard,
+          stream: data.student.stream,
+          medium: data.student.medium || medium,
+          plan: data.student.plan || 'free',
+          registeredAt: data.student.registeredAt || new Date().toISOString(),
+          isAdmin: Boolean(data.student.isAdmin),
+        };
+
+        // Hydrate full profile from server response into state & localStorage
+        setStudent(loggedStudent);
+        try {
+          localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(loggedStudent));
+        } catch (e) {
+          console.error('Failed to save student profile', e);
+        }
+
+        if (loggedStudent.medium) {
+          setMediumState(loggedStudent.medium);
+          try {
+            localStorage.setItem(MEDIUM_STORAGE_KEY, loggedStudent.medium);
+          } catch (e) {}
+        }
+
+        if (loggedStudent.plan) {
+          setPlanState(loggedStudent.plan);
+          try {
+            localStorage.setItem(PLAN_STORAGE_KEY, loggedStudent.plan);
+          } catch (e) {}
+        }
+
+        // Refresh plan from server
+        fetchPlanFromServer(loggedStudent.phone);
+
+        setIsGateOpen(false);
+        if (pendingAction) {
+          const actionToExecute = pendingAction;
+          setPendingAction(null);
+          setTimeout(() => {
+            actionToExecute();
+          }, 100);
+        }
+
+        return { ok: true, student: loggedStudent };
+      }
+
+      return { ok: false, error: data.error || 'wrong-password' };
+    } catch (err) {
+      return { ok: false, error: 'network-error' };
+    }
+  };
+
+  const setupPassword = async (
+    phone: string,
+    password: string
+  ): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'set-password',
+          phone,
+          password,
+        }),
+      });
+      const data = await res.json();
+      return { ok: Boolean(data.ok), error: data.error };
+    } catch (err) {
+      return { ok: false, error: 'setup-failed' };
     }
   };
 
@@ -356,9 +460,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         student,
         isRegistered: Boolean(student),
         isGateOpen,
+        gateMode,
+        setGateMode,
         openGate,
         closeGate,
         registerStudent,
+        login,
+        setupPassword,
         logout,
         toastMessage,
         showToast,
