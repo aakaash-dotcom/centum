@@ -16,9 +16,16 @@ export async function POST(request: Request) {
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     // Check if simulated test order
-    const isSimulated = orderId.startsWith('order_test_') || !keySecret || keySecret.includes('YOUR_RAZORPAY_SECRET');
+    const isSimulated = process.env.ALLOW_PAYMENT_SIMULATION === 'true' && orderId.startsWith('order_test_');
 
     if (!isSimulated) {
+      if (!keySecret || keySecret.includes('YOUR_RAZORPAY_SECRET')) {
+        return NextResponse.json(
+          { ok: false, error: 'verification-unavailable' },
+          { status: 503 }
+        );
+      }
+
       // Real signature verification using HMAC-SHA256
       const payload = `${orderId}|${paymentId}`;
       const generatedSignature = crypto

@@ -26,8 +26,15 @@ export const PaywallSheet: React.FC = () => {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [isWaitlistMode, setIsWaitlistMode] = useState(false);
+  const [isJoiningWaitlist, setIsJoiningWaitlist] = useState(false);
 
   if (!isPaywallOpen) return null;
+
+  const handleClose = () => {
+    setIsWaitlistMode(false);
+    closePaywall();
+  };
 
   const basePriceRupees = 799;
   const discountedPriceRupees = appliedCoupon
@@ -61,10 +68,39 @@ export const PaywallSheet: React.FC = () => {
     }
   };
 
+  const handleJoinWaitlist = async () => {
+    if (!student) {
+      handleClose();
+      openGate();
+      return;
+    }
+
+    setIsJoiningWaitlist(true);
+    try {
+      await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'waitlist',
+          name: student.name,
+          phone: student.phone,
+          plan: 'Pro',
+        }),
+      });
+      showToast(texts.pricing.waitlistSuccess);
+      handleClose();
+    } catch (e) {
+      showToast(texts.pricing.waitlistSuccess);
+      handleClose();
+    } finally {
+      setIsJoiningWaitlist(false);
+    }
+  };
+
   const handleCheckout = async () => {
     // If not registered, prompt gate first
     if (!student) {
-      closePaywall();
+      handleClose();
       openGate(() => {
         // Reopen paywall after registering
         setTimeout(() => closePaywall(), 50);
@@ -86,8 +122,19 @@ export const PaywallSheet: React.FC = () => {
         }),
       });
 
+      if (orderRes.status === 503) {
+        setIsWaitlistMode(true);
+        setIsProcessingOrder(false);
+        return;
+      }
+
       const orderData = await orderRes.json();
       if (!orderData.ok || !orderData.orderId) {
+        if (orderData.error === 'payments-not-live') {
+          setIsWaitlistMode(true);
+          setIsProcessingOrder(false);
+          return;
+        }
         showToast('could not create order, retry ⚡');
         setIsProcessingOrder(false);
         return;
@@ -214,7 +261,7 @@ export const PaywallSheet: React.FC = () => {
       aria-modal="true"
       aria-label="Centum Pro Paywall"
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
-      onClick={closePaywall}
+      onClick={handleClose}
     >
       <div
         className="w-full max-w-md bg-white rounded-t-3xl p-6 shadow-2xl border-t border-[#EDE9FE] animate-slide-up flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
@@ -225,13 +272,13 @@ export const PaywallSheet: React.FC = () => {
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF5FF] border border-[#DDD6FE]">
             <Crown className="w-3.5 h-3.5 text-[#7C3AED]" />
             <span className="text-[11px] font-black uppercase tracking-wider text-[#7C3AED]">
-              {texts.paywall.proBadge}
+              {isWaitlistMode ? 'Waitlist 🎟️' : texts.paywall.proBadge}
             </span>
           </div>
 
           <button
             type="button"
-            onClick={closePaywall}
+            onClick={handleClose}
             className="w-8 h-8 rounded-full bg-[#FAF5FF] text-[#6D28D9] flex items-center justify-center hover:bg-[#EDE9FE] transition-colors cursor-pointer"
             aria-label="Close"
           >
@@ -239,120 +286,155 @@ export const PaywallSheet: React.FC = () => {
           </button>
         </div>
 
-        {/* Title */}
-        <div>
-          <h2 className="text-xl font-black text-[#2E1065] tracking-tight">
-            {texts.paywall.title}
-          </h2>
-          <p className="text-xs font-bold text-[#7C3AED] mt-0.5">
-            {texts.pricing.subtitle}
-          </p>
-        </div>
-
-        {/* 3 Punchy Lines */}
-        <div className="space-y-2.5 bg-[#FAF5FF] p-4 rounded-2xl border border-[#DDD6FE]">
-          <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
-            <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
-              <Check className="w-3 h-3 stroke-[3]" />
-            </span>
-            <span>{texts.paywall.pitch1}</span>
-          </div>
-
-          <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
-            <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
-              <Check className="w-3 h-3 stroke-[3]" />
-            </span>
-            <span>{texts.paywall.pitch2}</span>
-          </div>
-
-          <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
-            <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
-              <Check className="w-3 h-3 stroke-[3]" />
-            </span>
-            <span>{texts.paywall.pitch3}</span>
-          </div>
-        </div>
-
-        {/* Price Card */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white shadow-md shadow-[#7C3AED]/20 flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-[#E9D5FF] uppercase tracking-wider block">
-              Annual Pass
-            </span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black tracking-tight">
-                ₹{discountedPriceRupees}/yr
-              </span>
-              {appliedCoupon && (
-                <span className="text-xs line-through text-[#E9D5FF]/70">
-                  ₹{basePriceRupees}
-                </span>
-              )}
+        {isWaitlistMode ? (
+          <div className="flex flex-col items-center text-center gap-4 py-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#FAF5FF] border border-[#DDD6FE] flex items-center justify-center text-3xl shadow-xs">
+              🐣
             </div>
-            <span className="text-[11px] font-extrabold text-[#A3E635]">
-              {texts.paywall.priceDisplay}
-            </span>
-          </div>
 
-          {appliedCoupon ? (
-            <span className="px-2.5 py-1 rounded-full bg-[#A3E635] text-[#18181B] text-[10px] font-black uppercase shadow-xs">
-              {appliedCoupon.discountPercent}% OFF
-            </span>
-          ) : (
-            <span className="text-2xl">👑</span>
-          )}
-        </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-black text-[#2E1065] tracking-tight">
+                payments launch soon 🐣
+              </h2>
+              <p className="text-sm font-black text-[#7C3AED]">
+                get on the Pro list
+              </p>
+            </div>
 
-        {/* Coupon Field */}
-        <div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              placeholder={texts.paywall.couponPlaceholder}
-              className="flex-1 min-h-[44px] px-3.5 rounded-xl border border-[#EDE9FE] focus:border-[#7C3AED] outline-none text-xs font-bold text-[#2E1065] placeholder:text-[#6D28D9]/40 uppercase bg-[#FAF5FF]"
-            />
             <button
               type="button"
-              onClick={handleApplyCoupon}
-              disabled={isApplyingCoupon || !couponCode.trim()}
-              className="min-h-[44px] px-4 rounded-xl bg-white border border-[#DDD6FE] hover:border-[#7C3AED] text-xs font-black text-[#7C3AED] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              onClick={handleJoinWaitlist}
+              disabled={isJoiningWaitlist}
+              className="w-full min-h-[50px] flex items-center justify-center gap-2 font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer disabled:opacity-60 mt-2"
             >
-              {isApplyingCoupon ? '...' : texts.paywall.applyCoupon}
+              {isJoiningWaitlist ? (
+                <div className="w-5 h-5 rounded-full border-2 border-[#18181B] border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  <span>get on the Pro list 🐣</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                </>
+              )}
             </button>
           </div>
+        ) : (
+          <>
+            {/* Title */}
+            <div>
+              <h2 className="text-xl font-black text-[#2E1065] tracking-tight">
+                {texts.paywall.title}
+              </h2>
+              <p className="text-xs font-bold text-[#7C3AED] mt-0.5">
+                {texts.pricing.subtitle}
+              </p>
+            </div>
 
-          {couponError && (
-            <p className="text-[11px] font-bold text-[#E11D48] mt-1 ml-1">
-              {couponError}
-            </p>
-          )}
+            {/* 3 Punchy Lines */}
+            <div className="space-y-2.5 bg-[#FAF5FF] p-4 rounded-2xl border border-[#DDD6FE]">
+              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
+                <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </span>
+                <span>{texts.paywall.pitch1}</span>
+              </div>
 
-          {appliedCoupon && (
-            <p className="text-[11px] font-bold text-[#16A34A] mt-1 ml-1 flex items-center gap-1">
-              <Percent className="w-3 h-3" />
-              Code {appliedCoupon.code} applied ({appliedCoupon.discountPercent}% off)!
-            </p>
-          )}
-        </div>
+              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
+                <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </span>
+                <span>{texts.paywall.pitch2}</span>
+              </div>
 
-        {/* Go Pro CTA */}
-        <button
-          type="button"
-          onClick={handleCheckout}
-          disabled={isProcessingOrder}
-          className="w-full min-h-[50px] flex items-center justify-center gap-2 font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer disabled:opacity-60"
-        >
-          {isProcessingOrder ? (
-            <div className="w-5 h-5 rounded-full border-2 border-[#18181B] border-t-transparent animate-spin" />
-          ) : (
-            <>
-              <span>{texts.pricing.goPro}</span>
-              <ArrowRight className="w-4 h-4 stroke-[3]" />
-            </>
-          )}
-        </button>
+              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
+                <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
+                  <Check className="w-3 h-3 stroke-[3]" />
+                </span>
+                <span>{texts.paywall.pitch3}</span>
+              </div>
+            </div>
+
+            {/* Price Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white shadow-md shadow-[#7C3AED]/20 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-[#E9D5FF] uppercase tracking-wider block">
+                  Annual Pass
+                </span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl font-black tracking-tight">
+                    ₹{discountedPriceRupees}/yr
+                  </span>
+                  {appliedCoupon && (
+                    <span className="text-xs line-through text-[#E9D5FF]/70">
+                      ₹{basePriceRupees}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] font-extrabold text-[#A3E635]">
+                  {texts.paywall.priceDisplay}
+                </span>
+              </div>
+
+              {appliedCoupon ? (
+                <span className="px-2.5 py-1 rounded-full bg-[#A3E635] text-[#18181B] text-[10px] font-black uppercase shadow-xs">
+                  {appliedCoupon.discountPercent}% OFF
+                </span>
+              ) : (
+                <span className="text-2xl">👑</span>
+              )}
+            </div>
+
+            {/* Coupon Field */}
+            <div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  placeholder={texts.paywall.couponPlaceholder}
+                  className="flex-1 min-h-[44px] px-3.5 rounded-xl border border-[#EDE9FE] focus:border-[#7C3AED] outline-none text-xs font-bold text-[#2E1065] placeholder:text-[#6D28D9]/40 uppercase bg-[#FAF5FF]"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  disabled={isApplyingCoupon || !couponCode.trim()}
+                  className="min-h-[44px] px-4 rounded-xl bg-white border border-[#DDD6FE] hover:border-[#7C3AED] text-xs font-black text-[#7C3AED] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                >
+                  {isApplyingCoupon ? '...' : texts.paywall.applyCoupon}
+                </button>
+              </div>
+
+              {couponError && (
+                <p className="text-[11px] font-bold text-[#E11D48] mt-1 ml-1">
+                  {couponError}
+                </p>
+              )}
+
+              {appliedCoupon && (
+                <p className="text-[11px] font-bold text-[#16A34A] mt-1 ml-1 flex items-center gap-1">
+                  <Percent className="w-3 h-3" />
+                  Code {appliedCoupon.code} applied ({appliedCoupon.discountPercent}% off)!
+                </p>
+              )}
+            </div>
+
+            {/* Go Pro CTA */}
+            <button
+              type="button"
+              onClick={handleCheckout}
+              disabled={isProcessingOrder}
+              className="w-full min-h-[50px] flex items-center justify-center gap-2 font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer disabled:opacity-60"
+            >
+              {isProcessingOrder ? (
+                <div className="w-5 h-5 rounded-full border-2 border-[#18181B] border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  <span>{texts.pricing.goPro}</span>
+                  <ArrowRight className="w-4 h-4 stroke-[3]" />
+                </>
+              )}
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

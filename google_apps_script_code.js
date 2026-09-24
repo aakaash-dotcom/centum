@@ -481,6 +481,25 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 4. Waitlist Entry
+    if (payload.type === "waitlist") {
+      let sheet = ss.getSheetByName("Waitlist");
+      if (!sheet) {
+        sheet = ss.insertSheet("Waitlist");
+        sheet.appendRow(["Timestamp", "Name", "Phone", "Plan"]);
+      }
+
+      sheet.appendRow([
+        new Date().toISOString(),
+        payload.name || "",
+        payload.phone || "",
+        payload.plan || "Pro"
+      ]);
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, waitlistRecorded: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unknown payload type" }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {

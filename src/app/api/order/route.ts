@@ -106,6 +106,11 @@ export async function POST(request: Request) {
     }
 
     // Fallback order ID for testing when keys are not active or in simulated test mode
+    const simulationAllowed = process.env.ALLOW_PAYMENT_SIMULATION === 'true';
+    if (!simulationAllowed) {
+      return NextResponse.json({ ok: false, error: 'payments-not-live' }, { status: 503 });
+    }
+
     const mockOrderId = `order_test_${Date.now()}`;
     return NextResponse.json({
       ok: true,
