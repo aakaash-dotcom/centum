@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   const subject = searchParams.get('subject');
   const medium = searchParams.get('medium');
 
-  const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+  const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
 
   if (scriptUrl && secretKey) {

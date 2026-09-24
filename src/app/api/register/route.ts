@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, phone, district, standard, stream, medium } = body;
 
-    const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+    const scriptUrl = process.env.APPS_SCRIPT_URL;
     const secretKey = process.env.APPS_SCRIPT_SECRET;
 
     if (scriptUrl && secretKey) {

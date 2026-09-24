@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
@@ -9,7 +9,7 @@ import { Paper, PaperCategory } from '@/types';
 import { SAMPLE_PAPERS } from '@/data/sampleData';
 import { DrivePreviewModal } from '@/components/DrivePreviewModal';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { ArrowLeft, FileText, Download, Eye, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Eye, Sparkles, Lock } from 'lucide-react';
 
 const CATEGORIES: { id: PaperCategory; label: string }[] = [
   { id: 'pyq', label: texts.categories.pyq },
@@ -31,13 +31,13 @@ const SUBJECTS_12TH = [
   'Economics',
 ];
 
-export default function ClassPage() {
+function ClassPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const rawClassId = (params?.classId as string) || '10th';
   const classId = rawClassId.endsWith('th') ? rawClassId : `${rawClassId}th`;
 
-  const { medium, toggleMedium, isRegistered, openGate, showToast } = useApp();
+  const { medium, toggleMedium, isRegistered, openGate, showToast, plan, openPaywall } = useApp();
 
   const initialCat = (searchParams.get('category') as PaperCategory) || 'pyq';
   const [selectedCategory, setSelectedCategory] = useState<PaperCategory>(initialCat);
@@ -46,7 +46,6 @@ export default function ClassPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [activePaper, setActivePaper] = useState<Paper | null>(null);
 
-  // Fetch papers from API (falls back to sample data if offline/env absent)
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -58,14 +57,12 @@ export default function ClassPage() {
           if (data && data.papers && Array.isArray(data.papers)) {
             setPapers(data.papers);
           } else {
-            // Local fallback
             setPapers(SAMPLE_PAPERS);
           }
           setIsLoading(false);
         }
       })
-      .catch((err) => {
-        console.warn('Using bundled sample papers', err);
+      .catch(() => {
         if (isMounted) {
           setPapers(SAMPLE_PAPERS);
           setIsLoading(false);
@@ -79,7 +76,6 @@ export default function ClassPage() {
 
   const subjectList = classId === '12th' ? SUBJECTS_12TH : SUBJECTS_10TH;
 
-  // Filter papers by current medium, class, category, and subject
   const filteredPapers = papers.filter((p) => {
     const matchClass = p.classLevel.toLowerCase() === classId.toLowerCase();
     const matchMedium = p.medium === medium;
@@ -90,20 +86,46 @@ export default function ClassPage() {
     return matchClass && matchMedium && matchCategory && matchSubject;
   });
 
-  const handleDownloadDirect = (p: Paper, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${p.driveFileId}`;
+  const isUserPro = plan === 'pro' || plan === 'live';
 
-    if (!isRegistered) {
-      openGate(() => {
-        window.open(downloadUrl, '_blank');
-        showToast(texts.papers.yeThePaper);
-      });
-      return;
+  const handlePaperAccess = (paper: Paper, action: 'view' | 'download', e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+
+    if (paper.plan === 'pro') {
+      if (!isRegistered) {
+        openGate(() => {
+          if (action === 'download') {
+            window.open(`https://drive.google.com/uc?export=download&id=${paper.driveFileId}`, '_blank');
+          } else {
+            setActivePaper(paper);
+          }
+        });
+        return;
+      }
+
+      if (!isUserPro) {
+        openPaywall();
+        return;
+      }
+    } else {
+      if (!isRegistered) {
+        openGate(() => {
+          if (action === 'download') {
+            window.open(`https://drive.google.com/uc?export=download&id=${paper.driveFileId}`, '_blank');
+          } else {
+            setActivePaper(paper);
+          }
+        });
+        return;
+      }
     }
 
-    window.open(downloadUrl, '_blank');
-    showToast(texts.papers.yeThePaper);
+    if (action === 'download') {
+      window.open(`https://drive.google.com/uc?export=download&id=${paper.driveFileId}`, '_blank');
+      showToast(texts.papers.yeThePaper);
+    } else {
+      setActivePaper(paper);
+    }
   };
 
   return (
@@ -221,31 +243,48 @@ export default function ClassPage() {
                         </span>
                       </div>
                     </div>
+
+                    {paper.plan === 'pro' && (
+                      <span className="px-2 py-0.5 rounded-full bg-[#FAF5FF] border border-[#DDD6FE] text-[#7C3AED] text-[10px] font-black flex items-center gap-1 shrink-0">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Pro</span>
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Card Actions */}
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-[#FAF5FF]">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActivePaper(paper);
-                    }}
-                    className="min-h-[44px] px-3.5 py-1.5 rounded-xl bg-[#FAF5FF] hover:bg-[#F3E8FF] text-xs font-bold text-[#7C3AED] border border-[#EDE9FE] flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>{texts.papers.view}</span>
-                  </button>
+                  {paper.plan === 'pro' && !isUserPro && isRegistered ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handlePaperAccess(paper, 'view', e)}
+                      className="min-h-[40px] px-3.5 py-1 rounded-xl bg-[#FAF5FF] hover:bg-[#F3E8FF] text-xs font-black text-[#7C3AED] border border-[#DDD6FE] flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-[#7C3AED]" />
+                      <span>Unlock Pro 👑</span>
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => handlePaperAccess(paper, 'view', e)}
+                        className="min-h-[40px] px-3.5 py-1 rounded-xl bg-[#FAF5FF] hover:bg-[#F3E8FF] text-xs font-bold text-[#7C3AED] border border-[#EDE9FE] flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>{texts.papers.view}</span>
+                      </button>
 
-                  <button
-                    type="button"
-                    onClick={(e) => handleDownloadDirect(paper, e)}
-                    className="min-h-[44px] px-3.5 py-1.5 rounded-xl bg-[#A3E635] hover:bg-[#92D928] text-xs font-black text-[#18181B] shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>{texts.papers.download}</span>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handlePaperAccess(paper, 'download', e)}
+                        className="min-h-[40px] px-3.5 py-1 rounded-xl bg-[#A3E635] hover:bg-[#92D928] text-xs font-black text-[#18181B] shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <span>{texts.papers.download}</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
@@ -272,5 +311,20 @@ export default function ClassPage() {
         onClose={() => setActivePaper(null)}
       />
     </div>
+  );
+}
+
+export default function ClassPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-10 h-10 rounded-full border-4 border-[#EDE9FE] border-t-[#7C3AED] animate-spin mb-3" />
+          <p className="text-xs font-bold text-[#7C3AED]">loading... ⚡</p>
+        </div>
+      }
+    >
+      <ClassPageContent />
+    </Suspense>
   );
 }

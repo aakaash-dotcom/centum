@@ -7,8 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { TestType, Question } from '@/types';
 import { SAMPLE_QUESTIONS } from '@/data/sampleData';
-import { MediumToggle } from '@/components/MediumToggle';
-import { Brain, BookOpen, Clock, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Brain, BookOpen, Clock, ArrowRight, Sparkles, Lock } from 'lucide-react';
 
 interface ChapterGroup {
   id: string;
@@ -17,11 +16,12 @@ interface ChapterGroup {
   chapter: string;
   type: TestType;
   questionCount: number;
+  plan?: 'free' | 'pro';
 }
 
 export default function TestsHomePage() {
   const router = useRouter();
-  const { medium, isRegistered, openGate, student } = useApp();
+  const { medium, isRegistered, openGate, student, plan, openPaywall } = useApp();
 
   const [selectedType, setSelectedType] = useState<TestType>('oneword');
   const [selectedClass, setSelectedClass] = useState<string>(student?.standard === '12th' ? '12th' : '10th');
@@ -73,10 +73,14 @@ export default function TestsHomePage() {
             chapter: q.chapter,
             type: q.type,
             questionCount: 1,
+            plan: q.plan || 'free',
           });
         } else {
           const item = map.get(key)!;
           item.questionCount += 1;
+          if (q.plan === 'pro') {
+            item.plan = 'pro';
+          }
         }
       });
 
@@ -89,36 +93,50 @@ export default function TestsHomePage() {
       g.classLevel.toLowerCase() === selectedClass.toLowerCase()
   );
 
-  const handleTestClick = (chapterKey: string) => {
-    const encodedId = encodeURIComponent(chapterKey);
+  const isUserPro = plan === 'pro' || plan === 'live';
+
+  const handleTestClick = (grp: ChapterGroup) => {
+    const encodedId = encodeURIComponent(grp.id);
     const testUrl = `/tests/${encodedId}`;
 
-    if (!isRegistered) {
-      // Guest: gate bottom sheet trips!
-      openGate(() => {
-        router.push(testUrl);
-      });
-      return;
+    if (grp.plan === 'pro') {
+      if (!isRegistered) {
+        openGate(() => {
+          router.push(testUrl);
+        });
+        return;
+      }
+
+      if (!isUserPro) {
+        // Free user tapping Pro test -> open Paywall sheet
+        openPaywall();
+        return;
+      }
+    } else {
+      if (!isRegistered) {
+        openGate(() => {
+          router.push(testUrl);
+        });
+        return;
+      }
     }
 
-    // Registered: plays immediately!
+    // Registered & authorized: plays immediately!
     router.push(testUrl);
   };
 
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-6">
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-8 animate-fade-in">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-black text-[#2E1065] tracking-tight">
+          <h1 className="text-xl font-black text-[#2E1065] tracking-tight">
             {texts.nav.tests} 🎯
           </h1>
-          <p className="text-xs font-bold text-[#7C3AED]">
+          <p className="text-[11px] font-bold text-[#7C3AED]">
             {selectedClass} mock tests
           </p>
         </div>
-
-        <MediumToggle compact />
       </div>
 
       {/* 2 Big Test Type Boxes */}
@@ -192,7 +210,7 @@ export default function TestsHomePage() {
             {filteredChapters.map((grp) => (
               <div
                 key={grp.id}
-                onClick={() => handleTestClick(grp.id)}
+                onClick={() => handleTestClick(grp)}
                 className="w-full bg-white rounded-2xl p-4 border border-[#EDE9FE] hover:border-[#7C3AED]/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group"
               >
                 <div className="min-w-0 pr-3">
@@ -204,6 +222,12 @@ export default function TestsHomePage() {
                       <Clock className="w-3 h-3" />
                       {grp.questionCount * 1} min
                     </span>
+                    {grp.plan === 'pro' && (
+                      <span className="text-[9px] font-black uppercase text-[#7C3AED] bg-[#FAF5FF] border border-[#DDD6FE] px-1.5 py-0.2 rounded flex items-center gap-0.5">
+                        <Lock className="w-2.5 h-2.5" />
+                        Pro
+                      </span>
+                    )}
                   </div>
                   <h3 className="text-sm font-black text-[#2E1065] leading-snug line-clamp-1">
                     {grp.chapter}
@@ -214,7 +238,11 @@ export default function TestsHomePage() {
                 </div>
 
                 <div className="w-10 h-10 rounded-full bg-[#FAF5FF] group-hover:bg-[#7C3AED] group-hover:text-white text-[#7C3AED] flex items-center justify-center transition-colors shrink-0">
-                  <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+                  {grp.plan === 'pro' && !isUserPro && isRegistered ? (
+                    <Lock className="w-4 h-4" />
+                  ) : (
+                    <ArrowRight className="w-5 h-5 stroke-[2.5]" />
+                  )}
                 </div>
               </div>
             ))}

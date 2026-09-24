@@ -5,9 +5,9 @@
  * 1. Open Google Sheets -> Extensions -> Apps Script.
  * 2. Paste this code into Code.gs.
  * 3. Set SCRIPT_SECRET = "YOUR_SECRET_KEY".
- * 4. Create sheets named: "Students", "Scores", "Papers", "News", "Questions", "DailyQuiz", "Leaderboard".
+ * 4. Create sheets named: "Students", "Scores", "Papers", "News", "Questions", "DailyQuiz", "Leaderboard", "Subscriptions", "Coupons", "Referrals".
  * 5. Deploy -> New Deployment -> Web App (Execute as: Me, Who has access: Anyone).
- * 6. Copy Web App URL to NEXT_PUBLIC_APPS_SCRIPT_URL in your Vercel project environment variables.
+ * 6. Copy Web App URL to APPS_SCRIPT_URL in your Vercel project environment variables.
  */
 
 const SCRIPT_SECRET = "YOUR_APPS_SCRIPT_SECRET_KEY";
@@ -43,7 +43,8 @@ function doGet(e) {
         medium: row[6],
         title: row[7],
         driveFileId: row[8],
-        featured: row[9] === true || row[9] === "TRUE"
+        featured: row[9] === true || row[9] === "TRUE",
+        plan: (row[10] || "free").toString().toLowerCase() === "pro" ? "pro" : "free"
       });
     }
 
@@ -100,7 +101,8 @@ function doGet(e) {
         options: options,
         answerIndex: parseInt(row[9] || "0", 10),
         explanation: row[10],
-        medium: row[11]
+        medium: row[11],
+        plan: (row[12] || "free").toString().toLowerCase() === "pro" ? "pro" : "free"
       });
     }
 
@@ -189,6 +191,141 @@ function doGet(e) {
       .setMimeType(ContentService.MimeType.JSON);
   }
 
+  // 6. Plan helper: action=plan&phone=...
+  if (action === "plan") {
+    const phone = params.phone || "";
+    if (!phone) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, plan: "free" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Check Subscriptions sheet first
+    const subSheet = ss.getSheetByName("Subscriptions");
+    if (subSheet) {
+      const subData = subSheet.getDataRange().getValues();
+      for (let i = 1; i < subData.length; i++) {
+        if (String(subData[i][1]) === String(phone)) {
+          const subPlan = (subData[i][2] || "pro").toString().toLowerCase();
+          return ContentService.createTextOutput(JSON.stringify({ ok: true, plan: subPlan }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    // Check Students sheet
+    const studentSheet = ss.getSheetByName("Students");
+    if (studentSheet) {
+      const data = studentSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][2]) === String(phone)) {
+          const plan = (data[i][7] || "free").toString().toLowerCase();
+          return ContentService.createTextOutput(JSON.stringify({ ok: true, plan: plan }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, plan: "free" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 7. Coupon helper: action=coupon&code=...
+  if (action === "coupon") {
+    const code = (params.code || "").toUpperCase().trim();
+    const couponSheet = ss.getSheetByName("Coupons");
+    if (couponSheet) {
+      const data = couponSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const rowCode = String(data[i][0] || "").toUpperCase().trim();
+        const active = data[i][4] !== false && String(data[i][4]).toUpperCase() !== "FALSE";
+        if (rowCode === code && active) {
+          const discountPercent = parseInt(data[i][1] || "20", 10);
+          return ContentService.createTextOutput(JSON.stringify({ ok: true, valid: true, discountPercent: discountPercent }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    // Fallback standard coupon
+    if (code === "FRIEND20") {
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, valid: true, discountPercent: 20 }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, valid: false, discountPercent: 0 }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 8. Referrals helper: action=referrals&phone=...
+  if (action === "referrals") {
+    const phone = params.phone || "";
+    let studentCoupon = null;
+    let discountPercent = 20;
+    let shareAmount = 150;
+
+    // Look up coupon assigned to this phone
+    const couponSheet = ss.getSheetByName("Coupons");
+    if (couponSheet) {
+      const data = couponSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        const assignedPhone = String(data[i][5] || "");
+        if (assignedPhone === phone) {
+          studentCoupon = String(data[i][0] || "");
+          discountPercent = parseInt(data[i][1] || "20", 10);
+          shareAmount = parseInt(data[i][6] || "150", 10);
+          break;
+        }
+      }
+    }
+
+    // Look up earnings in Referrals sheet
+    let total = 0;
+    let pending = 0;
+    let paid = 0;
+    const referralsList = [];
+
+    const refSheet = ss.getSheetByName("Referrals");
+    if (refSheet && studentCoupon) {
+      const data = refSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][1]) === String(phone) || String(data[i][2]).toUpperCase() === studentCoupon.toUpperCase()) {
+          const amount = parseInt(data[i][3] || "639", 10);
+          const share = parseInt(data[i][4] || String(shareAmount), 10);
+          const status = String(data[i][5] || "pending").toLowerCase();
+          const rawBuyerPhone = String(data[i][6] || "");
+          const maskedPhone = rawBuyerPhone.length >= 10
+            ? rawBuyerPhone.slice(0, 2) + "****" + rawBuyerPhone.slice(-4)
+            : "98****3210";
+
+          total += share;
+          if (status === "paid") {
+            paid += share;
+          } else {
+            pending += share;
+          }
+
+          referralsList.push({
+            id: `ref-${i}`,
+            date: data[i][0] ? new Date(data[i][0]).toLocaleDateString() : "Recent",
+            maskedPhone: maskedPhone,
+            amount: amount,
+            share: share,
+            status: status === "paid" ? "paid" : "pending"
+          });
+        }
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      couponCode: studentCoupon,
+      discountPercent: discountPercent,
+      share: shareAmount,
+      earnings: { total, pending, paid },
+      referrals: referralsList
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Invalid action" }))
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -210,7 +347,7 @@ function doPost(e) {
       let sheet = ss.getSheetByName("Students");
       if (!sheet) {
         sheet = ss.insertSheet("Students");
-        sheet.appendRow(["Timestamp", "Name", "Phone", "District", "Standard", "Stream", "Medium"]);
+        sheet.appendRow(["Timestamp", "Name", "Phone", "District", "Standard", "Stream", "Medium", "Plan"]);
       }
 
       sheet.appendRow([
@@ -220,7 +357,8 @@ function doPost(e) {
         payload.district,
         payload.standard,
         payload.stream || "",
-        payload.medium
+        payload.medium,
+        "free"
       ]);
 
       return ContentService.createTextOutput(JSON.stringify({ ok: true }))
@@ -271,6 +409,75 @@ function doPost(e) {
       }
 
       return ContentService.createTextOutput(JSON.stringify({ ok: true, scoreRecorded: true }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3. Record Verified Payment & Subscription
+    if (payload.type === "payment") {
+      let subSheet = ss.getSheetByName("Subscriptions");
+      if (!subSheet) {
+        subSheet = ss.insertSheet("Subscriptions");
+        subSheet.appendRow(["Timestamp", "Phone", "Plan", "Amount", "PaymentId", "OrderId", "CouponCode", "Status"]);
+      }
+
+      subSheet.appendRow([
+        new Date().toISOString(),
+        payload.phone,
+        payload.plan || "pro",
+        payload.amount,
+        payload.paymentId,
+        payload.orderId || "",
+        payload.couponCode || "",
+        "active"
+      ]);
+
+      // Update Student's plan in Students sheet
+      let stSheet = ss.getSheetByName("Students");
+      if (stSheet) {
+        const stData = stSheet.getDataRange().getValues();
+        for (let i = 1; i < stData.length; i++) {
+          if (String(stData[i][2]) === String(payload.phone)) {
+            stSheet.getRange(i + 1, 8).setValue(payload.plan || "pro");
+            break;
+          }
+        }
+      }
+
+      // If coupon used, record referral share in Referrals sheet
+      if (payload.couponCode) {
+        let refSheet = ss.getSheetByName("Referrals");
+        if (!refSheet) {
+          refSheet = ss.insertSheet("Referrals");
+          refSheet.appendRow(["Timestamp", "ReferrerPhone", "CouponCode", "Amount", "ShareAmount", "Status", "BuyerPhone"]);
+        }
+
+        // Look up referrer phone from coupon
+        let referrerPhone = "";
+        let shareAmount = 150;
+        const couponSheet = ss.getSheetByName("Coupons");
+        if (couponSheet) {
+          const cData = couponSheet.getDataRange().getValues();
+          for (let i = 1; i < cData.length; i++) {
+            if (String(cData[i][0]).toUpperCase() === payload.couponCode.toUpperCase()) {
+              referrerPhone = String(cData[i][5] || "");
+              shareAmount = parseInt(cData[i][6] || "150", 10);
+              break;
+            }
+          }
+        }
+
+        refSheet.appendRow([
+          new Date().toISOString(),
+          referrerPhone,
+          payload.couponCode,
+          payload.amount,
+          shareAmount,
+          "pending",
+          payload.phone
+        ]);
+      }
+
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, subscriptionRecorded: true }))
         .setMimeType(ContentService.MimeType.JSON);
     }
 

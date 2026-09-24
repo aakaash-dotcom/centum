@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { SAMPLE_NEWS } from '@/data/sampleData';
 
 export async function GET() {
-  const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+  const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
 
   if (scriptUrl && secretKey) {

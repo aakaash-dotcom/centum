@@ -47,6 +47,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     medium: 'english',
     title: '10th Maths Top Centum 5-Mark Questions',
     driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    plan: 'pro',
   },
   {
     id: 'p-10-m-book-2025-en',
@@ -229,6 +230,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     medium: 'english',
     title: '12th Computer Science Official Paper',
     driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    plan: 'pro',
   },
 ];
 

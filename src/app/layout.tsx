@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
+import { AppTopBar } from '@/components/AppTopBar';
 import { BottomNav } from '@/components/BottomNav';
 import { GateSheet } from '@/components/GateSheet';
+import { PaywallSheet } from '@/components/PaywallSheet';
 import { Toast } from '@/components/Toast';
 
 export const metadata: Metadata = {
@@ -38,9 +40,11 @@ export default function RootLayout({
         <AppProvider>
           {/* Mobile frame wrapper */}
           <div className="w-full max-w-md min-h-screen flex flex-col bg-[#FAF5FF] relative pb-20 shadow-2xl sm:border-x sm:border-[#EDE9FE]">
+            <AppTopBar />
             <main className="flex-1 flex flex-col">{children}</main>
             <BottomNav />
             <GateSheet />
+            <PaywallSheet />
             <Toast />
           </div>
         </AppProvider>

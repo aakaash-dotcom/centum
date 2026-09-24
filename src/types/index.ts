@@ -6,6 +6,8 @@ export type PaperCategory = 'pyq' | 'model' | 'important' | 'book';
 
 export type TestType = 'oneword' | 'concept' | 'daily';
 
+export type PlanType = 'free' | 'pro' | 'live';
+
 export type StudentStream =
   | 'Science — Maths'
   | 'Science — Biology'
@@ -23,6 +25,7 @@ export interface Paper {
   title: string;
   driveFileId: string;
   featured?: boolean;
+  plan?: 'free' | 'pro';
 }
 
 export interface News {
@@ -48,6 +51,7 @@ export interface Question {
   answerIndex: number;
   explanation: string;
   medium: Medium;
+  plan?: 'free' | 'pro';
 }
 
 export interface DailyQuiz {
@@ -79,6 +83,7 @@ export interface StudentProfile {
   standard: string;
   stream?: StudentStream | string;
   medium: Medium;
+  plan?: PlanType;
   registeredAt?: string;
 }
 
@@ -115,4 +120,40 @@ export interface ScorePayload {
   score: number;
   total: number;
   seconds: number;
+}
+
+export interface CouponResponse {
+  ok: boolean;
+  valid: boolean;
+  discountPercent?: number;
+  error?: string;
+}
+
+export interface OrderResponse {
+  ok: boolean;
+  orderId?: string;
+  amount?: number; // paise
+  keyId?: string;
+  error?: string;
+}
+
+export interface ReferralHistoryItem {
+  id: string;
+  date: string;
+  maskedPhone: string;
+  amount: number;
+  share: number;
+  status: 'pending' | 'paid';
+}
+
+export interface ReferralData {
+  couponCode: string | null;
+  discountPercent: number;
+  share: number;
+  earnings: {
+    total: number;
+    pending: number;
+    paid: number;
+  };
+  referrals: ReferralHistoryItem[];
 }

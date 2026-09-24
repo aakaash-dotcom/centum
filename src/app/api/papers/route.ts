@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   const classLevel = searchParams.get('classLevel');
   const medium = searchParams.get('medium');
 
-  const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+  const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
 
   if (scriptUrl && secretKey) {

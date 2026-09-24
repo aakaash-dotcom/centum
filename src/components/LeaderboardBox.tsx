@@ -7,7 +7,7 @@ import { LeaderboardEntry } from '@/types';
 import { Trophy, Award, Sparkles, User } from 'lucide-react';
 
 export const LeaderboardBox: React.FC = () => {
-  const { student, quizResults } = useApp();
+  const { student, quizResults, leaderboardRefreshCount } = useApp();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -34,7 +34,7 @@ export const LeaderboardBox: React.FC = () => {
 
   useEffect(() => {
     fetchLeaderboard();
-  }, [studentStandard, studentPhone, quizResults.length]);
+  }, [studentStandard, studentPhone, quizResults.length, leaderboardRefreshCount]);
 
   if (isLoading) {
     return (
@@ -54,6 +54,18 @@ export const LeaderboardBox: React.FC = () => {
   // User row (me: true)
   const userEntry = entries.find((e) => e.me);
   const isUserInTop5 = top5.some((e) => e.me);
+
+  // Helper for rank icon / medal
+  const getRankBadge = (rank: number) => {
+    if (rank === 1) return <span className="text-base leading-none">🥇</span>;
+    if (rank === 2) return <span className="text-base leading-none">🥈</span>;
+    if (rank === 3) return <span className="text-base leading-none">🥉</span>;
+    return (
+      <span className="w-5 h-5 rounded-lg bg-white text-[#7C3AED] border border-[#DDD6FE] flex items-center justify-center font-black text-[10px]">
+        {rank}
+      </span>
+    );
+  };
 
   return (
     <div className="w-full bg-white rounded-3xl p-5 border border-[#EDE9FE] shadow-md shadow-[#7C3AED]/5">
@@ -84,24 +96,14 @@ export const LeaderboardBox: React.FC = () => {
               key={idx}
               className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between text-xs ${
                 isMe
-                  ? 'bg-[#FAF5FF] border-[#7C3AED] ring-1 ring-[#7C3AED] shadow-xs'
+                  ? 'bg-[#A3E635]/25 border-2 border-[#A3E635] ring-2 ring-[#A3E635]/40 shadow-xs'
                   : 'bg-[#FAF5FF]/70 border-[#EDE9FE]'
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className={`w-5 h-5 rounded-lg flex items-center justify-center font-black text-[10px] shrink-0 ${
-                    rank === 1
-                      ? 'bg-[#FEF08A] text-[#854D0E]'
-                      : rank === 2
-                      ? 'bg-[#E2E8F0] text-[#475569]'
-                      : rank === 3
-                      ? 'bg-[#FFEDD5] text-[#9A3412]'
-                      : 'bg-white text-[#7C3AED] border border-[#DDD6FE]'
-                  }`}
-                >
-                  {rank}
-                </span>
+                <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                  {getRankBadge(rank)}
+                </div>
 
                 <div className="truncate min-w-0">
                   <div className="flex items-center gap-1.5 truncate">
@@ -132,7 +134,7 @@ export const LeaderboardBox: React.FC = () => {
           );
         })}
 
-        {/* If user is not in top 5, always show "you" row */}
+        {/* If user is not in top 5, always show lime "you" row */}
         {!isUserInTop5 && userEntry && (
           <>
             <div className="flex items-center justify-center gap-1 py-0.5 text-[#DDD6FE]">
@@ -141,7 +143,7 @@ export const LeaderboardBox: React.FC = () => {
               <span>•</span>
             </div>
 
-            <div className="p-2.5 rounded-2xl border bg-[#FAF5FF] border-[#7C3AED] ring-1 ring-[#7C3AED] shadow-xs flex items-center justify-between text-xs animate-fade-in">
+            <div className="p-2.5 rounded-2xl border bg-[#A3E635]/25 border-2 border-[#A3E635] ring-2 ring-[#A3E635]/40 shadow-xs flex items-center justify-between text-xs animate-fade-in">
               <div className="flex items-center gap-2.5 min-w-0">
                 <span className="w-5 h-5 rounded-lg bg-white border border-[#7C3AED] flex items-center justify-center font-black text-[10px] text-[#7C3AED] shrink-0">
                   ★

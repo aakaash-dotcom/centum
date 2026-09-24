@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
-import { MediumToggle } from '@/components/MediumToggle';
 import { StreakChip } from '@/components/StreakChip';
 import { DailyQuizBox } from '@/components/DailyQuizBox';
 import { LeaderboardBox } from '@/components/LeaderboardBox';
@@ -43,32 +42,31 @@ export default function HomePage() {
   };
 
   const userStandard = student?.standard || '10th';
-  const userStream = student?.stream;
   const isAvailableStandard = userStandard === '10th' || userStandard === '12th';
   const targetClass = isAvailableStandard ? userStandard : '10th';
 
-  // REGISTERED STUDENT HOME SCREEN
+  // REGISTERED STUDENT HOME SCREEN (Energy Pass Applied)
   if (isRegistered && student) {
     return (
       <div className="flex-1 flex flex-col px-4 pt-4 pb-8 space-y-4 animate-fade-in">
-        {/* 1. Greeting Card: Name + Standard Chip + Stream Chip */}
-        <div className="w-full bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white rounded-3xl p-5 shadow-lg shadow-[#7C3AED]/20">
+        {/* 1. Purple Gradient Greeting Hero (Glow Shadow, Big Name, Lime/Pink Chips) */}
+        <div className="w-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#9333EA] text-white rounded-3xl p-5 shadow-xl shadow-[#7C3AED]/30 border border-white/20">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-[#E9D5FF] uppercase tracking-wider">
                 welcome back
               </p>
-              <h1 className="text-xl font-black tracking-tight">
+              <h1 className="text-2xl font-black tracking-tight leading-tight">
                 {texts.profile.greeting} {student.name} 👋
               </h1>
             </div>
 
-            <div className="flex flex-col items-end gap-1">
-              <span className="px-3 py-0.5 rounded-full bg-white/20 text-[#A3E635] text-xs font-black shadow-xs">
+            <div className="flex flex-col items-end gap-1.5 shrink-0">
+              <span className="px-3 py-1 rounded-full bg-[#A3E635] text-[#18181B] text-xs font-black shadow-xs">
                 {student.standard}
               </span>
               {student.stream && (
-                <span className="px-2.5 py-0.5 rounded-full bg-black/20 text-white text-[10px] font-extrabold max-w-[140px] truncate">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#F472B6] text-white text-[10px] font-black max-w-[140px] truncate shadow-xs">
                   {student.stream}
                 </span>
               )}
@@ -76,16 +74,16 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 2. Streak Chip 🔥 */}
+        {/* 2. Hero-Level Lime Streak Card */}
         <StreakChip />
 
-        {/* 3. Quiz of the Day 🎯 (ONLY rendered if quiz object returned; completely invisible if null) */}
+        {/* 3. Quiz of the Day (Gradient-Bordered, Invisible if null) */}
         <DailyQuizBox />
 
-        {/* 4. Leaderboard 🏆 Box (Top 5 + You row) */}
+        {/* 4. Medal Leaderboard Box (🥇🥈🥉, Lime "me" row) */}
         <LeaderboardBox />
 
-        {/* 5. Their Categories (PYQ, Model, Important, Books) */}
+        {/* 5. Purple-Tinted Category Cards */}
         <div className="pt-1">
           <div className="flex items-center justify-between mb-2.5 px-1">
             <h2 className="text-sm font-black text-[#2E1065] tracking-tight">
@@ -102,8 +100,8 @@ export default function HomePage() {
             {CATEGORIES.map((cat) => (
               <Link
                 key={cat.id}
-                href={`/class/${targetClass}?category=${cat.id}`}
-                className="min-h-[64px] p-3.5 rounded-2xl bg-white hover:bg-[#FAF5FF] border border-[#EDE9FE] hover:border-[#7C3AED]/40 shadow-xs flex items-center justify-between transition-all group cursor-pointer"
+                href={`/materials?category=${cat.id}`}
+                className="min-h-[64px] p-3.5 rounded-2xl bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] hover:from-[#F3E8FF] hover:to-[#EDE9FE] border border-[#DDD6FE] hover:border-[#7C3AED]/50 shadow-xs flex items-center justify-between transition-all group cursor-pointer"
               >
                 <span className="font-extrabold text-xs text-[#2E1065] leading-snug">
                   {cat.label}
@@ -155,24 +153,17 @@ export default function HomePage() {
     );
   }
 
-  // GUEST HOME SCREEN (Class Picker)
+  // GUEST HOME SCREEN (Class Picker with same purple gradient on 10th/12th)
   return (
-    <div className="flex-1 flex flex-col px-4 pt-6 pb-6">
-      {/* Top Section: Medium Toggle */}
-      <div className="flex flex-col items-center justify-center gap-4 mb-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-[#EDE9FE] shadow-xs">
-          <span className="text-sm font-black tracking-tight text-[#7C3AED]">
-            {texts.app.name}
-          </span>
-          <span className="text-xs">💯</span>
-        </div>
-
-        {/* Big Thumb-Friendly Medium Toggle */}
-        <MediumToggle />
-      </div>
-
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-6">
       {/* 7 Class Boxes in a thumb-friendly grid */}
       <div className="flex-1 flex flex-col justify-center">
+        <div className="mb-4 text-center">
+          <span className="text-xs font-black uppercase text-[#7C3AED] tracking-wider bg-[#F3E8FF] px-3 py-1 rounded-full">
+            Choose your class 🎯
+          </span>
+        </div>
+
         <div className="grid grid-cols-2 gap-3.5">
           {CLASSES.map((cls) => {
             if (cls.isAvailable) {
@@ -180,12 +171,12 @@ export default function HomePage() {
                 <Link
                   key={cls.level}
                   href={`/class/${cls.level}`}
-                  className="min-h-[110px] bg-[#7C3AED] hover:bg-[#6D28D9] active:scale-[0.98] text-white rounded-2xl p-4 shadow-md shadow-[#7C3AED]/25 flex flex-col justify-between transition-all cursor-pointer border border-[#8B5CF6]/50"
+                  className="min-h-[114px] bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:from-[#6D28D9] hover:to-[#7E22CE] active:scale-[0.98] text-white rounded-2xl p-4 shadow-xl shadow-[#7C3AED]/25 flex flex-col justify-between transition-all cursor-pointer border border-[#8B5CF6]/50"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-2xl">{cls.emoji}</span>
                     {cls.tag && (
-                      <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-white/20 text-[#A3E635]">
+                      <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#A3E635] text-[#18181B] shadow-xs">
                         {cls.tag}
                       </span>
                     )}
@@ -206,7 +197,7 @@ export default function HomePage() {
                 key={cls.level}
                 type="button"
                 onClick={handleUnavailableClick}
-                className="min-h-[110px] bg-white hover:bg-[#F3E8FF]/30 active:scale-[0.98] rounded-2xl p-4 border border-[#EDE9FE] shadow-xs flex flex-col justify-between transition-all cursor-pointer text-left opacity-75"
+                className="min-h-[114px] bg-white hover:bg-[#F3E8FF]/30 active:scale-[0.98] rounded-2xl p-4 border border-[#EDE9FE] shadow-xs flex flex-col justify-between transition-all cursor-pointer text-left opacity-75"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-2xl opacity-60">{cls.emoji}</span>

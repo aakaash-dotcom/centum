@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const stream = searchParams.get('stream');
   const medium = searchParams.get('medium') || 'english';
 
-  const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+  const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
 
   if (scriptUrl && secretKey) {

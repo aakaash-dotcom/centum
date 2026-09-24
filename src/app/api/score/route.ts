@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       seconds,
     } = body;
 
-    const scriptUrl = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+    const scriptUrl = process.env.APPS_SCRIPT_URL;
     const secretKey = process.env.APPS_SCRIPT_SECRET;
 
     if (scriptUrl && secretKey) {

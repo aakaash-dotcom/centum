@@ -1,7 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Medium, StudentProfile, QuizResult, ScorePayload } from '@/types';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { Medium, StudentProfile, QuizResult, ScorePayload, PlanType } from '@/types';
 import { calculateStreak } from '@/utils/streak';
 
 interface AppContextType {
@@ -30,6 +30,16 @@ interface AppContextType {
     hasTakenTestToday: boolean;
     isBroken: boolean;
   };
+  // Plan & Monetization
+  plan: PlanType;
+  setPlan: (plan: PlanType) => void;
+  refreshPlan: () => Promise<void>;
+  isPaywallOpen: boolean;
+  openPaywall: () => void;
+  closePaywall: () => void;
+  // Leaderboard Refresh Signal
+  leaderboardRefreshCount: number;
+  triggerLeaderboardRefresh: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -37,15 +47,40 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 const MEDIUM_STORAGE_KEY = 'centum_medium';
 const STUDENT_STORAGE_KEY = 'centum_student';
 const QUIZ_RESULTS_KEY = 'centum_quiz_results';
+const PLAN_STORAGE_KEY = 'centum_plan';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [medium, setMediumState] = useState<Medium>('english');
   const [student, setStudent] = useState<StudentProfile | null>(null);
+  const [plan, setPlanState] = useState<PlanType>('free');
   const [isGateOpen, setIsGateOpen] = useState(false);
+  const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
+  const [leaderboardRefreshCount, setLeaderboardRefreshCount] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+
+  // Resolve plan from server
+  const fetchPlanFromServer = useCallback(async (phone: string) => {
+    try {
+      const res = await fetch(`/api/plan?phone=${encodeURIComponent(phone)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.plan) {
+          const resolvedPlan = data.plan as PlanType;
+          setPlanState(resolvedPlan);
+          try {
+            localStorage.setItem(PLAN_STORAGE_KEY, resolvedPlan);
+          } catch (e) {}
+          return resolvedPlan;
+        }
+      }
+    } catch (err) {
+      console.warn('Plan fetch failed, using cached plan', err);
+    }
+    return null;
+  }, []);
 
   // Load persisted state on client mount
   useEffect(() => {
@@ -55,13 +90,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setMediumState(savedMedium);
       }
 
+      const savedPlan = localStorage.getItem(PLAN_STORAGE_KEY) as PlanType | null;
+      if (savedPlan === 'free' || savedPlan === 'pro' || savedPlan === 'live') {
+        setPlanState(savedPlan);
+      }
+
       const savedStudent = localStorage.getItem(STUDENT_STORAGE_KEY);
       if (savedStudent) {
-        const parsed = JSON.parse(savedStudent);
+        const parsed: StudentProfile = JSON.parse(savedStudent);
         setStudent(parsed);
         // Automatically sync medium from stored student profile if present
         if (parsed.medium) {
           setMediumState(parsed.medium);
+        }
+        if (parsed.phone) {
+          fetchPlanFromServer(parsed.phone);
         }
       }
 
@@ -74,13 +117,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } finally {
       setIsInitialized(true);
     }
-  }, []);
+  }, [fetchPlanFromServer]);
+
+  const setPlan = (newPlan: PlanType) => {
+    setPlanState(newPlan);
+    try {
+      localStorage.setItem(PLAN_STORAGE_KEY, newPlan);
+    } catch (e) {}
+  };
+
+  const refreshPlan = async () => {
+    if (student?.phone) {
+      await fetchPlanFromServer(student.phone);
+    }
+  };
 
   const setMedium = (newMedium: Medium) => {
     setMediumState(newMedium);
     try {
       localStorage.setItem(MEDIUM_STORAGE_KEY, newMedium);
-      // Update student profile medium too if registered
       if (student) {
         const updated = { ...student, medium: newMedium };
         setStudent(updated);
@@ -109,6 +164,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPendingAction(null);
   };
 
+  const openPaywall = () => {
+    setIsPaywallOpen(true);
+  };
+
+  const closePaywall = () => {
+    setIsPaywallOpen(false);
+  };
+
   const registerStudent = async (data: {
     name: string;
     phone: string;
@@ -119,10 +182,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newProfile: StudentProfile = {
       ...data,
       medium,
+      plan: 'free',
       registeredAt: new Date().toISOString(),
     };
 
-    // Save locally
     setStudent(newProfile);
     try {
       localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(newProfile));
@@ -130,7 +193,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.error('Failed to save student profile', e);
     }
 
-    // Call server API route (forwards to Google Apps Script)
     try {
       await fetch('/api/register', {
         method: 'POST',
@@ -149,7 +211,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Backend sync failed, saved locally', err);
     }
 
-    // Close gate and execute queued action immediately
+    // Also resolve plan in background
+    fetchPlanFromServer(newProfile.phone);
+
     setIsGateOpen(false);
     if (pendingAction) {
       const actionToExecute = pendingAction;
@@ -162,8 +226,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setStudent(null);
+    setPlanState('free');
     try {
       localStorage.removeItem(STUDENT_STORAGE_KEY);
+      localStorage.removeItem(PLAN_STORAGE_KEY);
     } catch (e) {
       console.error('Failed to clear profile', e);
     }
@@ -180,6 +246,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }, 2400);
     return () => clearTimeout(timer);
   }, [toastMessage]);
+
+  const triggerLeaderboardRefresh = () => {
+    setLeaderboardRefreshCount((prev) => prev + 1);
+  };
 
   const saveQuizResult = async (res: QuizResult) => {
     // 1. Save to local storage
@@ -213,7 +283,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
-        }).catch((err) => console.warn('Score POST failed (silenced)', err));
+        })
+          .then(() => {
+            // Refetch leaderboard after recording score!
+            triggerLeaderboardRefresh();
+          })
+          .catch((err) => console.warn('Score POST failed (silenced)', err));
       } catch (err) {
         // Silenced
       }
@@ -240,6 +315,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         quizResults,
         saveQuizResult,
         streakInfo,
+        plan,
+        setPlan,
+        refreshPlan,
+        isPaywallOpen,
+        openPaywall,
+        closePaywall,
+        leaderboardRefreshCount,
+        triggerLeaderboardRefresh,
       }}
     >
       {children}
