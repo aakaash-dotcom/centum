@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { DailyQuiz, QuizResult } from '@/types';
-import { Target, CheckCircle2, XCircle, Sparkles, Flame } from 'lucide-react';
+import { Target, CheckCircle2, XCircle, Flame } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export const DailyQuizBox: React.FC = () => {
@@ -17,7 +17,6 @@ export const DailyQuizBox: React.FC = () => {
   const studentStandard = student?.standard || '10th';
   const studentStream = student?.stream || '';
 
-  // Fetch daily quiz
   useEffect(() => {
     let isMounted = true;
 
@@ -30,7 +29,6 @@ export const DailyQuizBox: React.FC = () => {
           if (data && data.quiz) {
             setQuiz(data.quiz);
 
-            // Check if user already answered this daily quiz today
             try {
               const answeredKey = `centum_daily_${data.quiz.id}_${new Date().toDateString()}`;
               const saved = localStorage.getItem(answeredKey);
@@ -57,7 +55,6 @@ export const DailyQuizBox: React.FC = () => {
     };
   }, [studentStandard, studentStream, medium]);
 
-  // CRITICAL RULE: If no quiz or null, render NOTHING (no empty-state text, completely invisible)
   if (!isFetched || !quiz) {
     return null;
   }
@@ -70,7 +67,6 @@ export const DailyQuizBox: React.FC = () => {
 
     const isCorrect = index === quiz.answerIndex;
 
-    // Confetti on correct answer
     if (isCorrect) {
       try {
         confetti({
@@ -82,13 +78,11 @@ export const DailyQuizBox: React.FC = () => {
       } catch (e) {}
     }
 
-    // Save answered state in localStorage for today
     try {
       const answeredKey = `centum_daily_${quiz.id}_${new Date().toDateString()}`;
       localStorage.setItem(answeredKey, String(index));
     } catch (e) {}
 
-    // Bump streak & post score (type:"score", testType:"daily", total:1)
     const result: QuizResult = {
       testId: `daily_${quiz.id}`,
       title: `${texts.home.dailyQuizTitle} - ${quiz.subject}`,
@@ -117,17 +111,16 @@ export const DailyQuizBox: React.FC = () => {
 
   const isUserCorrect = selectedOption === quiz.answerIndex;
 
-  // Gradient-bordered quiz box
   return (
     <div className="w-full p-[2px] rounded-3xl bg-gradient-to-r from-[#7C3AED] via-[#F472B6] to-[#A3E635] shadow-lg shadow-[#7C3AED]/10 animate-fade-in">
-      <div className="w-full bg-white rounded-[22px] p-5">
+      <div className="w-full bg-white dark:bg-[#3B0F6E] rounded-[22px] p-5 transition-colors">
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-xl bg-[#F3E8FF] text-[#7C3AED]">
+            <span className="p-1.5 rounded-xl bg-[#F3E8FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635]">
               <Target className="w-4 h-4" />
             </span>
-            <h2 className="text-sm font-black text-[#2E1065] tracking-tight">
+            <h2 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
               {texts.home.dailyQuizTitle}
             </h2>
           </div>
@@ -138,14 +131,14 @@ export const DailyQuizBox: React.FC = () => {
               {texts.home.streakSafe}
             </span>
           ) : (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FAF5FF] border border-[#DDD6FE] text-[#7C3AED]">
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635]">
               {quiz.subject}
             </span>
           )}
         </div>
 
         {/* Question */}
-        <p className="text-sm font-extrabold text-[#2E1065] leading-snug mb-4">
+        <p className="text-sm font-extrabold text-[#2E1065] dark:text-[#FAF5FF] leading-snug mb-4">
           {quiz.question}
         </p>
 
@@ -155,15 +148,15 @@ export const DailyQuizBox: React.FC = () => {
             const isSelected = selectedOption === idx;
             const isCorrect = idx === quiz.answerIndex;
 
-            let btnClass = 'bg-[#FAF5FF] hover:bg-[#F3E8FF] text-[#2E1065] border-[#EDE9FE]';
+            let btnClass = 'bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] text-[#2E1065] dark:text-[#FAF5FF] border-[#EDE9FE] dark:border-[#DDD6FE]/20';
 
             if (hasAnswered) {
               if (isCorrect) {
-                btnClass = 'bg-[#F0FDF4] border-[#86EFAC] text-[#166534] font-black';
+                btnClass = 'bg-[#F0FDF4] dark:bg-[#14532D]/40 border-[#86EFAC] dark:border-[#86EFAC]/40 text-[#166534] dark:text-[#86EFAC] font-black';
               } else if (isSelected && !isCorrect) {
-                btnClass = 'bg-[#FFF1F2] border-[#FDA4AF] text-[#9F1239] line-through';
+                btnClass = 'bg-[#FFF1F2] dark:bg-[#881337]/40 border-[#FDA4AF] dark:border-[#FDA4AF]/40 text-[#9F1239] dark:text-[#FDA4AF] line-through';
               } else {
-                btnClass = 'bg-white opacity-50 border-[#EDE9FE] text-[#2E1065]';
+                btnClass = 'bg-white dark:bg-[#230542] opacity-40 border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#2E1065] dark:text-[#FAF5FF]';
               }
             }
 
@@ -178,17 +171,17 @@ export const DailyQuizBox: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-lg bg-white border border-[#DDD6FE] flex items-center justify-center text-[10px] font-black text-[#7C3AED]">
+                  <span className="w-5 h-5 rounded-lg bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center justify-center text-[10px] font-black text-[#7C3AED] dark:text-[#A3E635]">
                     {String.fromCharCode(65 + idx)}
                   </span>
                   <span>{opt}</span>
                 </div>
 
                 {hasAnswered && isCorrect && (
-                  <CheckCircle2 className="w-4 h-4 text-[#16A34A] shrink-0" />
+                  <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-[#4ADE80] shrink-0" />
                 )}
                 {hasAnswered && isSelected && !isCorrect && (
-                  <XCircle className="w-4 h-4 text-[#E11D48] shrink-0" />
+                  <XCircle className="w-4 h-4 text-[#E11D48] dark:text-[#FB7185] shrink-0" />
                 )}
               </button>
             );
@@ -197,14 +190,14 @@ export const DailyQuizBox: React.FC = () => {
 
         {/* Immediate Explanation upon answering */}
         {hasAnswered && quiz.explanation && (
-          <div className="mt-3.5 p-3 rounded-2xl bg-[#FAF5FF] border border-[#DDD6FE] text-xs font-semibold text-[#5B21B6] animate-slide-up">
+          <div className="mt-3.5 p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-xs font-semibold text-[#5B21B6] dark:text-[#DDD6FE] animate-slide-up">
             <div className="flex items-center gap-1.5 mb-1">
               {isUserCorrect ? (
-                <span className="text-[11px] font-black text-[#16A34A] uppercase tracking-wide">
+                <span className="text-[11px] font-black text-[#16A34A] dark:text-[#4ADE80] uppercase tracking-wide">
                   {texts.tests.correct}
                 </span>
               ) : (
-                <span className="text-[11px] font-black text-[#E11D48] uppercase tracking-wide">
+                <span className="text-[11px] font-black text-[#E11D48] dark:text-[#FB7185] uppercase tracking-wide">
                   {texts.tests.wrong}
                 </span>
               )}

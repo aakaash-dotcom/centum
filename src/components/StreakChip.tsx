@@ -11,16 +11,16 @@ export const StreakChip: React.FC = () => {
 
   if (isBroken || streak === 0) {
     return (
-      <div className="w-full bg-[#FFE4E6]/80 border border-[#FDA4AF] rounded-2xl p-3 flex items-center justify-between text-[#9F1239] shadow-xs">
+      <div className="w-full bg-[#FFE4E6]/80 dark:bg-[#881337]/30 border border-[#FDA4AF] dark:border-[#FDA4AF]/30 rounded-2xl p-3 flex items-center justify-between text-[#9F1239] dark:text-[#FECDD3] shadow-xs">
         <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-xl bg-[#FDA4AF]/40 text-[#BE123C]">
+          <span className="p-1.5 rounded-xl bg-[#FDA4AF]/40 text-[#BE123C] dark:text-[#FDA4AF]">
             <Skull className="w-4 h-4" />
           </span>
           <span className="text-xs font-black tracking-tight">
             {texts.home.streakZero}
           </span>
         </div>
-        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-white/70 text-[#BE123C]">
+        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-white/70 dark:bg-[#881337]/60 text-[#BE123C] dark:text-[#FDA4AF]">
           reset
         </span>
       </div>

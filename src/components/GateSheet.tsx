@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { TN_DISTRICTS } from '@/data/districts';
@@ -15,7 +16,7 @@ const STREAMS = [
 ] as const;
 
 export const GateSheet: React.FC = () => {
-  const { isGateOpen, closeGate, registerStudent, showToast, medium } = useApp();
+  const { isGateOpen, closeGate, registerStudent, showToast } = useApp();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -56,7 +57,6 @@ export const GateSheet: React.FC = () => {
         district,
       });
 
-      // Confetti burst on unlock!
       try {
         confetti({
           particleCount: 50,
@@ -64,9 +64,7 @@ export const GateSheet: React.FC = () => {
           origin: { y: 0.7 },
           colors: ['#7C3AED', '#A3E635', '#F472B6'],
         });
-      } catch (e) {
-        // Safe fallback
-      }
+      } catch (e) {}
 
       showToast('unlocked everything! 🚀');
     } catch (err) {
@@ -80,49 +78,49 @@ export const GateSheet: React.FC = () => {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-xs animate-fade-in p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs animate-fade-in p-0 sm:p-4"
       onClick={closeGate}
     >
       <div
-        className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 border-t border-[#E9D5FF] sm:border animate-slide-up text-[#2E1065] relative max-h-[92vh] overflow-y-auto no-scrollbar"
+        className="w-full max-w-md bg-white dark:bg-[#3B0F6E] rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 border-t border-[#E9D5FF] dark:border-[#DDD6FE]/20 sm:border animate-slide-up text-[#2E1065] dark:text-[#FAF5FF] relative max-h-[92vh] overflow-y-auto no-scrollbar transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Drag handle */}
-        <div className="w-12 h-1.5 bg-[#DDD6FE] rounded-full mx-auto mb-4" />
+        <div className="w-12 h-1.5 bg-[#DDD6FE] dark:bg-[#DDD6FE]/20 rounded-full mx-auto mb-4" />
 
         {/* Close Button */}
         <button
           type="button"
           onClick={closeGate}
           aria-label="Close"
-          className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-[#FAF5FF] hover:bg-[#F3E8FF] text-[#6D28D9] transition-colors cursor-pointer"
+          className="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] text-[#6D28D9] dark:text-[#A3E635] transition-colors cursor-pointer border border-[#DDD6FE]/30"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* Header */}
         <div className="text-center mb-5">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#F3E8FF] text-[#7C3AED] mb-2 shadow-xs">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#F3E8FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] mb-2 shadow-xs">
             <Sparkles className="w-6 h-6 animate-pulse" />
           </div>
-          <h2 className="text-2xl font-black text-[#2E1065] tracking-tight">
+          <h2 className="text-2xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
             {texts.gate.title}
           </h2>
-          <p className="text-xs font-semibold text-[#7C3AED] mt-1 flex items-center justify-center gap-1">
+          <p className="text-xs font-semibold text-[#7C3AED] dark:text-[#A3E635] mt-1 flex items-center justify-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#16A34A]" />
             {texts.gate.subtitle}
           </p>
         </div>
 
         {errorMsg && (
-          <div className="mb-4 p-2.5 bg-[#FEE2E2] border border-[#FCA5A5] text-[#991B1B] text-xs font-bold rounded-xl text-center">
+          <div className="mb-4 p-2.5 bg-[#FEE2E2] dark:bg-[#991B1B]/40 border border-[#FCA5A5] dark:border-[#F87171]/40 text-[#991B1B] dark:text-[#FCA5A5] text-xs font-bold rounded-xl text-center">
             {errorMsg}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
               {texts.gate.nameLabel}
             </label>
             <input
@@ -131,16 +129,16 @@ export const GateSheet: React.FC = () => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={texts.gate.namePlaceholder}
-              className="w-full min-h-[48px] px-4 rounded-xl border border-[#DDD6FE] bg-[#FAF5FF] text-[#2E1065] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:bg-white transition-all"
+              className="w-full min-h-[48px] px-4 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
+            <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
               {texts.gate.phoneLabel}
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-sm font-bold text-[#7C3AED]">
+              <span className="absolute left-3.5 text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">
                 +91
               </span>
               <input
@@ -150,23 +148,23 @@ export const GateSheet: React.FC = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder={texts.gate.phonePlaceholder}
-                className="w-full min-h-[48px] pl-12 pr-4 rounded-xl border border-[#DDD6FE] bg-[#FAF5FF] text-[#2E1065] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:bg-white transition-all tracking-wider"
+                className="w-full min-h-[48px] pl-12 pr-4 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all tracking-wider"
               />
             </div>
           </div>
 
-          <div className={`grid ${isHigherSecondary ? 'grid-cols-2' : 'grid-cols-2'} gap-3`}>
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
                 {texts.gate.standardLabel}
               </label>
               <select
                 value={standard}
                 onChange={(e) => setStandard(e.target.value)}
-                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] bg-[#FAF5FF] text-[#2E1065] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:bg-white transition-all cursor-pointer"
+                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
               >
                 {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((cls) => (
-                  <option key={cls} value={cls}>
+                  <option key={cls} value={cls} className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]">
                     {cls}
                   </option>
                 ))}
@@ -174,16 +172,16 @@ export const GateSheet: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
                 {texts.gate.districtLabel}
               </label>
               <select
                 value={district}
                 onChange={(e) => setDistrict(e.target.value)}
-                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] bg-[#FAF5FF] text-[#2E1065] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:bg-white transition-all cursor-pointer"
+                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
               >
                 {TN_DISTRICTS.map((dist) => (
-                  <option key={dist} value={dist}>
+                  <option key={dist} value={dist} className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]">
                     {dist}
                   </option>
                 ))}
@@ -194,16 +192,16 @@ export const GateSheet: React.FC = () => {
           {/* Conditional Stream Dropdown for 11th & 12th only */}
           {isHigherSecondary && (
             <div className="animate-fade-in">
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] mb-1.5">
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
                 {texts.gate.streamLabel}
               </label>
               <select
                 value={stream}
                 onChange={(e) => setStream(e.target.value)}
-                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] bg-[#FAF5FF] text-[#2E1065] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] focus:bg-white transition-all cursor-pointer"
+                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
               >
                 {STREAMS.map((s) => (
-                  <option key={s} value={s}>
+                  <option key={s} value={s} className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]">
                     {s}
                   </option>
                 ))}
@@ -221,8 +219,15 @@ export const GateSheet: React.FC = () => {
           </button>
         </form>
 
-        <p className="text-center text-[11px] text-[#6D28D9]/70 font-medium mt-4">
-          {texts.papers.attribution}
+        {/* Registration footer micro-line linking /privacy */}
+        <p className="text-center text-[11px] text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 font-semibold mt-4">
+          <Link
+            href="/privacy"
+            onClick={closeGate}
+            className="hover:underline hover:text-[#7C3AED] dark:hover:text-[#A3E635] transition-colors"
+          >
+            {texts.gate.termsNotice}
+          </Link>
         </p>
       </div>
     </div>

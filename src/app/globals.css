@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
     --primary: #7C3AED;
@@ -12,6 +14,19 @@
     --bg-page: #FAF5FF;
     --card-bg: #FFFFFF;
     --border-subtle: #EDE9FE;
+  }
+
+  .dark {
+    --primary: #7C3AED;
+    --primary-dark: #8B5CF6;
+    --headings: #FAF5FF;
+    --accent: #A3E635;
+    --accent-hover: #84CC16;
+    --accent-text: #18181B;
+    --pop: #F472B6;
+    --bg-page: #230542;
+    --card-bg: #3B0F6E;
+    --border-subtle: rgba(221, 214, 254, 0.2);
   }
 
   * {
@@ -27,6 +42,7 @@
     padding: 0;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 }
 

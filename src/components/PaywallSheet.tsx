@@ -98,11 +98,9 @@ export const PaywallSheet: React.FC = () => {
   };
 
   const handleCheckout = async () => {
-    // If not registered, prompt gate first
     if (!student) {
       handleClose();
       openGate(() => {
-        // Reopen paywall after registering
         setTimeout(() => closePaywall(), 50);
       });
       return;
@@ -111,7 +109,6 @@ export const PaywallSheet: React.FC = () => {
     setIsProcessingOrder(true);
 
     try {
-      // 1. Create order on server (server calculates final price and discount)
       const orderRes = await fetch('/api/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -140,12 +137,9 @@ export const PaywallSheet: React.FC = () => {
         return;
       }
 
-      // 2. Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
 
-      // Check if simulated mode (e.g. mock test environment)
       if (orderData.isSimulated || !scriptLoaded || !(window as any).Razorpay) {
-        // Direct test verification for development/testing simulation
         const testPaymentId = `pay_test_${Date.now()}`;
         const verifyRes = await fetch('/api/verify', {
           method: 'POST',
@@ -182,7 +176,6 @@ export const PaywallSheet: React.FC = () => {
         return;
       }
 
-      // 3. Real Razorpay Modal
       const options = {
         key: orderData.keyId,
         amount: orderData.amount,
@@ -198,7 +191,6 @@ export const PaywallSheet: React.FC = () => {
           color: '#7C3AED',
         },
         handler: async function (response: any) {
-          // Server verification of HMAC signature
           try {
             const verifyRes = await fetch('/api/verify', {
               method: 'POST',
@@ -264,14 +256,14 @@ export const PaywallSheet: React.FC = () => {
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-md bg-white rounded-t-3xl p-6 shadow-2xl border-t border-[#EDE9FE] animate-slide-up flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md bg-white dark:bg-[#3B0F6E] rounded-t-3xl p-6 shadow-2xl border-t border-[#EDE9FE] dark:border-[#DDD6FE]/20 animate-slide-up flex flex-col gap-4 max-h-[90vh] overflow-y-auto text-[#2E1065] dark:text-[#FAF5FF] transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Handle & Close Button */}
         <div className="flex items-center justify-between">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF5FF] border border-[#DDD6FE]">
-            <Crown className="w-3.5 h-3.5 text-[#7C3AED]" />
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#7C3AED]">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
+            <Crown className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635]" />
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A3E635]">
               {isWaitlistMode ? 'Waitlist 🎟️' : texts.paywall.proBadge}
             </span>
           </div>
@@ -279,7 +271,7 @@ export const PaywallSheet: React.FC = () => {
           <button
             type="button"
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-[#FAF5FF] text-[#6D28D9] flex items-center justify-center hover:bg-[#EDE9FE] transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-[#FAF5FF] dark:bg-[#230542] text-[#6D28D9] dark:text-[#A3E635] flex items-center justify-center hover:bg-[#EDE9FE] dark:hover:bg-[#4C1D95] transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -288,15 +280,15 @@ export const PaywallSheet: React.FC = () => {
 
         {isWaitlistMode ? (
           <div className="flex flex-col items-center text-center gap-4 py-4">
-            <div className="w-16 h-16 rounded-2xl bg-[#FAF5FF] border border-[#DDD6FE] flex items-center justify-center text-3xl shadow-xs">
+            <div className="w-16 h-16 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center justify-center text-3xl shadow-xs">
               🐣
             </div>
 
             <div className="space-y-1">
-              <h2 className="text-xl font-black text-[#2E1065] tracking-tight">
+              <h2 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
                 payments launch soon 🐣
               </h2>
-              <p className="text-sm font-black text-[#7C3AED]">
+              <p className="text-sm font-black text-[#7C3AED] dark:text-[#A3E635]">
                 get on the Pro list
               </p>
             </div>
@@ -321,32 +313,32 @@ export const PaywallSheet: React.FC = () => {
           <>
             {/* Title */}
             <div>
-              <h2 className="text-xl font-black text-[#2E1065] tracking-tight">
+              <h2 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
                 {texts.paywall.title}
               </h2>
-              <p className="text-xs font-bold text-[#7C3AED] mt-0.5">
+              <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] mt-0.5">
                 {texts.pricing.subtitle}
               </p>
             </div>
 
             {/* 3 Punchy Lines */}
-            <div className="space-y-2.5 bg-[#FAF5FF] p-4 rounded-2xl border border-[#DDD6FE]">
-              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
-                <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
+            <div className="space-y-2.5 bg-[#FAF5FF] dark:bg-[#230542] p-4 rounded-2xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
+              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065] dark:text-[#FAF5FF]">
+                <span className="p-1 rounded-lg bg-white dark:bg-[#3B0F6E] shadow-xs text-[#7C3AED] dark:text-[#A3E635] shrink-0 mt-0.5">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </span>
                 <span>{texts.paywall.pitch1}</span>
               </div>
 
-              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
-                <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
+              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065] dark:text-[#FAF5FF]">
+                <span className="p-1 rounded-lg bg-white dark:bg-[#3B0F6E] shadow-xs text-[#7C3AED] dark:text-[#A3E635] shrink-0 mt-0.5">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </span>
                 <span>{texts.paywall.pitch2}</span>
               </div>
 
-              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065]">
-                <span className="p-1 rounded-lg bg-white shadow-xs text-[#7C3AED] shrink-0 mt-0.5">
+              <div className="flex items-start gap-2.5 text-xs font-extrabold text-[#2E1065] dark:text-[#FAF5FF]">
+                <span className="p-1 rounded-lg bg-white dark:bg-[#3B0F6E] shadow-xs text-[#7C3AED] dark:text-[#A3E635] shrink-0 mt-0.5">
                   <Check className="w-3 h-3 stroke-[3]" />
                 </span>
                 <span>{texts.paywall.pitch3}</span>
@@ -391,13 +383,13 @@ export const PaywallSheet: React.FC = () => {
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                   placeholder={texts.paywall.couponPlaceholder}
-                  className="flex-1 min-h-[44px] px-3.5 rounded-xl border border-[#EDE9FE] focus:border-[#7C3AED] outline-none text-xs font-bold text-[#2E1065] placeholder:text-[#6D28D9]/40 uppercase bg-[#FAF5FF]"
+                  className="flex-1 min-h-[44px] px-3.5 rounded-xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 focus:border-[#7C3AED] outline-none text-xs font-bold text-[#2E1065] dark:text-[#FAF5FF] placeholder:text-[#6D28D9]/40 dark:placeholder:text-[#DDD6FE]/40 uppercase bg-[#FAF5FF] dark:bg-[#230542]"
                 />
                 <button
                   type="button"
                   onClick={handleApplyCoupon}
                   disabled={isApplyingCoupon || !couponCode.trim()}
-                  className="min-h-[44px] px-4 rounded-xl bg-white border border-[#DDD6FE] hover:border-[#7C3AED] text-xs font-black text-[#7C3AED] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                  className="min-h-[44px] px-4 rounded-xl bg-white dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] text-xs font-black text-[#7C3AED] dark:text-[#A3E635] transition-all cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   {isApplyingCoupon ? '...' : texts.paywall.applyCoupon}
                 </button>
@@ -410,7 +402,7 @@ export const PaywallSheet: React.FC = () => {
               )}
 
               {appliedCoupon && (
-                <p className="text-[11px] font-bold text-[#16A34A] mt-1 ml-1 flex items-center gap-1">
+                <p className="text-[11px] font-bold text-[#16A34A] dark:text-[#4ADE80] mt-1 ml-1 flex items-center gap-1">
                   <Percent className="w-3 h-3" />
                   Code {appliedCoupon.code} applied ({appliedCoupon.discountPercent}% off)!
                 </p>

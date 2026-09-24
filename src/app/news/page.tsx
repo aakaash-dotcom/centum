@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { News } from '@/types';
 import { SAMPLE_NEWS } from '@/data/sampleData';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { Calendar, ExternalLink, ArrowRight, Tag } from 'lucide-react';
+import { Calendar, ArrowRight } from 'lucide-react';
 
 export default function NewsFeedPage() {
   const [newsList, setNewsList] = useState<News[]>([]);
@@ -42,14 +41,14 @@ export default function NewsFeedPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-6">
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-black text-[#2E1065] tracking-tight">
+          <h1 className="text-2xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
             {texts.news.headline}
           </h1>
-          <p className="text-xs font-bold text-[#7C3AED]">
+          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635]">
             official DGE & SCERT updates
           </p>
         </div>
@@ -62,7 +61,7 @@ export default function NewsFeedPage() {
         ) : newsList.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
             <span className="text-4xl mb-2">🐶</span>
-            <p className="text-sm font-bold text-[#6D28D9]/75">
+            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75">
               {texts.states.empty}
             </p>
           </div>
@@ -72,10 +71,10 @@ export default function NewsFeedPage() {
               <Link
                 key={item.id}
                 href={`/news/${item.id}`}
-                className="block bg-white rounded-3xl overflow-hidden border border-[#EDE9FE] shadow-xs hover:shadow-md transition-all group"
+                className="block bg-white dark:bg-[#3B0F6E] rounded-3xl overflow-hidden border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs hover:shadow-md transition-all group"
               >
-                {/* Image on Top (Selfstudys-style visual cards) */}
-                <div className="relative w-full h-44 bg-[#F3E8FF] overflow-hidden">
+                {/* Image on Top */}
+                <div className="relative w-full h-44 bg-[#F3E8FF] dark:bg-[#230542] overflow-hidden">
                   <img
                     src={item.imageUrl}
                     alt={item.title}
@@ -100,20 +99,20 @@ export default function NewsFeedPage() {
 
                 {/* Content */}
                 <div className="p-4">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7C3AED] mb-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7C3AED] dark:text-[#A3E635] mb-1.5">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{item.date}</span>
                   </div>
 
-                  <h2 className="text-base font-black text-[#2E1065] leading-snug line-clamp-2 group-hover:text-[#7C3AED] transition-colors mb-2">
+                  <h2 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF] leading-snug line-clamp-2 group-hover:text-[#7C3AED] dark:group-hover:text-[#A3E635] transition-colors mb-2">
                     {item.title}
                   </h2>
 
-                  <p className="text-xs font-semibold text-[#6D28D9]/80 line-clamp-2 leading-relaxed mb-3">
+                  <p className="text-xs font-semibold text-[#6D28D9]/80 dark:text-[#DDD6FE]/80 line-clamp-2 leading-relaxed mb-3">
                     {item.summary}
                   </p>
 
-                  <div className="flex items-center justify-between text-xs font-extrabold text-[#7C3AED] pt-2 border-t border-[#FAF5FF]">
+                  <div className="flex items-center justify-between text-xs font-extrabold text-[#7C3AED] dark:text-[#A3E635] pt-2 border-t border-[#FAF5FF] dark:border-[#230542]">
                     <span>read brief ⚡</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>

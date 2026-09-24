@@ -23,7 +23,7 @@ export default function ChapterTestRunnerPage() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [questionTimes, setQuestionTimes] = useState<Record<number, number>>({});
   const [isFinished, setIsFinished] = useState(false);
-  const [secondsRemaining, setSecondsRemaining] = useState(600); // 10 minutes default
+  const [secondsRemaining, setSecondsRemaining] = useState(600);
   const [isLoading, setIsLoading] = useState(true);
 
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -51,8 +51,8 @@ export default function ChapterTestRunnerPage() {
             (q) =>
               q.classLevel.toLowerCase() === cls.toLowerCase() &&
               q.subject.toLowerCase() === subj.toLowerCase() &&
-              q.chapter.toLowerCase() === ch.toLowerCase() &&
-              q.type === tp &&
+              (ch.toLowerCase() === 'all' || q.chapter.toLowerCase() === ch.toLowerCase()) &&
+              (tp === 'pro' || q.type === tp) &&
               q.medium === medium
           );
         }
@@ -67,7 +67,7 @@ export default function ChapterTestRunnerPage() {
         }
 
         setQuestions(matched);
-        setSecondsRemaining(matched.length * 60); // 60s per question
+        setSecondsRemaining(Math.max(matched.length * 60, 120));
         setIsLoading(false);
         questionStartTimeRef.current = Date.now();
       })
@@ -77,14 +77,13 @@ export default function ChapterTestRunnerPage() {
           matched = [...matched].sort(() => Math.random() - 0.5);
         }
         setQuestions(matched);
-        setSecondsRemaining(matched.length * 60);
+        setSecondsRemaining(Math.max(matched.length * 60, 120));
         setIsLoading(false);
         questionStartTimeRef.current = Date.now();
       });
   };
 
   useEffect(() => {
-    // If guest arrives directly, gate trips immediately
     if (!isRegistered) {
       openGate(() => {
         loadAndFilterQuestions();
@@ -94,7 +93,7 @@ export default function ChapterTestRunnerPage() {
     }
   }, [rawTestId, medium, isRegistered]);
 
-  // Countdown timer countdown and auto-finish at 0s
+  // Countdown timer
   useEffect(() => {
     if (isLoading || isFinished || questions.length === 0) return;
 
@@ -144,7 +143,6 @@ export default function ChapterTestRunnerPage() {
     setIsFinished(true);
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
 
-    // Calculate score
     let correctCount = 0;
     const answerRecords: UserAnswerRecord[] = questions.map((q, idx) => {
       const selected = selectedAnswers[idx] !== undefined ? selectedAnswers[idx] : -1;
@@ -197,11 +195,10 @@ export default function ChapterTestRunnerPage() {
     setCurrentIndex(0);
     setSelectedAnswers({});
     setQuestionTimes({});
-    loadAndFilterQuestions(true); // Shuffled order!
+    loadAndFilterQuestions(true);
     showToast('test shuffled! 🔀');
   };
 
-  // Format time MM:SS
   const formatTimer = (totalSeconds: number) => {
     const mins = Math.floor(totalSeconds / 60);
     const secs = totalSeconds % 60;
@@ -211,8 +208,8 @@ export default function ChapterTestRunnerPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-[#EDE9FE] border-t-[#7C3AED] animate-spin mb-4" />
-        <p className="text-sm font-bold text-[#7C3AED]">{texts.states.loading}</p>
+        <div className="w-12 h-12 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B0F6E] border-t-[#7C3AED] animate-spin mb-4" />
+        <p className="text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">{texts.states.loading}</p>
       </div>
     );
   }
@@ -221,7 +218,7 @@ export default function ChapterTestRunnerPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <span className="text-4xl mb-2">🐶</span>
-        <p className="text-base font-bold text-[#2E1065]">{texts.states.empty}</p>
+        <p className="text-base font-bold text-[#2E1065] dark:text-[#FAF5FF]">{texts.states.empty}</p>
         <Link
           href="/tests"
           className="mt-4 px-4 py-2 bg-[#7C3AED] text-white rounded-xl text-xs font-bold"
@@ -251,35 +248,35 @@ export default function ChapterTestRunnerPage() {
         <div className="flex items-center justify-between mb-4">
           <Link
             href="/tests"
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#EDE9FE] text-[#7C3AED] hover:bg-[#F3E8FF] transition-all cursor-pointer shadow-xs"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] transition-all cursor-pointer shadow-xs"
           >
             <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
           </Link>
-          <span className="text-sm font-black text-[#7C3AED] bg-[#F3E8FF] px-3 py-1 rounded-full">
+          <span className="text-sm font-black text-[#7C3AED] dark:text-[#A3E635] bg-[#F3E8FF] dark:bg-[#3B0F6E] px-3 py-1 rounded-full border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
             {accuracy === 100 ? texts.tests.perfectScore : accuracy >= 70 ? texts.tests.goodScore : texts.tests.practiceMore}
           </span>
         </div>
 
         {/* Big Score Ring Card */}
-        <div className="bg-white rounded-3xl p-6 border border-[#EDE9FE] shadow-lg shadow-[#7C3AED]/5 flex flex-col items-center justify-center text-center mb-5">
+        <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-6 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-lg shadow-[#7C3AED]/5 flex flex-col items-center justify-center text-center mb-5">
           <ScoreRing score={correctCount} total={totalCount} accuracy={accuracy} />
 
           {/* Quick Metrics */}
-          <div className="w-full grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-[#FAF5FF]">
-            <div className="p-3 bg-[#FAF5FF] rounded-2xl">
-              <span className="block text-[11px] font-extrabold uppercase text-[#7C3AED]">
+          <div className="w-full grid grid-cols-2 gap-3 mt-6 pt-4 border-t border-[#FAF5FF] dark:border-[#230542]">
+            <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl">
+              <span className="block text-[11px] font-extrabold uppercase text-[#7C3AED] dark:text-[#A3E635]">
                 {texts.tests.accuracy}
               </span>
-              <span className="text-xl font-black text-[#2E1065]">
+              <span className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF]">
                 {Math.round(accuracy)}%
               </span>
             </div>
 
-            <div className="p-3 bg-[#FAF5FF] rounded-2xl">
-              <span className="block text-[11px] font-extrabold uppercase text-[#7C3AED]">
+            <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl">
+              <span className="block text-[11px] font-extrabold uppercase text-[#7C3AED] dark:text-[#A3E635]">
                 Avg per Question
               </span>
-              <span className="text-xl font-black text-[#2E1065]">
+              <span className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF]">
                 {Math.round(
                   Object.values(questionTimes).reduce((a, b) => a + b, 0) / (totalCount || 1)
                 )}s
@@ -300,7 +297,7 @@ export default function ChapterTestRunnerPage() {
 
         {/* Question Review Section */}
         <div className="mb-2">
-          <h2 className="text-base font-black text-[#2E1065] tracking-tight mb-3">
+          <h2 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight mb-3">
             {texts.tests.review} ({questions.length})
           </h2>
 
@@ -308,35 +305,34 @@ export default function ChapterTestRunnerPage() {
             {questions.map((q, idx) => {
               const selected = selectedAnswers[idx];
               const isCorrect = selected === q.answerIndex;
-              const hasAnswered = selected !== undefined;
 
               return (
                 <div
                   key={q.id}
-                  className={`bg-white rounded-2xl p-4 border transition-all ${
+                  className={`bg-white dark:bg-[#3B0F6E] rounded-2xl p-4 border transition-all ${
                     isCorrect
-                      ? 'border-[#86EFAC] shadow-xs'
-                      : 'border-[#FECDD3] shadow-xs'
+                      ? 'border-[#86EFAC] dark:border-[#86EFAC]/40 shadow-xs'
+                      : 'border-[#FECDD3] dark:border-[#FECDD3]/40 shadow-xs'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-xs font-black text-[#7C3AED] bg-[#F3E8FF] px-2 py-0.5 rounded-md">
+                    <span className="text-xs font-black text-[#7C3AED] dark:text-[#A3E635] bg-[#F3E8FF] dark:bg-[#230542] px-2 py-0.5 rounded-md">
                       Q{idx + 1}
                     </span>
                     {isCorrect ? (
-                      <span className="text-xs font-black text-[#16A34A] flex items-center gap-1">
+                      <span className="text-xs font-black text-[#16A34A] dark:text-[#4ADE80] flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4" />
                         {texts.tests.correct}
                       </span>
                     ) : (
-                      <span className="text-xs font-black text-[#E11D48] flex items-center gap-1">
+                      <span className="text-xs font-black text-[#E11D48] dark:text-[#FB7185] flex items-center gap-1">
                         <XCircle className="w-4 h-4" />
                         {texts.tests.wrong}
                       </span>
                     )}
                   </div>
 
-                  <p className="text-sm font-extrabold text-[#2E1065] mb-3">
+                  <p className="text-sm font-extrabold text-[#2E1065] dark:text-[#FAF5FF] mb-3">
                     {q.question}
                   </p>
 
@@ -345,11 +341,11 @@ export default function ChapterTestRunnerPage() {
                       const isOptionCorrect = optIdx === q.answerIndex;
                       const isOptionSelected = optIdx === selected;
 
-                      let optClass = 'bg-[#FAF5FF] border-[#EDE9FE] text-[#2E1065]';
+                      let optClass = 'bg-[#FAF5FF] dark:bg-[#230542] border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#2E1065] dark:text-[#FAF5FF]';
                       if (isOptionCorrect) {
-                        optClass = 'bg-[#F0FDF4] border-[#86EFAC] text-[#166534] font-black';
+                        optClass = 'bg-[#F0FDF4] dark:bg-[#14532D]/40 border-[#86EFAC] dark:border-[#86EFAC]/40 text-[#166534] dark:text-[#86EFAC] font-black';
                       } else if (isOptionSelected && !isOptionCorrect) {
-                        optClass = 'bg-[#FFF1F2] border-[#FDA4AF] text-[#9F1239] line-through';
+                        optClass = 'bg-[#FFF1F2] dark:bg-[#881337]/40 border-[#FDA4AF] dark:border-[#FDA4AF]/40 text-[#9F1239] dark:text-[#FDA4AF] line-through';
                       }
 
                       return (
@@ -365,10 +361,9 @@ export default function ChapterTestRunnerPage() {
                     })}
                   </div>
 
-                  {/* Explanation Card */}
                   {q.explanation && (
-                    <div className="p-2.5 rounded-xl bg-[#FAF5FF] border border-[#DDD6FE] text-xs font-semibold text-[#5B21B6]">
-                      <span className="font-black uppercase tracking-wider block mb-0.5 text-[10px] text-[#7C3AED]">
+                    <div className="p-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-xs font-semibold text-[#5B21B6] dark:text-[#DDD6FE]">
+                      <span className="font-black uppercase tracking-wider block mb-0.5 text-[10px] text-[#7C3AED] dark:text-[#A3E635]">
                         {texts.tests.explanation}:
                       </span>
                       {q.explanation}
@@ -385,28 +380,28 @@ export default function ChapterTestRunnerPage() {
 
   // ACTIVE TEST TAKING SCREEN
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-6">
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-6 animate-fade-in">
       {/* Top Countdown Timer & Progress HUD */}
-      <div className="flex items-center justify-between gap-3 mb-4 bg-white p-3 rounded-2xl border border-[#EDE9FE] shadow-xs">
+      <div className="flex items-center justify-between gap-3 mb-4 bg-white dark:bg-[#3B0F6E] p-3 rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
         <Link
           href="/tests"
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FAF5FF] text-[#7C3AED] hover:bg-[#F3E8FF] transition-all cursor-pointer"
+          className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] transition-all cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
         </Link>
 
         {/* Question Counter Pill */}
-        <div className="text-xs font-black text-[#2E1065] tracking-tight">
-          <span className="text-[#7C3AED]">Q {currentIndex + 1}</span>
-          <span className="text-[#6D28D9]/50"> / {questions.length}</span>
+        <div className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
+          <span className="text-[#7C3AED] dark:text-[#A3E635]">Q {currentIndex + 1}</span>
+          <span className="text-[#6D28D9]/50 dark:text-[#DDD6FE]/50"> / {questions.length}</span>
         </div>
 
-        {/* JetBrains Mono Countdown Timer */}
+        {/* Countdown Timer */}
         <div
           className={`flex items-center gap-1.5 px-3 py-1 rounded-xl font-mono text-xs font-black ${
             secondsRemaining < 60
-              ? 'bg-[#FEE2E2] text-[#DC2626] animate-pulse'
-              : 'bg-[#FAF5FF] text-[#7C3AED] border border-[#DDD6FE]'
+              ? 'bg-[#FEE2E2] dark:bg-[#991B1B] text-[#DC2626] dark:text-[#FCA5A5] animate-pulse'
+              : 'bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] border border-[#DDD6FE] dark:border-[#DDD6FE]/20'
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
@@ -415,7 +410,7 @@ export default function ChapterTestRunnerPage() {
       </div>
 
       {/* Progress Bar Line */}
-      <div className="w-full h-1.5 bg-[#EDE9FE] rounded-full overflow-hidden mb-4">
+      <div className="w-full h-1.5 bg-[#EDE9FE] dark:bg-[#3B0F6E] rounded-full overflow-hidden mb-4">
         <div
           className="h-full bg-[#7C3AED] transition-all duration-300 rounded-full"
           style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
@@ -424,12 +419,12 @@ export default function ChapterTestRunnerPage() {
 
       {/* Question Card */}
       <div className="flex-1 flex flex-col justify-between">
-        <div className="bg-white rounded-3xl p-5 border border-[#EDE9FE] shadow-md shadow-[#7C3AED]/5">
-          <span className="inline-block text-[11px] font-black uppercase text-[#7C3AED] bg-[#F3E8FF] px-2.5 py-0.5 rounded-full mb-3">
+        <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-md shadow-[#7C3AED]/5">
+          <span className="inline-block text-[11px] font-black uppercase text-[#7C3AED] dark:text-[#A3E635] bg-[#F3E8FF] dark:bg-[#230542] px-2.5 py-0.5 rounded-full mb-3">
             {currentQ.subject} · {currentQ.type === 'oneword' ? 'One Word' : 'Concept Quiz'}
           </span>
 
-          <h2 className="text-base sm:text-lg font-black text-[#2E1065] leading-relaxed mb-6">
+          <h2 className="text-base sm:text-lg font-black text-[#2E1065] dark:text-[#FAF5FF] leading-relaxed mb-6">
             {currentQ.question}
           </h2>
 
@@ -445,7 +440,7 @@ export default function ChapterTestRunnerPage() {
                   className={`w-full min-h-[50px] p-3.5 rounded-2xl text-left font-bold text-sm transition-all cursor-pointer flex items-center justify-between border ${
                     isSelected
                       ? 'bg-[#7C3AED] text-white border-[#7C3AED] shadow-md shadow-[#7C3AED]/20 scale-[1.01]'
-                      : 'bg-[#FAF5FF] hover:bg-[#F3E8FF] text-[#2E1065] border-[#DDD6FE]'
+                      : 'bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] text-[#2E1065] dark:text-[#FAF5FF] border-[#DDD6FE] dark:border-[#DDD6FE]/20'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -453,7 +448,7 @@ export default function ChapterTestRunnerPage() {
                       className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black ${
                         isSelected
                           ? 'bg-white/25 text-white'
-                          : 'bg-white text-[#7C3AED] border border-[#DDD6FE]'
+                          : 'bg-white dark:bg-[#3B0F6E] text-[#7C3AED] dark:text-[#A3E635] border border-[#DDD6FE] dark:border-[#DDD6FE]/20'
                       }`}
                     >
                       {String.fromCharCode(65 + optIndex)}
@@ -481,7 +476,7 @@ export default function ChapterTestRunnerPage() {
             className={`w-full min-h-[52px] flex items-center justify-center gap-2 font-black text-base rounded-2xl transition-all cursor-pointer ${
               userSelection !== undefined
                 ? 'bg-[#A3E635] hover:bg-[#92D928] text-[#18181B] shadow-lg shadow-[#A3E635]/25 active:scale-[0.98]'
-                : 'bg-[#E2E8F0] text-[#94A3B8] cursor-not-allowed'
+                : 'bg-[#E2E8F0] dark:bg-[#230542] text-[#94A3B8] dark:text-[#64748B] cursor-not-allowed border dark:border-[#DDD6FE]/10'
             }`}
           >
             <span>{isLastQuestion ? texts.tests.finish : texts.tests.next}</span>

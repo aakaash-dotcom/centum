@@ -40,6 +40,13 @@ interface AppContextType {
   // Leaderboard Refresh Signal
   leaderboardRefreshCount: number;
   triggerLeaderboardRefresh: () => void;
+  // Theme & Appearance
+  theme: 'light' | 'dark';
+  setTheme: (theme: 'light' | 'dark') => void;
+  toggleTheme: () => void;
+  // Guest Session Standard
+  guestStandard: string | null;
+  setGuestStandard: (std: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,11 +55,15 @@ const MEDIUM_STORAGE_KEY = 'centum_medium';
 const STUDENT_STORAGE_KEY = 'centum_student';
 const QUIZ_RESULTS_KEY = 'centum_quiz_results';
 const PLAN_STORAGE_KEY = 'centum_plan';
+const THEME_STORAGE_KEY = 'centum_theme';
+const GUEST_STANDARD_KEY = 'centum_guest_standard';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [medium, setMediumState] = useState<Medium>('english');
   const [student, setStudent] = useState<StudentProfile | null>(null);
   const [plan, setPlanState] = useState<PlanType>('free');
+  const [theme, setThemeState] = useState<'light' | 'dark'>('light');
+  const [guestStandard, setGuestStandardState] = useState<string | null>(null);
   const [isGateOpen, setIsGateOpen] = useState(false);
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
@@ -112,12 +123,51 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedQuizzes) {
         setQuizResults(JSON.parse(savedQuizzes));
       }
+
+      const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as 'light' | 'dark' | null;
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        setThemeState(savedTheme);
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+
+      const savedGuestStd = sessionStorage.getItem(GUEST_STANDARD_KEY);
+      if (savedGuestStd) {
+        setGuestStandardState(savedGuestStd);
+      }
     } catch (e) {
       console.error('Storage reading error', e);
     } finally {
       setIsInitialized(true);
     }
   }, [fetchPlanFromServer]);
+
+  const setTheme = (newTheme: 'light' | 'dark') => {
+    setThemeState(newTheme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      if (newTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch (e) {}
+  };
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+  };
+
+  const setGuestStandard = (std: string) => {
+    setGuestStandardState(std);
+    try {
+      sessionStorage.setItem(GUEST_STANDARD_KEY, std);
+    } catch (e) {}
+  };
 
   const setPlan = (newPlan: PlanType) => {
     setPlanState(newPlan);
@@ -323,6 +373,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closePaywall,
         leaderboardRefreshCount,
         triggerLeaderboardRefresh,
+        theme,
+        setTheme,
+        toggleTheme,
+        guestStandard,
+        setGuestStandard,
       }}
     >
       {children}

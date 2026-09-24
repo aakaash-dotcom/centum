@@ -1,20 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { ReferralData } from '@/types';
 import {
   ArrowLeft,
-  Share2,
   Copy,
   Check,
   Coins,
-  Clock,
-  CheckCircle2,
-  Sparkles,
   MessageCircle,
 } from 'lucide-react';
 
@@ -68,12 +63,12 @@ export default function ReferPage() {
 
   if (!isRegistered || !student) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
         <span className="text-4xl mb-3">💸</span>
-        <h1 className="text-xl font-black text-[#2E1065] mb-2">
+        <h1 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] mb-2">
           {texts.refer.title}
         </h1>
-        <p className="text-xs font-semibold text-[#6D28D9]/75 mb-6 max-w-xs">
+        <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-6 max-w-xs">
           Unlock your student profile to access your unique referral code and earn on every friend who joins Pro.
         </p>
         <button
@@ -104,17 +99,17 @@ export default function ReferPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#EDE9FE] text-[#7C3AED] hover:bg-[#F3E8FF] transition-all cursor-pointer shadow-xs"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] transition-all cursor-pointer shadow-xs"
           aria-label="Back"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
         </button>
 
         <div className="text-right">
-          <h1 className="text-xl font-black text-[#2E1065] tracking-tight">
+          <h1 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
             {texts.refer.title}
           </h1>
-          <p className="text-xs font-bold text-[#7C3AED]">
+          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635]">
             {texts.refer.subtitle}
           </p>
         </div>
@@ -122,8 +117,8 @@ export default function ReferPage() {
 
       {isLoading ? (
         <div className="flex-1 flex flex-col items-center justify-center py-12">
-          <div className="w-10 h-10 rounded-full border-4 border-[#EDE9FE] border-t-[#7C3AED] animate-spin mb-3" />
-          <p className="text-xs font-bold text-[#7C3AED]">loading your rewards... ⚡</p>
+          <div className="w-10 h-10 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B0F6E] border-t-[#7C3AED] animate-spin mb-3" />
+          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635]">loading your rewards... ⚡</p>
         </div>
       ) : couponCode ? (
         /* ACTIVE REFERRAL DASHBOARD */
@@ -168,41 +163,41 @@ export default function ReferPage() {
           </div>
 
           {/* Rule Card */}
-          <div className="bg-[#FAF5FF] border border-[#DDD6FE] rounded-2xl p-3.5 text-xs font-bold text-[#5B21B6] flex items-center gap-2.5">
-            <Coins className="w-5 h-5 text-[#7C3AED] shrink-0" />
+          <div className="bg-[#FAF5FF] dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 rounded-2xl p-3.5 text-xs font-bold text-[#5B21B6] dark:text-[#DDD6FE] flex items-center gap-2.5">
+            <Coins className="w-5 h-5 text-[#7C3AED] dark:text-[#A3E635] shrink-0" />
             <p className="leading-snug">{ruleText}</p>
           </div>
 
           {/* Earnings Card */}
-          <div className="bg-white rounded-3xl p-5 border border-[#EDE9FE] shadow-xs">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] mb-3">
+          <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
+            <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-3">
               Earnings Summary
             </h3>
 
             <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-3 bg-[#FAF5FF] rounded-2xl border border-[#EDE9FE]">
-                <span className="block text-[10px] font-extrabold uppercase text-[#6D28D9]/70">
+              <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
+                <span className="block text-[10px] font-extrabold uppercase text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
                   {texts.refer.earningsTotal}
                 </span>
-                <span className="text-lg font-black text-[#2E1065]">
+                <span className="text-lg font-black text-[#2E1065] dark:text-[#FAF5FF]">
                   ₹{earnings.total}
                 </span>
               </div>
 
-              <div className="p-3 bg-[#FFFBEB] rounded-2xl border border-[#FEF3C7]">
-                <span className="block text-[10px] font-extrabold uppercase text-[#B45309]">
+              <div className="p-3 bg-[#FFFBEB] dark:bg-[#78350F]/30 rounded-2xl border border-[#FEF3C7] dark:border-[#F59E0B]/30">
+                <span className="block text-[10px] font-extrabold uppercase text-[#B45309] dark:text-[#FCD34D]">
                   {texts.refer.earningsPending}
                 </span>
-                <span className="text-lg font-black text-[#B45309]">
+                <span className="text-lg font-black text-[#B45309] dark:text-[#FCD34D]">
                   ₹{earnings.pending}
                 </span>
               </div>
 
-              <div className="p-3 bg-[#F0FDF4] rounded-2xl border border-[#DCFCE7]">
-                <span className="block text-[10px] font-extrabold uppercase text-[#15803D]">
+              <div className="p-3 bg-[#F0FDF4] dark:bg-[#14532D]/30 rounded-2xl border border-[#DCFCE7] dark:border-[#22C55E]/30">
+                <span className="block text-[10px] font-extrabold uppercase text-[#15803D] dark:text-[#86EFAC]">
                   {texts.refer.earningsPaid}
                 </span>
-                <span className="text-lg font-black text-[#15803D]">
+                <span className="text-lg font-black text-[#15803D] dark:text-[#86EFAC]">
                   ₹{earnings.paid}
                 </span>
               </div>
@@ -211,8 +206,8 @@ export default function ReferPage() {
 
           {/* Referrals Activity List */}
           {referrals.length > 0 && (
-            <div className="bg-white rounded-3xl p-5 border border-[#EDE9FE] shadow-xs">
-              <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] mb-3">
+            <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
+              <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-3">
                 Recent Referrals
               </h3>
 
@@ -220,30 +215,30 @@ export default function ReferPage() {
                 {referrals.map((ref) => (
                   <div
                     key={ref.id}
-                    className="p-3 rounded-2xl bg-[#FAF5FF] border border-[#EDE9FE] flex items-center justify-between text-xs"
+                    className="p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 flex items-center justify-between text-xs"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-[#2E1065]">
+                        <span className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF]">
                           {ref.maskedPhone}
                         </span>
                         <span
                           className={`text-[9px] font-black uppercase px-2 py-0.2 rounded-full ${
                             ref.status === 'paid'
-                              ? 'bg-[#DCFCE7] text-[#15803D]'
-                              : 'bg-[#FEF3C7] text-[#B45309]'
+                              ? 'bg-[#DCFCE7] dark:bg-[#166534] text-[#15803D] dark:text-[#86EFAC]'
+                              : 'bg-[#FEF3C7] dark:bg-[#78350F] text-[#B45309] dark:text-[#FDE68A]'
                           }`}
                         >
                           {ref.status}
                         </span>
                       </div>
-                      <span className="text-[10px] font-semibold text-[#6D28D9]/60">
+                      <span className="text-[10px] font-semibold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
                         {ref.date}
                       </span>
                     </div>
 
                     <div className="text-right">
-                      <span className="font-black text-[#16A34A] block">
+                      <span className="font-black text-[#16A34A] dark:text-[#4ADE80] block">
                         +₹{ref.share}
                       </span>
                     </div>
@@ -255,16 +250,16 @@ export default function ReferPage() {
         </div>
       ) : (
         /* NO COUPON ASSIGNED YET */
-        <div className="bg-white rounded-3xl p-6 border border-[#EDE9FE] shadow-md shadow-[#7C3AED]/5 text-center flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full bg-[#FAF5FF] text-[#7C3AED] flex items-center justify-center mb-3 border border-[#DDD6FE]">
+        <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-6 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-md shadow-[#7C3AED]/5 text-center flex flex-col items-center">
+          <div className="w-16 h-16 rounded-full bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center mb-3 border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
             <span className="text-3xl">🐣</span>
           </div>
 
-          <h2 className="text-base font-black text-[#2E1065] mb-2">
+          <h2 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF] mb-2">
             Referral Program
           </h2>
 
-          <p className="text-xs font-semibold text-[#6D28D9]/80 mb-6 max-w-xs leading-relaxed">
+          <p className="text-xs font-semibold text-[#6D28D9]/80 dark:text-[#DDD6FE]/80 mb-6 max-w-xs leading-relaxed">
             {texts.refer.noCodeMessage}
           </p>
 
