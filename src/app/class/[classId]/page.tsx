@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
@@ -8,26 +8,25 @@ import { texts } from '@/data/texts';
 import { Paper, PaperCategory } from '@/types';
 import { SAMPLE_PAPERS } from '@/data/sampleData';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { ArrowLeft, ArrowRight, FileText, Sparkles, Lock } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  FileText,
+  Sparkles,
+  Lock,
+  ChevronDown,
+} from 'lucide-react';
+import {
+  normalizeSubject,
+  getExamCanonicalKey,
+  getExamFriendlyLabel,
+} from '@/app/materials/page';
 
 const CATEGORIES: { id: PaperCategory; label: string }[] = [
   { id: 'pyq', label: texts.categories.pyq },
   { id: 'model', label: texts.categories.model },
   { id: 'important', label: texts.categories.important },
   { id: 'book', label: texts.categories.book },
-];
-
-const SUBJECTS_10TH = ['All', 'Tamil', 'English', 'Maths', 'Science', 'Social Science'];
-const SUBJECTS_12TH = [
-  'All',
-  'Maths',
-  'Physics',
-  'Chemistry',
-  'Biology',
-  'Computer Science',
-  'Commerce',
-  'Accountancy',
-  'Economics',
 ];
 
 function ClassPageContent() {
@@ -37,12 +36,19 @@ function ClassPageContent() {
   const rawClassId = (params?.classId as string) || '10th';
   const paramStandard = rawClassId.endsWith('th') ? rawClassId : `${rawClassId}th`;
 
-  const { medium, student, isRegistered, openGate, plan, openPaywall, setGuestStandard } = useApp();
+  const {
+    medium,
+    student,
+    isRegistered,
+    openGate,
+    plan,
+    openPaywall,
+    setGuestStandard,
+  } = useApp();
 
   // If registered: their standard is fixed from profile/stream
-  const effectiveStandard = isRegistered && student?.standard
-    ? student.standard
-    : paramStandard;
+  const effectiveStandard =
+    isRegistered && student?.standard ? student.standard : paramStandard;
 
   // Lock guest standard when directly browsing a class link
   useEffect(() => {
@@ -54,14 +60,17 @@ function ClassPageContent() {
   const initialCat = (searchParams.get('category') as PaperCategory) || 'pyq';
   const [selectedCategory, setSelectedCategory] = useState<PaperCategory>(initialCat);
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
+  const [selectedExam, setSelectedExam] = useState<string>('all');
+  const [showBothMediums, setShowBothMediums] = useState<boolean>(false);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState<number>(40);
 
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
 
-    fetch(`/api/papers?classLevel=${encodeURIComponent(effectiveStandard)}&medium=${medium}`)
+    fetch(`/api/papers?classLevel=${encodeURIComponent(effectiveStandard)}`)
       .then((res) => res.json())
       .then((data) => {
         if (isMounted) {
@@ -83,21 +92,124 @@ function ClassPageContent() {
     return () => {
       isMounted = false;
     };
-  }, [effectiveStandard, medium]);
+  }, [effectiveStandard]);
 
-  const subjectList = effectiveStandard === '12th' ? SUBJECTS_12TH : SUBJECTS_10TH;
+  const standardPapers = useMemo(() => {
+    return papers.filter(
+      (p) => p.classLevel.toLowerCase() === effectiveStandard.toLowerCase()
+    );
+  }, [papers, effectiveStandard]);
 
-  const filteredPapers = papers.filter((p) => {
-    const matchClass = p.classLevel.toLowerCase() === effectiveStandard.toLowerCase();
-    const matchMedium = p.medium === medium;
-    const matchCategory = p.category === selectedCategory;
-    const matchSubject =
-      selectedSubject === 'All' ||
-      p.subject.toLowerCase() === selectedSubject.toLowerCase();
-    return matchClass && matchMedium && matchCategory && matchSubject;
-  });
+  // Subject options
+  const availableSubjects = useMemo(() => {
+    const set = new Set<string>();
+    standardPapers.forEach((p) => {
+      const norm = normalizeSubject(p.subject);
+      if (norm) set.add(norm);
+    });
+
+    if (set.size === 0) {
+      return effectiveStandard === '12th'
+        ? ['All', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Computer Science']
+        : ['All', 'Tamil', 'English', 'Maths', 'Science', 'Social Science'];
+    }
+
+    const priority = [
+      'Tamil',
+      'English',
+      'Maths',
+      'Science',
+      'Social Science',
+      'Physics',
+      'Chemistry',
+      'Biology',
+      'Computer Science',
+      'Commerce',
+      'Accountancy',
+      'Economics',
+    ];
+
+    const sortedList = Array.from(set).sort((a, b) => {
+      const iA = priority.indexOf(a);
+      const iB = priority.indexOf(b);
+      if (iA !== -1 && iB !== -1) return iA - iB;
+      if (iA !== -1) return -1;
+      if (iB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    return ['All', ...sortedList];
+  }, [standardPapers, effectiveStandard]);
+
+  // Exam type options
+  const availableExams = useMemo(() => {
+    const relevantPapers = standardPapers.filter(
+      (p) => p.category === 'pyq' || p.category === 'model'
+    );
+    const keysSet = new Set<string>();
+    relevantPapers.forEach((p) => {
+      const key = getExamCanonicalKey(p.exam);
+      if (key) keysSet.add(key);
+    });
+
+    const priority = ['annual', 'quarterly', 'halfyearly', 'revision', 'model'];
+    const sortedKeys = Array.from(keysSet).sort((a, b) => {
+      const idxA = priority.indexOf(a);
+      const idxB = priority.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    return ['all', ...sortedKeys];
+  }, [standardPapers]);
+
+  // Filtered papers
+  const filteredPapers = useMemo(() => {
+    return standardPapers.filter((p) => {
+      const matchCategory = p.category === selectedCategory;
+      const matchMedium = showBothMediums ? true : p.medium === medium;
+      const matchSubject =
+        selectedSubject === 'All' ||
+        normalizeSubject(p.subject).toLowerCase() === selectedSubject.toLowerCase();
+
+      let matchExam = true;
+      if (
+        (selectedCategory === 'pyq' || selectedCategory === 'model') &&
+        selectedExam !== 'all'
+      ) {
+        matchExam = getExamCanonicalKey(p.exam) === selectedExam;
+      }
+
+      return matchCategory && matchMedium && matchSubject && matchExam;
+    });
+  }, [
+    standardPapers,
+    selectedCategory,
+    showBothMediums,
+    medium,
+    selectedSubject,
+    selectedExam,
+  ]);
+
+  // Reset pagination on filter change
+  useEffect(() => {
+    setVisibleCount(40);
+  }, [
+    selectedCategory,
+    selectedSubject,
+    selectedExam,
+    showBothMediums,
+    medium,
+    effectiveStandard,
+  ]);
+
+  const visiblePapers = filteredPapers.slice(0, visibleCount);
+  const hasMorePapers = filteredPapers.length > visibleCount;
 
   const isUserPro = plan === 'pro' || plan === 'live';
+  const isPyqOrModel = selectedCategory === 'pyq' || selectedCategory === 'model';
 
   const handleOpenPaper = (paper: Paper, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -107,7 +219,7 @@ function ClassPageContent() {
         id: paper.id,
         fileId: paper.driveFileId,
         title: paper.title,
-        subject: paper.subject,
+        subject: normalizeSubject(paper.subject),
         year: paper.year,
       });
       router.push(`/viewer?${query.toString()}`);
@@ -171,6 +283,7 @@ function ClassPageContent() {
               onClick={() => {
                 setSelectedCategory(cat.id);
                 setSelectedSubject('All');
+                setSelectedExam('all');
               }}
               className={`min-h-[64px] p-3 rounded-2xl text-left font-bold text-sm tracking-tight transition-all cursor-pointer flex items-center justify-between border ${
                 isSelected
@@ -185,28 +298,80 @@ function ClassPageContent() {
         })}
       </div>
 
-      {/* Horizontal Subject Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-4 -mx-1 px-1">
-        {subjectList.map((subj) => {
-          const isSelected = selectedSubject === subj;
-          return (
-            <button
-              key={subj}
-              type="button"
-              onClick={() => setSelectedSubject(subj)}
-              className={`min-h-[44px] px-4 rounded-full text-xs font-extrabold whitespace-nowrap transition-all cursor-pointer border ${
-                isSelected
-                  ? 'bg-[#2E1065] text-white border-[#2E1065] dark:bg-[#FAF5FF] dark:text-[#230542] dark:border-white shadow-xs'
-                  : 'bg-white dark:bg-[#3B0F6E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95]'
-              }`}
+      {/* TWO compact native-style dropdowns (purple styling, 44px, chevron icon) */}
+      <div className={isPyqOrModel ? 'grid grid-cols-2 gap-2.5 mb-3' : 'mb-3'}>
+        {/* Dropdown 1: [ subject ▾ ] */}
+        <div className="relative">
+          <label htmlFor="class-subject-select" className="sr-only">
+            Subject
+          </label>
+          <select
+            id="class-subject-select"
+            value={selectedSubject}
+            onChange={(e) => setSelectedSubject(e.target.value)}
+            className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-3.5 pr-8 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
+          >
+            {availableSubjects.map((subj) => (
+              <option
+                key={subj}
+                value={subj}
+                className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
+              >
+                {subj === 'All' ? texts.papers.allSubjects : subj}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+        </div>
+
+        {/* Dropdown 2: [ exam type ▾ ] (Applies to PYQ + Model Question Papers) */}
+        {isPyqOrModel && (
+          <div className="relative">
+            <label htmlFor="class-exam-select" className="sr-only">
+              Exam Type
+            </label>
+            <select
+              id="class-exam-select"
+              value={selectedExam}
+              onChange={(e) => setSelectedExam(e.target.value)}
+              className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-3.5 pr-8 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
             >
-              {subj}
-            </button>
-          );
-        })}
+              {availableExams.map((ex) => (
+                <option
+                  key={ex}
+                  value={ex}
+                  className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
+                >
+                  {getExamFriendlyLabel(ex)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+          </div>
+        )}
       </div>
 
-      {/* Item List */}
+      {/* Count Line ("12 papers 📄") + Minimal "Both Mediums" Switch */}
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="text-xs font-black text-[#6D28D9] dark:text-[#A3E635]">
+          {filteredPapers.length} {texts.papers.papersCount}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setShowBothMediums(!showBothMediums)}
+          className={`min-h-[32px] px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
+            showBothMediums
+              ? 'bg-[#7C3AED] text-white border-[#7C3AED] shadow-xs'
+              : 'bg-white dark:bg-[#3B0F6E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/40'
+          }`}
+          title="Toggle both mediums"
+        >
+          <span>{texts.papers.bothMediums}</span>
+        </button>
+      </div>
+
+      {/* Item List (Windowed / Virtualized to 40 max initially) */}
       <div className="flex-1 flex flex-col">
         {isLoading ? (
           <SkeletonCard count={3} />
@@ -219,7 +384,7 @@ function ClassPageContent() {
           </div>
         ) : (
           <div className="space-y-3">
-            {filteredPapers.map((paper) => {
+            {visiblePapers.map((paper) => {
               const isLockedForUser = paper.plan === 'pro' && !isUserPro && isRegistered;
 
               return (
@@ -242,8 +407,13 @@ function ClassPageContent() {
                             {paper.year}
                           </span>
                           <span className="text-[11px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
-                            {paper.subject}
+                            {normalizeSubject(paper.subject)}
                           </span>
+                          {paper.medium && (
+                            <span className="text-[10px] font-semibold text-[#6D28D9]/50 dark:text-[#DDD6FE]/50">
+                              · {paper.medium === 'english' ? 'English' : 'தமிழ்'}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -256,7 +426,7 @@ function ClassPageContent() {
                     )}
                   </div>
 
-                  {/* Single Tap Target "Open →" (requirement 4) */}
+                  {/* Single Tap Target "Open →" */}
                   <div className="flex items-center justify-end pt-2 border-t border-[#FAF5FF] dark:border-[#230542]">
                     {isLockedForUser ? (
                       <button
@@ -281,6 +451,22 @@ function ClassPageContent() {
                 </div>
               );
             })}
+
+            {/* Pagination / Windowing Button for >40 rows */}
+            {hasMorePapers && (
+              <div className="pt-2 pb-4 text-center">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => prev + 40)}
+                  className="w-full min-h-[44px] px-4 py-2.5 rounded-2xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] text-xs font-black text-[#7C3AED] dark:text-[#A3E635] shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <span>show more papers ⬇</span>
+                  <span className="text-[10px] opacity-75">
+                    ({filteredPapers.length - visibleCount} more)
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -8,6 +8,16 @@ import { texts } from '@/data/texts';
 import { SAMPLE_PAPERS } from '@/data/sampleData';
 import { ArrowLeft, Download, FileText, AlertCircle } from 'lucide-react';
 
+function extractDriveFileId(raw: string): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  const dMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (dMatch) return dMatch[1];
+  const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch) return idMatch[1];
+  return trimmed;
+}
+
 function ViewerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -21,7 +31,8 @@ function ViewerContent() {
 
   // Look up paper by id if available to enrich details
   const paper = id ? SAMPLE_PAPERS.find((p) => p.id === id) : null;
-  const driveFileId = queryFileId || paper?.driveFileId || '';
+  const rawFileId = queryFileId || paper?.driveFileId || '';
+  const driveFileId = extractDriveFileId(rawFileId);
   const title = queryTitle || paper?.title || 'Question Paper';
   const subject = querySubject || paper?.subject || '';
   const year = queryYear || paper?.year || '';

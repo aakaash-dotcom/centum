@@ -10,6 +10,7 @@ import confetti from 'canvas-confetti';
 export const PaywallSheet: React.FC = () => {
   const {
     isPaywallOpen,
+    paywallPitch,
     closePaywall,
     student,
     openGate,
@@ -319,6 +320,12 @@ export const PaywallSheet: React.FC = () => {
               <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] mt-0.5">
                 {texts.pricing.subtitle}
               </p>
+              {paywallPitch && (
+                <div className="mt-2 px-3 py-1.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-xs font-extrabold text-[#7C3AED] dark:text-[#A3E635] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#F472B6] shrink-0" />
+                  <span>{paywallPitch}</span>
+                </div>
+              )}
             </div>
 
             {/* 3 Punchy Lines */}

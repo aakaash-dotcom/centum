@@ -35,16 +35,22 @@ export async function GET(request: Request) {
         if (res.ok) {
           const data = await res.json();
           if (data.ok) {
-            const studentData = data.student || {
-              name: data.name,
-              phone: data.phone || phone,
-              district: data.district,
-              standard: data.standard,
-              stream: data.stream,
-              medium: data.medium || 'english',
-              plan: data.plan || 'free',
-              isAdmin: Boolean(data.isAdmin),
-            };
+            const studentData = data.student
+              ? {
+                  ...data.student,
+                  phone: data.student.phone || phone,
+                  isAdmin: Boolean(data.isAdmin ?? data.student.isAdmin),
+                }
+              : {
+                  name: data.name,
+                  phone: data.phone || phone,
+                  district: data.district,
+                  standard: data.standard,
+                  stream: data.stream,
+                  medium: data.medium || 'english',
+                  plan: data.plan || 'free',
+                  isAdmin: Boolean(data.isAdmin),
+                };
             return NextResponse.json({ ok: true, student: studentData });
           }
 

@@ -46,7 +46,8 @@ interface AppContextType {
   setPlan: (plan: PlanType) => void;
   refreshPlan: () => Promise<void>;
   isPaywallOpen: boolean;
-  openPaywall: () => void;
+  paywallPitch: string | null;
+  openPaywall: (pitch?: string | unknown) => void;
   closePaywall: () => void;
   // Leaderboard Refresh Signal
   leaderboardRefreshCount: number;
@@ -78,6 +79,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isGateOpen, setIsGateOpen] = useState(false);
   const [gateMode, setGateMode] = useState<'register' | 'login'>('register');
   const [isPaywallOpen, setIsPaywallOpen] = useState(false);
+  const [paywallPitch, setPaywallPitch] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
@@ -227,12 +229,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPendingAction(null);
   };
 
-  const openPaywall = () => {
+  const openPaywall = (pitch?: string | unknown) => {
+    setPaywallPitch(typeof pitch === 'string' ? pitch : null);
     setIsPaywallOpen(true);
   };
 
   const closePaywall = () => {
     setIsPaywallOpen(false);
+    setPaywallPitch(null);
   };
 
   const registerStudent = async (data: {
@@ -477,6 +481,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPlan,
         refreshPlan,
         isPaywallOpen,
+        paywallPitch,
         openPaywall,
         closePaywall,
         leaderboardRefreshCount,
