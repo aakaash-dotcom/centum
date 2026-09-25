@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
+import { normalizePhone } from '@/lib/phone';
 import { TN_DISTRICTS } from '@/data/districts';
 import { X, Sparkles, ShieldCheck, Eye, EyeOff, KeyRound, Lock } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -52,14 +53,14 @@ export const GateSheet: React.FC = () => {
     setErrorMsg('');
 
     const cleanName = name.trim();
-    const cleanPhone = phone.trim().replace(/\D/g, '');
+    const cleanPhone = normalizePhone(phone);
 
     if (!cleanName) {
       setErrorMsg('what should we call you? ✍️');
       return;
     }
 
-    if (cleanPhone.length !== 10) {
+    if (!cleanPhone) {
       setErrorMsg('enter a valid 10-digit mobile number 📱');
       return;
     }
@@ -101,9 +102,9 @@ export const GateSheet: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
+    const cleanPhone = normalizePhone(phone);
 
-    if (cleanPhone.length !== 10) {
+    if (!cleanPhone) {
       setErrorMsg('enter a valid 10-digit mobile number 📱');
       return;
     }
@@ -163,7 +164,11 @@ export const GateSheet: React.FC = () => {
     e.preventDefault();
     setErrorMsg('');
 
-    const cleanPhone = phone.trim().replace(/\D/g, '');
+    const cleanPhone = normalizePhone(phone);
+    if (!cleanPhone) {
+      setErrorMsg('enter a valid 10-digit mobile number 📱');
+      return;
+    }
 
     if (password.length < 6) {
       setErrorMsg(texts.gate.passwordTooShort);

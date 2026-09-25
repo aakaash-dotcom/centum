@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { texts } from '@/data/texts';
+import { normalizePhone } from '@/lib/phone';
 import { AdminStats, AdminStudentRow } from '@/types';
 import {
   ShieldAlert,
@@ -100,8 +101,8 @@ export default function AdminPage() {
     e.preventDefault();
     setAuthError('');
 
-    const cleanPhone = adminPhone.trim().replace(/\D/g, '');
-    if (cleanPhone.length !== 10) {
+    const cleanPhone = normalizePhone(adminPhone);
+    if (!cleanPhone) {
       setAuthError('enter a valid 10-digit mobile number 📱');
       return;
     }
@@ -118,13 +119,26 @@ export default function AdminPage() {
       );
       const data = await res.json();
 
-      if (data.ok && data.student?.isAdmin === true) {
-        setIsAuthenticated(true);
-        // Load initial dashboard data using in-memory credentials in request body
-        fetchStats(cleanPhone, adminPassword);
-        fetchStudents(cleanPhone, adminPassword);
+      if (data.ok) {
+        if (data.student?.isAdmin === true) {
+          setAdminPhone(cleanPhone);
+          setIsAuthenticated(true);
+          // Load initial dashboard data using in-memory credentials in request body
+          fetchStats(cleanPhone, adminPassword);
+          fetchStudents(cleanPhone, adminPassword);
+        } else {
+          // Founder rejection rule: "this way is for the founder 🦉"
+          setAuthError(texts.admin.notFounder);
+        }
+        return;
+      }
+
+      // Specific error copy per backend error
+      if (data.error === 'no-account') {
+        setAuthError('no account with this number 🐣');
+      } else if (data.error === 'wrong-password') {
+        setAuthError('wrong password, try again 🔑');
       } else {
-        // Founder rejection rule: "this way is for the founder 🦉"
         setAuthError(texts.admin.notFounder);
       }
     } catch (err) {
@@ -135,7 +149,7 @@ export default function AdminPage() {
   };
 
   // Data Call 1: Stats
-  const fetchStats = async (phone = adminPhone, pass = adminPassword) => {
+  const fetchStats = async (phone = normalizePhone(adminPhone), pass = adminPassword) => {
     try {
       setIsLoadingData(true);
       const res = await fetch('/api/admin/stats', {
@@ -164,7 +178,7 @@ export default function AdminPage() {
   };
 
   // Data Call 2: Students
-  const fetchStudents = async (phone = adminPhone, pass = adminPassword) => {
+  const fetchStudents = async (phone = normalizePhone(adminPhone), pass = adminPassword) => {
     try {
       const res = await fetch('/api/admin/students', {
         method: 'POST',
@@ -255,7 +269,7 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          adminPhone,
+          adminPhone: normalizePhone(adminPhone) || adminPhone,
           adminPassword,
           tab: contentTab,
           row: rowData,
@@ -310,7 +324,7 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          adminPhone,
+          adminPhone: normalizePhone(adminPhone) || adminPhone,
           oldPassword,
           newPassword,
         }),

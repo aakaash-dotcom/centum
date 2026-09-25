@@ -1,3 +1,5 @@
+import { normalizePhone } from './phone';
+
 // Shared in-memory mock store for local development, previews, and testing
 // Keeps credentials and mock sheet state in server memory without logging passwords.
 
@@ -28,10 +30,11 @@ declare global {
 
 function initMockStore(): MockStore {
   const users = new Map<string, MockUser>();
-  const adminPhones = new Set<string>(['9876543210', '9999999999']);
+  const adminPhones = new Set<string>(['9876543210', '9999999999', '6380444830']);
   const adminPasswords = new Map<string, string>([
     ['9876543210', 'founder123'],
     ['9999999999', 'founder123'],
+    ['6380444830', 'founder123'],
   ]);
 
   // Seed Founder Admin user
@@ -50,6 +53,19 @@ function initMockStore(): MockStore {
 
   users.set('9999999999', {
     phone: '9999999999',
+    name: 'Founder Admin',
+    district: 'Chennai',
+    standard: '12th',
+    stream: 'Science — Maths',
+    medium: 'english',
+    plan: 'pro',
+    password: 'founder123',
+    isAdmin: true,
+    joined: '2026-09-01',
+  });
+
+  users.set('6380444830', {
+    phone: '6380444830',
     name: 'Founder Admin',
     district: 'Chennai',
     standard: '12th',
@@ -109,7 +125,8 @@ function initMockStore(): MockStore {
 const store: MockStore = globalThis.__centum_mock_store__ || (globalThis.__centum_mock_store__ = initMockStore());
 
 export function findMockUser(phone: string): MockUser | undefined {
-  return store.users.get(phone);
+  const clean = normalizePhone(phone) || phone;
+  return store.users.get(clean);
 }
 
 export function registerMockUser(data: {
@@ -121,9 +138,10 @@ export function registerMockUser(data: {
   medium?: 'english' | 'tamil';
   password?: string;
 }): MockUser {
-  const existing = store.users.get(data.phone);
+  const cleanPhone = normalizePhone(data.phone) || data.phone;
+  const existing = store.users.get(cleanPhone);
   const user: MockUser = {
-    phone: data.phone,
+    phone: cleanPhone,
     name: data.name,
     district: data.district,
     standard: data.standard,
@@ -131,38 +149,41 @@ export function registerMockUser(data: {
     medium: data.medium || 'english',
     plan: existing?.plan || 'free',
     password: data.password || existing?.password || null,
-    isAdmin: existing?.isAdmin || store.adminPhones.has(data.phone),
+    isAdmin: existing?.isAdmin || store.adminPhones.has(cleanPhone),
     joined: existing?.joined || new Date().toISOString().split('T')[0],
   };
 
-  store.users.set(data.phone, user);
+  store.users.set(cleanPhone, user);
   return user;
 }
 
 export function setMockUserPassword(phone: string, password: string): boolean {
-  const user = store.users.get(phone);
+  const clean = normalizePhone(phone) || phone;
+  const user = store.users.get(clean);
   if (!user) return false;
   user.password = password;
-  store.users.set(phone, user);
+  store.users.set(clean, user);
   return true;
 }
 
 export function verifyMockAdmin(phone: string, password: string): boolean {
   if (!phone || !password) return false;
-  const expectedPassword = store.adminPasswords.get(phone);
+  const clean = normalizePhone(phone) || phone;
+  const expectedPassword = store.adminPasswords.get(clean);
   if (!expectedPassword) {
-    const user = store.users.get(phone);
+    const user = store.users.get(clean);
     return Boolean(user?.isAdmin && user?.password === password);
   }
   return expectedPassword === password;
 }
 
 export function changeMockAdminPassword(phone: string, oldPassword: string, newPassword: string): boolean {
-  if (!verifyMockAdmin(phone, oldPassword)) {
+  const clean = normalizePhone(phone) || phone;
+  if (!verifyMockAdmin(clean, oldPassword)) {
     return false;
   }
-  store.adminPasswords.set(phone, newPassword);
-  const user = store.users.get(phone);
+  store.adminPasswords.set(clean, newPassword);
+  const user = store.users.get(clean);
   if (user) {
     user.password = newPassword;
   }

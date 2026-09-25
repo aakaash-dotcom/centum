@@ -11,7 +11,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '10th Mathematics Annual Exam 2025 Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
     featured: true,
   },
   {
@@ -23,7 +23,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th Maths Half Yearly Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-m-pyq-2024-quarterly-en',
@@ -34,7 +34,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th Maths Quarterly Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-soc-raw-social-2024',
@@ -45,7 +45,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th Social Annual Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-m-pyq-2024-en',
@@ -56,7 +56,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th Maths Public Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms', // Demo Drive Doc/PDF
+    driveFileId: 'REPLACE_DRIVE_ID', // Demo Drive Doc/PDF
     featured: true,
   },
   {
@@ -68,7 +68,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'tamil',
     title: '10ஆம் வகுப்பு கணிதம் பொதுத்தேர்வு வினாத்தாள்',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
     featured: true,
   },
   {
@@ -80,7 +80,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '10th Maths DGE Official Model Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-m-imp-2025-en',
@@ -91,7 +91,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '10th Maths Top Centum 5-Mark Questions',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
     plan: 'pro',
   },
   {
@@ -103,7 +103,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024-25',
     medium: 'english',
     title: '10th Standard Mathematics Textbook PDF',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   // 10th Science
   {
@@ -115,7 +115,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th Science Public Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-s-pyq-2024-tm',
@@ -126,7 +126,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'tamil',
     title: '10ஆம் வகுப்பு அறிவியல் பொதுத்தேர்வு வினாத்தாள்',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-s-model-2025-en',
@@ -137,7 +137,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '10th Science PTA Official Model Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-s-imp-2025-en',
@@ -148,7 +148,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '10th Science Essential Diagrams & Laws',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   // 10th English & Tamil & Social
   {
@@ -160,7 +160,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th English Public Exam Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-tam-pyq-2024',
@@ -171,7 +171,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'tamil',
     title: '10ஆம் வகுப்பு தமிழ் பொதுத்தேர்வு வினாத்தாள்',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-10-soc-pyq-2024-en',
@@ -182,7 +182,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '10th Social Science Public Exam Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   // 12th Physics
   {
@@ -194,7 +194,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '12th Physics Public Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
     featured: true,
   },
   {
@@ -206,7 +206,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'tamil',
     title: '12ஆம் வகுப்பு இயற்பியல் பொதுத்தேர்வு வினாத்தாள்',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
     featured: true,
   },
   {
@@ -218,7 +218,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '12th Physics Official DGE Model Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-12-phy-imp-2025-en',
@@ -229,7 +229,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2025',
     medium: 'english',
     title: '12th Physics Top 30 Derivations Blueprint',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   // 12th Maths & Chemistry & Biology & CS
   {
@@ -241,7 +241,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '12th Maths Public Exam Question Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-12-chem-pyq-2024-en',
@@ -252,7 +252,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '12th Chemistry Public Exam Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-12-bio-pyq-2024-en',
@@ -263,7 +263,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '12th Biology (Botany & Zoology) Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
   },
   {
     id: 'p-12-cs-pyq-2024-en',
@@ -274,7 +274,7 @@ export const SAMPLE_PAPERS: Paper[] = [
     year: '2024',
     medium: 'english',
     title: '12th Computer Science Official Paper',
-    driveFileId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+    driveFileId: 'REPLACE_DRIVE_ID',
     plan: 'pro',
   },
 ];

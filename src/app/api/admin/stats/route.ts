@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { verifyMockAdmin, getMockStats } from '@/lib/server-mock-store';
+import { normalizePhone } from '@/lib/phone';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { adminPhone, adminPassword } = body || {};
+    const { adminPhone: rawPhone, adminPassword } = body || {};
+    const adminPhone = normalizePhone(rawPhone) || rawPhone;
 
     if (!adminPhone || !adminPassword) {
       return NextResponse.json(

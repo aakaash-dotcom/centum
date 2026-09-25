@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Medium, StudentProfile, QuizResult, ScorePayload, PlanType } from '@/types';
 import { calculateStreak } from '@/utils/streak';
+import { normalizePhone } from '@/lib/phone';
 
 interface AppContextType {
   medium: Medium;
@@ -248,8 +249,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     password?: string;
   }) => {
     const { password, ...profileFields } = data;
+    const cleanPhone = normalizePhone(data.phone) || data.phone;
     const newProfile: StudentProfile = {
       ...profileFields,
+      phone: cleanPhone,
       medium,
       plan: 'free',
       registeredAt: new Date().toISOString(),
@@ -300,8 +303,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     password: string
   ): Promise<{ ok: boolean; error?: string; student?: StudentProfile }> => {
     try {
+      const cleanPhone = normalizePhone(phone) || phone;
       const res = await fetch(
-        `/api/login?phone=${encodeURIComponent(phone)}&password=${encodeURIComponent(password)}`
+        `/api/login?phone=${encodeURIComponent(cleanPhone)}&password=${encodeURIComponent(password)}`
       );
       const data = await res.json();
 
@@ -366,12 +370,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     password: string
   ): Promise<{ ok: boolean; error?: string }> => {
     try {
+      const cleanPhone = normalizePhone(phone) || phone;
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'set-password',
-          phone,
+          phone: cleanPhone,
           password,
         }),
       });

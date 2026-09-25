@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { normalizePhone } from '@/lib/phone';
 import {
   findMockUser,
   setMockUserPassword,
@@ -7,7 +8,8 @@ import {
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const phone = searchParams.get('phone')?.trim() || '';
+    const rawPhone = searchParams.get('phone')?.trim() || '';
+    const phone = normalizePhone(rawPhone) || rawPhone;
     const password = searchParams.get('password') || '';
 
     if (!phone || !password) {

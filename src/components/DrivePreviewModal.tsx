@@ -12,14 +12,27 @@ interface DrivePreviewModalProps {
   onClose: () => void;
 }
 
+function extractDriveFileId(raw: string): string {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  const dMatch = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (dMatch) return dMatch[1];
+  const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (idMatch) return idMatch[1];
+  return trimmed;
+}
+
 export const DrivePreviewModal: React.FC<DrivePreviewModalProps> = ({ paper, onClose }) => {
   const { isRegistered, openGate, showToast } = useApp();
 
+  const rawFileId = paper?.driveFileId || '';
+  const driveFileId = extractDriveFileId(rawFileId);
+
   const isPlaceholder =
-    !paper?.driveFileId ||
-    paper.driveFileId.trim() === '' ||
-    paper.driveFileId.toUpperCase().includes('REPLACE') ||
-    paper.driveFileId.includes('PLACEHOLDER');
+    !driveFileId ||
+    driveFileId.trim() === '' ||
+    driveFileId.toUpperCase().includes('REPLACE') ||
+    driveFileId.toUpperCase().includes('PLACEHOLDER');
 
   const [hasError, setHasError] = useState(false);
 
@@ -29,8 +42,8 @@ export const DrivePreviewModal: React.FC<DrivePreviewModalProps> = ({ paper, onC
 
   if (!paper) return null;
 
-  const downloadUrl = `https://drive.google.com/uc?export=download&id=${paper.driveFileId}`;
-  const previewUrl = `https://drive.google.com/file/d/${paper.driveFileId}/preview`;
+  const downloadUrl = `https://drive.google.com/uc?export=download&id=${driveFileId}`;
+  const previewUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
 
   const handleDownload = () => {
     if (isPlaceholder) {

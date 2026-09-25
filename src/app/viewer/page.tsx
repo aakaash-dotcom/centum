@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
-import { SAMPLE_PAPERS } from '@/data/sampleData';
 import { ArrowLeft, Download, FileText, AlertCircle } from 'lucide-react';
 
 function extractDriveFileId(raw: string): string {
@@ -23,25 +22,18 @@ function ViewerContent() {
   const searchParams = useSearchParams();
   const { isRegistered, openGate, showToast } = useApp();
 
-  const id = searchParams.get('id');
   const queryFileId = searchParams.get('fileId') || '';
-  const queryTitle = searchParams.get('title');
-  const querySubject = searchParams.get('subject');
-  const queryYear = searchParams.get('year');
+  const title = searchParams.get('title') || 'Question Paper';
+  const subject = searchParams.get('subject') || '';
+  const year = searchParams.get('year') || '';
 
-  // Look up paper by id if available to enrich details
-  const paper = id ? SAMPLE_PAPERS.find((p) => p.id === id) : null;
-  const rawFileId = queryFileId || paper?.driveFileId || '';
-  const driveFileId = extractDriveFileId(rawFileId);
-  const title = queryTitle || paper?.title || 'Question Paper';
-  const subject = querySubject || paper?.subject || '';
-  const year = queryYear || paper?.year || '';
+  const driveFileId = extractDriveFileId(queryFileId);
 
   const isPlaceholder =
     !driveFileId ||
     driveFileId.trim() === '' ||
     driveFileId.toUpperCase().includes('REPLACE') ||
-    driveFileId.includes('PLACEHOLDER');
+    driveFileId.toUpperCase().includes('PLACEHOLDER');
 
   const [hasError, setHasError] = useState(isPlaceholder);
   const [isLoading, setIsLoading] = useState(!isPlaceholder);

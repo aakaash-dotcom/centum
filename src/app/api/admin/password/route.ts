@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { verifyMockAdmin, changeMockAdminPassword } from '@/lib/server-mock-store';
+import { normalizePhone } from '@/lib/phone';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { adminPhone, oldPassword, newPassword } = body || {};
+    const { adminPhone: rawPhone, oldPassword, newPassword } = body || {};
+    const adminPhone = normalizePhone(rawPhone) || rawPhone;
 
     if (!adminPhone || !oldPassword || !newPassword || newPassword.length < 6) {
       return NextResponse.json(

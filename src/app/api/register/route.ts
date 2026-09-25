@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { registerMockUser } from '@/lib/server-mock-store';
+import { normalizePhone } from '@/lib/phone';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
       name,
-      phone,
+      phone: rawPhone,
       district,
       standard,
       stream,
@@ -15,6 +16,8 @@ export async function POST(request: Request) {
       type = 'student',
       plan,
     } = body;
+
+    const phone = normalizePhone(rawPhone) || rawPhone;
 
     const scriptUrl = process.env.APPS_SCRIPT_URL;
     const secretKey = process.env.APPS_SCRIPT_SECRET;

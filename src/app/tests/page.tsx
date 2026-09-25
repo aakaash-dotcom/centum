@@ -16,7 +16,6 @@ import {
   X,
   Play,
   ArrowRight,
-  Crown,
   Check,
 } from 'lucide-react';
 import { normalizeSubject } from '@/app/materials/page';
@@ -44,10 +43,9 @@ function TestsContent() {
     plan,
     openPaywall,
     guestStandard,
-    setGuestStandard,
   } = useApp();
 
-  // If registered: standard is fixed from profile (12th or 10th)
+  // If registered: their standard is locked from profile (12th or 10th), no class chips
   // If guest: use guestStandard if chosen, otherwise default 10th
   const effectiveStandard = isRegistered
     ? student?.standard === '12th'
@@ -60,10 +58,11 @@ function TestsContent() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // New layout order:
-  // 1. Quiz Type selection ('oneword' | 'concept' | 'pro')
-  const [selectedType, setSelectedType] = useState<TestType | 'pro'>('oneword');
-  // 2. Subject dropdown selection
+  // Tests page v2 state:
+  // 1. Quiz Type selection ('oneword' | 'concept')
+  const [selectedType, setSelectedType] = useState<TestType>('oneword');
+  // 2. Select-subject expander state & selected subject
+  const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   // 3. Slide-up confirmation modal state (nothing starts until tapped)
   const [confirmModal, setConfirmModal] = useState<ConfirmationModalState | null>(null);
@@ -198,32 +197,13 @@ function TestsContent() {
     return list;
   }, [currentPool, selectedSubject]);
 
-  // Handle tap on top Pro Quiz card
-  const handleTapProCard = () => {
-    if (!isUserPro) {
-      openPaywall(
-        texts.testTypes.proPitch ||
-          'daily speed battles · timed rank · full leaderboard ⚡'
-      );
-      return;
-    }
-    setSelectedType('pro');
-  };
-
-  // Handle initiating test confirmation flow
-  const handleInitiateQuiz = (
-    chapterName: string,
-    chapterIndex: number,
-    typeToUse: TestType,
-    count: number
-  ) => {
-    // 1. Concept Quiz Gating:
-    // Only chapter 1 (index 0 or sortKey === 1) is free sample of Pro.
-    // Chapters 2+ show lock and open PaywallSheet for free users.
+  // Handle chapter row tap
+  const handleChapterTap = (chapterName: string, index: number) => {
     const sortKey = getChapterSortKey(chapterName);
-    const isChapter1 = chapterIndex === 0 || sortKey === 1;
+    const isChapter1 = index === 0 || sortKey === 1;
 
-    if (typeToUse === 'concept' && !isChapter1 && !isUserPro) {
+    // Concept quiz gating: chapter 1 is free sample, chapter 2+ locked for free students
+    if (selectedType === 'concept' && !isChapter1 && !isUserPro) {
       openPaywall(
         texts.testTypes.conceptSampleNote ||
           'chapter 1 is free — the rest glows behind Pro ✨'
@@ -231,18 +211,22 @@ function TestsContent() {
       return;
     }
 
-    // 2. Open slide-up confirmation card (No auto-start)
-    const effectiveCount = count > 0 ? count : 10;
-    const testKey = `${effectiveStandard}_${selectedSubject}_${chapterName}_${typeToUse}`;
+    const chObj = subjectChapters[index];
+    const count =
+      selectedType === 'concept'
+        ? chObj?.conceptCount || 10
+        : chObj?.onewordCount || 10;
+
+    const testKey = `${effectiveStandard}_${selectedSubject}_${chapterName}_${selectedType}`;
     setConfirmModal({
       chapterName,
-      type: typeToUse,
-      count: effectiveCount,
+      type: selectedType,
+      count: count > 0 ? count : 10,
       testKey,
     });
   };
 
-  // Handle final start from confirmation card
+  // Handle start test from confirmation sheet
   const handleConfirmStart = () => {
     if (!confirmModal) return;
     const testUrl = `/tests/${encodeURIComponent(confirmModal.testKey)}`;
@@ -262,7 +246,7 @@ function TestsContent() {
 
   return (
     <div className="flex-1 flex flex-col px-4 pt-4 pb-8 animate-fade-in relative">
-      {/* Top Header */}
+      {/* Top Header (Registered: standard locked, no class chips) */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
@@ -272,200 +256,116 @@ function TestsContent() {
             {effectiveStandard} standard · {medium === 'english' ? 'English' : 'தமிழ்'}
           </p>
         </div>
-
-        {/* Guest one-time standard pick: ONLY visible for guests who haven't locked yet */}
-        {!isRegistered && !guestStandard && (
-          <div className="inline-flex p-1 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
-            {['10th', '12th'].map((cls) => {
-              const isSelected = effectiveStandard === cls;
-              return (
-                <button
-                  key={cls}
-                  type="button"
-                  onClick={() => {
-                    setGuestStandard(cls);
-                    setSelectedSubject('');
-                  }}
-                  className={`min-h-[38px] px-3.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#7C3AED] text-white shadow-xs'
-                      : 'text-[#6D28D9] dark:text-[#DDD6FE] hover:bg-[#FAF5FF] dark:hover:bg-[#230542]'
-                  }`}
-                >
-                  {cls}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
 
       {isLoading ? (
         <SkeletonCard count={3} />
       ) : (
-        <div className="space-y-4">
-          {/* 1. TOP-TO-BOTTOM ORDER: Vertical stack of 3 full-width min-h-[72px] cards */}
-          <div className="space-y-2.5">
-            {/* Card 1: Book-back one-words (Fully free) */}
-            <div
+        <div className="space-y-3">
+          {/* 1. Quiz type — 2 equal boxes in ONE ROW (grid-cols-2) */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Box 1: [📖 book-back one-words] */}
+            <button
+              type="button"
               onClick={() => setSelectedType('oneword')}
-              className={`w-full min-h-[72px] p-4 rounded-2xl transition-all cursor-pointer flex items-center justify-between border ${
+              className={`min-h-[56px] p-3 rounded-2xl text-left font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2 border ${
                 selectedType === 'oneword'
                   ? 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white border-[#7C3AED] shadow-md shadow-[#7C3AED]/20 scale-[1.01]'
                   : 'bg-white dark:bg-[#3B0F6E] text-[#2E1065] dark:text-[#FAF5FF] border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/40 shadow-xs'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    selectedType === 'oneword'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635]'
-                  }`}
-                >
-                  <BookOpen className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black tracking-tight">
-                    {texts.testTypes.oneword}
-                  </h3>
-                  <p
-                    className={`text-[11px] font-bold mt-0.5 ${
-                      selectedType === 'oneword'
-                        ? 'text-[#A3E635]'
-                        : 'text-[#6D28D9]/70 dark:text-[#DDD6FE]/70'
-                    }`}
-                  >
-                    all chapters free ✨
-                  </p>
-                </div>
-              </div>
+              <BookOpen className="w-4 h-4 shrink-0" />
+              <span className="truncate">book-back one-words</span>
+            </button>
 
-              {selectedType === 'oneword' && (
-                <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center shrink-0">
-                  <Check className="w-4 h-4 text-[#A3E635] stroke-[3]" />
-                </div>
-              )}
-            </div>
-
-            {/* Card 2: Concept Quiz (Chapter 1 free sample, Chapters 2+ Pro) */}
-            <div
+            {/* Box 2: [🧠 concept quiz] */}
+            <button
+              type="button"
               onClick={() => setSelectedType('concept')}
-              className={`w-full min-h-[72px] p-4 rounded-2xl transition-all cursor-pointer flex items-center justify-between border ${
+              className={`min-h-[56px] p-3 rounded-2xl text-left font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-2 border ${
                 selectedType === 'concept'
                   ? 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white border-[#7C3AED] shadow-md shadow-[#7C3AED]/20 scale-[1.01]'
                   : 'bg-white dark:bg-[#3B0F6E] text-[#2E1065] dark:text-[#FAF5FF] border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/40 shadow-xs'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-                    selectedType === 'concept'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635]'
-                  }`}
-                >
-                  <Brain className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black tracking-tight">
-                    {texts.testTypes.concept}
-                  </h3>
-                  <p
-                    className={`text-[11px] font-bold mt-0.5 ${
-                      selectedType === 'concept'
-                        ? 'text-[#A3E635]'
-                        : 'text-[#7C3AED] dark:text-[#A3E635]'
-                    }`}
-                  >
-                    {texts.testTypes.ch1FreeSample}
-                  </p>
-                </div>
-              </div>
+              <Brain className="w-4 h-4 shrink-0" />
+              <span className="truncate">concept quiz</span>
+            </button>
+          </div>
 
-              {selectedType === 'concept' && (
-                <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center shrink-0">
-                  <Check className="w-4 h-4 text-[#A3E635] stroke-[3]" />
-                </div>
-              )}
+          {/* 2. Second row — ONE full-width thin box: [⚡ pro quiz — AI powered 🔒] tap → PaywallSheet */}
+          <button
+            type="button"
+            onClick={() =>
+              openPaywall(
+                texts.testTypes.proPitch ||
+                  'daily speed battles · timed rank · full leaderboard ⚡'
+              )
+            }
+            className="w-full min-h-[44px] px-4 py-2 rounded-2xl transition-all cursor-pointer flex items-center justify-between border bg-gradient-to-r from-[#FAF5FF] to-[#F3E8FF] dark:from-[#3B0F6E] dark:to-[#2E1065] border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] text-[#2E1065] dark:text-[#FAF5FF] shadow-xs hover:shadow-md"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm">⚡</span>
+              <span className="text-xs font-black tracking-tight">
+                pro quiz — AI powered
+              </span>
             </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#A3E635] text-[#18181B] shadow-2xs">
+                Pro
+              </span>
+              <Lock className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635]" />
+            </div>
+          </button>
 
-            {/* Card 3: Pro Quiz 🔒 (Locked entry → PaywallSheet with daily-battle pitch) */}
-            <div
-              onClick={handleTapProCard}
-              className="w-full min-h-[72px] p-4 rounded-2xl transition-all cursor-pointer flex items-center justify-between border bg-gradient-to-r from-[#FAF5FF] to-[#F3E8FF] dark:from-[#3B0F6E] dark:to-[#2E1065] border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] text-[#2E1065] dark:text-[#FAF5FF] shadow-xs hover:shadow-md"
+          {/* 3. Select-subject box: single card reading "select subject ▾" expanding INSIDE that same card */}
+          <div className="w-full bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs overflow-hidden transition-all">
+            <button
+              type="button"
+              onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
+              className="w-full min-h-[48px] px-4 py-3 flex items-center justify-between text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] cursor-pointer hover:bg-[#FAF5FF] dark:hover:bg-[#230542] transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center shrink-0 shadow-xs">
-                  <Lock className="w-5 h-5 stroke-[2.5]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-black tracking-tight">
-                      {texts.testTypes.proQuiz}
-                    </h3>
-                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#A3E635] text-[#18181B] shadow-xs">
-                      Pro 👑
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mt-0.5">
-                    daily speed battles · timed rank ⚡
-                  </p>
-                </div>
-              </div>
+              <span>
+                {selectedSubject ? `${selectedSubject} ▾` : 'select subject ▾'}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] transition-transform duration-200 stroke-[2.5] ${
+                  isSubjectDropdownOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
 
-              <div className="w-7 h-7 rounded-full bg-white/60 dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center shrink-0">
-                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+            {isSubjectDropdownOpen && (
+              <div className="p-2 pt-0 border-t border-[#EDE9FE] dark:border-[#DDD6FE]/15 space-y-1 animate-fade-in">
+                {availableSubjects.map((subj) => {
+                  const isSelected = selectedSubject === subj;
+                  return (
+                    <button
+                      key={subj}
+                      type="button"
+                      onClick={() => {
+                        setSelectedSubject(subj);
+                        setIsSubjectDropdownOpen(false);
+                      }}
+                      className={`w-full min-h-[42px] px-3.5 py-2 rounded-xl text-left text-xs font-bold transition-all cursor-pointer flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#7C3AED] text-white'
+                          : 'text-[#2E1065] dark:text-[#FAF5FF] hover:bg-[#FAF5FF] dark:hover:bg-[#230542]'
+                      }`}
+                    >
+                      <span>{subj}</span>
+                      {isSelected && (
+                        <Check className="w-3.5 h-3.5 text-[#A3E635] stroke-[3]" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            </div>
+            )}
           </div>
 
-          {/* 2. BELOW: [ subject ▾ ] dropdown (their standard's subjects) */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5 px-1">
-              <span className="text-[11px] font-black uppercase text-[#7C3AED] dark:text-[#A3E635] tracking-wider">
-                Select Subject 📚
-              </span>
-              <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
-                {availableSubjects.length} subjects
-              </span>
-            </div>
-
-            <div className="relative">
-              <label htmlFor="tests-subject-select" className="sr-only">
-                Subject
-              </label>
-              <select
-                id="tests-subject-select"
-                value={selectedSubject}
-                onChange={(e) => setSelectedSubject(e.target.value)}
-                className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-4 pr-10 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
-              >
-                {availableSubjects.map((subj) => (
-                  <option
-                    key={subj}
-                    value={subj}
-                    className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
-                  >
-                    {subj}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 stroke-[2.5]" />
-            </div>
-          </div>
-
-          {/* 3. BELOW: Chapters of that subject sorted chapter-1 first as cards */}
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <span className="text-[11px] font-black uppercase text-[#7C3AED] dark:text-[#A3E635] tracking-wider">
-                Chapters 📖
-              </span>
-              <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
-                {subjectChapters.length} chapters
-              </span>
-            </div>
-
+          {/* 4. Chapters: after subject is chosen, show chapter rows ONLY: each row = 1 · {chapter name} */}
+          <div className="pt-1">
             {subjectChapters.length === 0 ? (
               <div className="bg-white dark:bg-[#3B0F6E] rounded-2xl p-8 text-center border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
                 <p className="text-xs font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
@@ -473,167 +373,41 @@ function TestsContent() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {subjectChapters.map((ch, index) => {
                   const sortKey = getChapterSortKey(ch.name);
                   const isChapter1 = index === 0 || sortKey === 1;
 
-                  // Active question count based on selectedType
-                  const activeCount =
-                    selectedType === 'concept' ? ch.conceptCount : ch.onewordCount;
-
-                  // Concept Quiz Gating: within each subject, ONLY the chapter-1 concept quiz is free
-                  // Chapters 2+ show lock for free users
-                  const isConceptLocked =
+                  // Concept shows 🔒 on chapters 2+ for free users, one-words all free
+                  const isLocked =
                     selectedType === 'concept' && !isChapter1 && !isUserPro;
+
+                  // Format: 1 · {chapter name} (number + name), nothing else
+                  const cleanName =
+                    ch.name
+                      .replace(/^(?:chapter|unit|ch)?\s*\d+\s*[:.-]?\s*/i, '')
+                      .trim() || ch.name;
+                  const displayRow = `${sortKey !== 999 ? sortKey : index + 1} · ${cleanName}`;
 
                   return (
                     <div
                       key={ch.name}
-                      className="w-full bg-white dark:bg-[#3B0F6E] rounded-2xl p-4 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/40 shadow-xs hover:shadow-md transition-all flex flex-col gap-3 group relative"
+                      onClick={() => handleChapterTap(ch.name, index)}
+                      className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-white dark:bg-[#3B0F6E] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/40 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 text-left group"
                     >
-                      {/* Chapter Title & Number Header */}
-                      <div className="flex items-start justify-between gap-2.5">
-                        <div className="flex items-start gap-3 min-w-0">
-                          <div className="w-8 h-8 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center text-xs font-black shrink-0 mt-0.5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
-                            {sortKey !== 999 ? sortKey : '#'}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] leading-snug line-clamp-2">
-                              {ch.name}
-                            </h4>
-                            <p className="text-[11px] font-bold text-[#7C3AED] dark:text-[#A3E635] mt-0.5">
-                              {selectedSubject}
-                            </p>
-                          </div>
-                        </div>
+                      <span className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                        {displayRow}
+                      </span>
 
-                        {/* Top lock badge if concept quiz ch.2+ is locked */}
-                        {isConceptLocked && (
-                          <span className="px-2.5 py-1 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-[10px] font-black flex items-center gap-1 shrink-0">
-                            <Lock className="w-3 h-3" />
-                            <span>Pro</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Chapter Quiz Rows */}
-                      <div className="pt-2 border-t border-[#FAF5FF] dark:border-[#230542] space-y-2">
-                        {/* Quiz Row 1: Book-back One-words (Fully free) */}
-                        <div
-                          onClick={() =>
-                            handleInitiateQuiz(
-                              ch.name,
-                              index,
-                              'oneword',
-                              ch.onewordCount
-                            )
-                          }
-                          className="p-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] border border-[#EDE9FE] dark:border-[#DDD6FE]/15 flex items-center justify-between gap-2 transition-all cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <BookOpen className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635] shrink-0" />
-                            <span className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
-                              Book-back One-words
-                            </span>
-                            <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60 shrink-0">
-                              · {ch.onewordCount > 0 ? ch.onewordCount : 10} Qs
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] font-black text-[#7C3AED] dark:text-[#A3E635] bg-white dark:bg-[#3B0F6E] px-2 py-0.5 rounded-md shadow-2xs">
-                              free ✨
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleInitiateQuiz(
-                                  ch.name,
-                                  index,
-                                  'oneword',
-                                  ch.onewordCount
-                                );
-                              }}
-                              className="w-8 h-8 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs"
-                              aria-label="Start one-words test"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Quiz Row 2: Concept Quiz (Ch. 1 free sample, Ch. 2+ Pro locked) */}
-                        <div
-                          onClick={() =>
-                            handleInitiateQuiz(
-                              ch.name,
-                              index,
-                              'concept',
-                              ch.conceptCount
-                            )
-                          }
-                          className="p-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] border border-[#EDE9FE] dark:border-[#DDD6FE]/15 flex items-center justify-between gap-2 transition-all cursor-pointer"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Brain className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635] shrink-0" />
-                            <span className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
-                              Concept Quiz
-                            </span>
-                            <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60 shrink-0">
-                              · {ch.conceptCount > 0 ? ch.conceptCount : 10} Qs
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {isChapter1 || isUserPro ? (
-                              <>
-                                <span className="text-[10px] font-black text-[#7C3AED] dark:text-[#A3E635] bg-white dark:bg-[#3B0F6E] px-2 py-0.5 rounded-md shadow-2xs">
-                                  {isChapter1 ? 'sample 🎁' : 'Pro ✨'}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleInitiateQuiz(
-                                      ch.name,
-                                      index,
-                                      'concept',
-                                      ch.conceptCount
-                                    );
-                                  }}
-                                  className="w-8 h-8 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs"
-                                  aria-label="Start concept quiz"
-                                >
-                                  <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-[10px] font-black text-[#7C3AED] dark:text-[#A3E635] bg-white dark:bg-[#3B0F6E] px-2 py-0.5 rounded-md shadow-2xs flex items-center gap-1">
-                                  <Lock className="w-2.5 h-2.5" />
-                                  <span>Pro</span>
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openPaywall(
-                                      texts.testTypes.conceptSampleNote ||
-                                        'chapter 1 is free — the rest glows behind Pro ✨'
-                                    );
-                                  }}
-                                  className="w-8 h-8 rounded-lg bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center hover:bg-[#F3E8FF] transition-all cursor-pointer shadow-xs"
-                                  aria-label="Unlock Pro concept quiz"
-                                >
-                                  <Lock className="w-3.5 h-3.5" />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      {isLocked ? (
+                        <span className="p-1.5 rounded-lg bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 shrink-0">
+                          <Lock className="w-3.5 h-3.5" />
+                        </span>
+                      ) : (
+                        <span className="w-7 h-7 rounded-lg bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center shrink-0 group-hover:bg-[#7C3AED] group-hover:text-white transition-colors">
+                          <Play className="w-3 h-3 fill-current ml-0.5" />
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -644,7 +418,6 @@ function TestsContent() {
       )}
 
       {/* START FLOW: Slide-up confirmation card */}
-      {/* Nothing starts until a chapter/test card is tapped → then slide-up confirmation card */}
       {confirmModal && (
         <div
           role="dialog"
