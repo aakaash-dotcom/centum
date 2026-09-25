@@ -278,7 +278,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           standard: newProfile.standard,
           stream: newProfile.stream,
           medium: newProfile.medium,
-          password: password || undefined,
+          password: password ? password.trim() : undefined,
         }),
       });
     } catch (err) {
@@ -304,8 +304,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): Promise<{ ok: boolean; error?: string; student?: StudentProfile }> => {
     try {
       const cleanPhone = normalizePhone(phone) || phone;
+      const cleanPassword = password.trim();
       const res = await fetch(
-        `/api/login?phone=${encodeURIComponent(cleanPhone)}&password=${encodeURIComponent(password)}`
+        `/api/login?phone=${encodeURIComponent(cleanPhone)}&password=${encodeURIComponent(cleanPassword)}`
       );
       const data = await res.json();
 
@@ -371,13 +372,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): Promise<{ ok: boolean; error?: string }> => {
     try {
       const cleanPhone = normalizePhone(phone) || phone;
+      const cleanPassword = password.trim();
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: 'set-password',
           phone: cleanPhone,
-          password,
+          password: cleanPassword,
         }),
       });
       const data = await res.json();

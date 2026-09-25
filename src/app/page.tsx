@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { StreakChip } from '@/components/StreakChip';
@@ -37,6 +37,24 @@ const CATEGORIES = [
 export default function HomePage() {
   const { student, isRegistered, showToast, medium, setMedium } = useApp();
   const [showOtherClasses, setShowOtherClasses] = useState(false);
+  const [isDemoContent, setIsDemoContent] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/papers?limit=1')
+      .then((res) => {
+        const sourceHeader = res.headers.get('x-data-source');
+        if (sourceHeader === 'mock') {
+          setIsDemoContent(true);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data?.source === 'mock-fallback') {
+          setIsDemoContent(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleUnavailableClick = () => {
     showToast(texts.classes.cookingToast);
@@ -150,6 +168,15 @@ export default function HomePage() {
             </div>
           )}
         </div>
+
+        {/* Demo footnote if env vars missing and mock fallback used */}
+        {isDemoContent && (
+          <div className="pt-2 text-center">
+            <span className="text-[10px] font-bold text-[#6D28D9]/40 dark:text-[#DDD6FE]/40 uppercase tracking-widest">
+              {texts.states.demoFootnote}
+            </span>
+          </div>
+        )}
       </div>
     );
   }
@@ -249,6 +276,15 @@ export default function HomePage() {
           );
         })}
       </div>
+
+      {/* Demo footnote if env vars missing and mock fallback used */}
+      {isDemoContent && (
+        <div className="pt-2 text-center">
+          <span className="text-[10px] font-bold text-[#6D28D9]/40 dark:text-[#DDD6FE]/40 uppercase tracking-widest">
+            {texts.states.demoFootnote}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

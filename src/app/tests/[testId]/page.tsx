@@ -6,7 +6,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Question, QuizResult, UserAnswerRecord } from '@/types';
-import { SAMPLE_QUESTIONS } from '@/data/sampleData';
 import { ScoreRing } from '@/components/ScoreRing';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, RotateCcw, Award, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -25,6 +24,7 @@ export default function ChapterTestRunnerPage() {
   const [isFinished, setIsFinished] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(600);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   const questionStartTimeRef = useRef<number>(Date.now());
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -32,14 +32,16 @@ export default function ChapterTestRunnerPage() {
   // Load and filter questions matching the chapter key
   const loadAndFilterQuestions = (shuffle = false) => {
     setIsLoading(true);
+    setIsError(false);
     fetch(`/api/questions?medium=${medium}`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) throw new Error('questions fetch failed');
+        return res.json();
+      })
       .then((data) => {
         let pool: Question[] = [];
         if (data && data.questions && Array.isArray(data.questions)) {
           pool = data.questions;
-        } else {
-          pool = SAMPLE_QUESTIONS;
         }
 
         // Match by composite key: {classLevel}_{subject}_{chapter}_{type}
@@ -72,14 +74,9 @@ export default function ChapterTestRunnerPage() {
         questionStartTimeRef.current = Date.now();
       })
       .catch(() => {
-        let matched = SAMPLE_QUESTIONS.filter((q) => q.medium === medium);
-        if (shuffle) {
-          matched = [...matched].sort(() => Math.random() - 0.5);
-        }
-        setQuestions(matched);
-        setSecondsRemaining(Math.max(matched.length * 60, 120));
+        setIsError(true);
+        setQuestions([]);
         setIsLoading(false);
-        questionStartTimeRef.current = Date.now();
       });
   };
 
@@ -210,6 +207,24 @@ export default function ChapterTestRunnerPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-12 h-12 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B0F6E] border-t-[#7C3AED] animate-spin mb-4" />
         <p className="text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">{texts.states.loading}</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <span className="text-4xl mb-3">👻</span>
+        <p className="text-base font-bold text-[#2E1065] dark:text-[#FAF5FF] mb-3">
+          {texts.states.signalGhost}
+        </p>
+        <button
+          type="button"
+          onClick={() => loadAndFilterQuestions()}
+          className="min-h-[44px] px-5 py-2.5 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-black shadow-xs cursor-pointer transition-all"
+        >
+          retry 🔄
+        </button>
       </div>
     );
   }

@@ -65,7 +65,9 @@ export const GateSheet: React.FC = () => {
       return;
     }
 
-    if (!password || password.length < 6) {
+    const cleanPassword = password.trim();
+
+    if (!cleanPassword || cleanPassword.length < 6) {
       setErrorMsg(texts.gate.passwordTooShort);
       return;
     }
@@ -78,7 +80,7 @@ export const GateSheet: React.FC = () => {
         standard,
         stream: isHigherSecondary ? stream : undefined,
         district,
-        password,
+        password: cleanPassword,
       });
 
       try {
@@ -109,14 +111,16 @@ export const GateSheet: React.FC = () => {
       return;
     }
 
-    if (!password) {
+    const cleanPassword = password.trim();
+
+    if (!cleanPassword) {
       setErrorMsg('enter your password 🔑');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const res = await login(cleanPhone, password);
+      const res = await login(cleanPhone, cleanPassword);
 
       if (res.ok) {
         try {
@@ -170,23 +174,26 @@ export const GateSheet: React.FC = () => {
       return;
     }
 
-    if (password.length < 6) {
+    const cleanPassword = password.trim();
+    const cleanConfirm = confirmPassword.trim();
+
+    if (cleanPassword.length < 6) {
       setErrorMsg(texts.gate.passwordTooShort);
       return;
     }
 
-    if (password !== confirmPassword) {
+    if (cleanPassword !== cleanConfirm) {
       setErrorMsg(texts.gate.passwordsDontMatch);
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const res = await setupPassword(cleanPhone, password);
+      const res = await setupPassword(cleanPhone, cleanPassword);
 
       if (res.ok) {
         // Automatically login right after setting password
-        const loginRes = await login(cleanPhone, password);
+        const loginRes = await login(cleanPhone, cleanPassword);
         if (loginRes.ok) {
           try {
             confetti({

@@ -96,6 +96,34 @@ export default function AdminPage() {
     }, 2800);
   };
 
+  // Founder Diagnostics
+  const [diagnostics, setDiagnostics] = useState<{
+    source: string;
+    papersCount: number;
+    checkedTime: string;
+  } | null>(null);
+
+  const fetchDiagnostics = async () => {
+    try {
+      const res = await fetch('/api/papers');
+      const sourceHeader = res.headers.get('x-data-source');
+      const data = await res.json();
+      const count = Array.isArray(data?.papers) ? data.papers.length : 0;
+      const src = data?.source || sourceHeader || (data?.ok ? 'live' : 'unknown');
+      setDiagnostics({
+        source: src,
+        papersCount: count,
+        checkedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      });
+    } catch (e) {
+      setDiagnostics({
+        source: 'live-failed',
+        papersCount: 0,
+        checkedTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      });
+    }
+  };
+
   // Screen 1: Founder Authentication
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +135,8 @@ export default function AdminPage() {
       return;
     }
 
-    if (!adminPassword) {
+    const cleanPassword = adminPassword.trim();
+    if (!cleanPassword) {
       setAuthError('password required 🔑');
       return;
     }
@@ -115,17 +144,19 @@ export default function AdminPage() {
     try {
       setIsAuthenticating(true);
       const res = await fetch(
-        `/api/login?phone=${encodeURIComponent(cleanPhone)}&password=${encodeURIComponent(adminPassword)}`
+        `/api/login?phone=${encodeURIComponent(cleanPhone)}&password=${encodeURIComponent(cleanPassword)}`
       );
       const data = await res.json();
 
       if (data.ok) {
         if (data.student?.isAdmin === true) {
           setAdminPhone(cleanPhone);
+          setAdminPassword(cleanPassword);
           setIsAuthenticated(true);
           // Load initial dashboard data using in-memory credentials in request body
-          fetchStats(cleanPhone, adminPassword);
-          fetchStudents(cleanPhone, adminPassword);
+          fetchStats(cleanPhone, cleanPassword);
+          fetchStudents(cleanPhone, cleanPassword);
+          fetchDiagnostics();
         } else {
           // Founder rejection rule: "this way is for the founder 🦉"
           setAuthError(texts.admin.notFounder);
@@ -279,6 +310,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (res.ok && data.ok) {
         triggerToast(texts.admin.contentAdded);
+        fetchDiagnostics();
         // Reset inputs
         if (contentTab === 'Papers') {
           setPaperTitle('');
@@ -313,7 +345,10 @@ export default function AdminPage() {
     e.preventDefault();
     setPasswordChangeStatus('');
 
-    if (newPassword.length < 6) {
+    const cleanOld = oldPassword.trim();
+    const cleanNew = newPassword.trim();
+
+    if (cleanNew.length < 6) {
       setPasswordChangeStatus('new password must be at least 6 characters');
       return;
     }
@@ -325,15 +360,15 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           adminPhone: normalizePhone(adminPhone) || adminPhone,
-          oldPassword,
-          newPassword,
+          oldPassword: cleanOld,
+          newPassword: cleanNew,
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.ok) {
         // Update in-memory password so subsequent requests work without re-login
-        setAdminPassword(newPassword);
+        setAdminPassword(cleanNew);
         setOldPassword('');
         setNewPassword('');
         setShowPasswordChangeForm(false);
@@ -1231,6 +1266,15 @@ export default function AdminPage() {
               </form>
             )}
           </div>
+
+          {/* Founder Diagnostics Footer Strip */}
+          {diagnostics && (
+            <div className="pt-4 pb-2 text-center border-t border-[#EDE9FE] dark:border-[#DDD6FE]/15">
+              <p className="text-[11px] font-mono font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
+                data: <span className={diagnostics.source === 'live' ? 'text-[#16A34A] dark:text-[#4ADE80] font-black' : 'text-[#DC2626] font-black'}>{diagnostics.source}</span> • papers: {diagnostics.papersCount} • checked {diagnostics.checkedTime}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

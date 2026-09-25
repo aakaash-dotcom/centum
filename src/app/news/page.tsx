@@ -4,40 +4,44 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { texts } from '@/data/texts';
 import { News } from '@/types';
-import { SAMPLE_NEWS } from '@/data/sampleData';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { Calendar, ArrowRight } from 'lucide-react';
 
 export default function NewsFeedPage() {
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchNews = () => {
     setIsLoading(true);
+    setIsError(false);
 
     fetch('/api/news')
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted) {
-          if (data && data.news && Array.isArray(data.news)) {
-            setNewsList(data.news);
-          } else {
-            setNewsList(SAMPLE_NEWS);
-          }
+      .then(async (res) => {
+        if (!res.ok) {
+          setIsError(true);
+          setNewsList([]);
           setIsLoading(false);
+          return;
         }
+        const data = await res.json();
+        if (data && data.ok && Array.isArray(data.news)) {
+          setNewsList(data.news);
+        } else {
+          setIsError(true);
+          setNewsList([]);
+        }
+        setIsLoading(false);
       })
       .catch(() => {
-        if (isMounted) {
-          setNewsList(SAMPLE_NEWS);
-          setIsLoading(false);
-        }
+        setIsError(true);
+        setNewsList([]);
+        setIsLoading(false);
       });
+  };
 
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    fetchNews();
   }, []);
 
   return (
@@ -58,6 +62,20 @@ export default function NewsFeedPage() {
       <div className="flex-1 flex flex-col">
         {isLoading ? (
           <SkeletonCard count={3} />
+        ) : isError ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+            <span className="text-4xl mb-3">👻</span>
+            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+              {texts.states.signalGhost}
+            </p>
+            <button
+              type="button"
+              onClick={fetchNews}
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
+            >
+              retry 🔄
+            </button>
+          </div>
         ) : newsList.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
             <span className="text-4xl mb-2">🐶</span>

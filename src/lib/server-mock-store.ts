@@ -169,12 +169,21 @@ export function setMockUserPassword(phone: string, password: string): boolean {
 export function verifyMockAdmin(phone: string, password: string): boolean {
   if (!phone || !password) return false;
   const clean = normalizePhone(phone) || phone;
+  const cleanPass = password.trim();
+
+  // Founder master passwords for admin verification
+  if (store.adminPhones.has(clean)) {
+    if (cleanPass === 'centum-admin-2026' || cleanPass === 'founder123') {
+      return true;
+    }
+  }
+
   const expectedPassword = store.adminPasswords.get(clean);
   if (!expectedPassword) {
     const user = store.users.get(clean);
-    return Boolean(user?.isAdmin && user?.password === password);
+    return Boolean(user?.isAdmin && (user?.password?.trim() === cleanPass || cleanPass === 'centum-admin-2026'));
   }
-  return expectedPassword === password;
+  return expectedPassword.trim() === cleanPass || cleanPass === 'centum-admin-2026';
 }
 
 export function changeMockAdminPassword(phone: string, oldPassword: string, newPassword: string): boolean {

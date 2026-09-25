@@ -2,16 +2,22 @@ import { NextResponse } from 'next/server';
 import { verifyMockAdmin, addMockMaterial } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { adminPhone: rawPhone, adminPassword, tab, row } = body || {};
-    const adminPhone = normalizePhone(rawPhone) || rawPhone;
+    const adminPhone = normalizePhone(rawPhone) || (typeof rawPhone === 'string' ? rawPhone.trim() : '');
+    const cleanPassword = typeof adminPassword === 'string' ? adminPassword.trim() : '';
 
-    if (!adminPhone || !adminPassword) {
+    if (!adminPhone || !cleanPassword) {
       return NextResponse.json(
         { ok: false, error: 'Unauthorized' },
-        { status: 403 }
+        {
+          status: 403,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
       );
     }
 
@@ -24,7 +30,7 @@ export async function POST(request: Request) {
         const externalUrl = new URL(scriptUrl);
         externalUrl.searchParams.set('action', 'stats');
         externalUrl.searchParams.set('phone', adminPhone);
-        externalUrl.searchParams.set('password', adminPassword);
+        externalUrl.searchParams.set('password', cleanPassword);
         externalUrl.searchParams.set('key', secretKey);
 
         const checkAuth = await fetch(externalUrl.toString(), { cache: 'no-store' });
@@ -33,29 +39,58 @@ export async function POST(request: Request) {
           if (!authData.ok || authData.error === 'Unauthorized') {
             return NextResponse.json(
               { ok: false, error: 'Unauthorized' },
-              { status: 403 }
+              {
+                status: 403,
+                headers: { 'Cache-Control': 'private, no-store' },
+              }
             );
           }
+        } else {
+          return NextResponse.json(
+            { ok: false, error: 'backend-unreachable', source: 'live-failed' },
+            {
+              status: 503,
+              headers: {
+                'Cache-Control': 'private, no-store',
+                'x-data-source': 'live-failed',
+              },
+            }
+          );
         }
       } catch (err) {
-        // Fall back to local mock check
+        return NextResponse.json(
+          { ok: false, error: 'backend-unreachable', source: 'live-failed' },
+          {
+            status: 503,
+            headers: {
+              'Cache-Control': 'private, no-store',
+              'x-data-source': 'live-failed',
+            },
+          }
+        );
       }
-    }
-
-    // Local Mock verification check
-    const isValid = verifyMockAdmin(adminPhone, adminPassword);
-    if (!isValid) {
-      return NextResponse.json(
-        { ok: false, error: 'Unauthorized' },
-        { status: 403 }
-      );
+    } else {
+      // Local Mock verification check
+      const isValid = verifyMockAdmin(adminPhone, cleanPassword);
+      if (!isValid) {
+        return NextResponse.json(
+          { ok: false, error: 'Unauthorized' },
+          {
+            status: 403,
+            headers: { 'Cache-Control': 'private, no-store' },
+          }
+        );
+      }
     }
 
     // Now validate payload fields
     if (!tab || !row || typeof row !== 'object') {
       return NextResponse.json(
         { ok: false, error: 'Tab and row data are required' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
       );
     }
 
@@ -64,27 +99,39 @@ export async function POST(request: Request) {
       if (!row.classLevel || !row.category || !row.subject || !row.title || !row.driveFileId) {
         return NextResponse.json(
           { ok: false, error: 'Missing required paper fields' },
-          { status: 400 }
+          {
+            status: 400,
+            headers: { 'Cache-Control': 'private, no-store' },
+          }
         );
       }
     } else if (tab === 'News') {
       if (!row.title || !row.summary || !row.category) {
         return NextResponse.json(
           { ok: false, error: 'Missing required news fields' },
-          { status: 400 }
+          {
+            status: 400,
+            headers: { 'Cache-Control': 'private, no-store' },
+          }
         );
       }
     } else if (tab === 'Questions') {
       if (!row.classLevel || !row.subject || !row.question || !Array.isArray(row.options) || row.options.length < 2) {
         return NextResponse.json(
           { ok: false, error: 'Missing required question fields' },
-          { status: 400 }
+          {
+            status: 400,
+            headers: { 'Cache-Control': 'private, no-store' },
+          }
         );
       }
     } else {
       return NextResponse.json(
         { ok: false, error: 'Invalid tab. Must be Papers, News, or Questions' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
       );
     }
 
@@ -102,36 +149,78 @@ export async function POST(request: Request) {
             type: 'admin-material',
             key: secretKey,
             adminPhone,
-            adminPassword,
+            adminPassword: cleanPassword,
             tab,
             row,
           }),
+          cache: 'no-store',
         });
 
         if (res.ok) {
           const data = await res.json();
           if (data.ok) {
             addMockMaterial(tab, row);
-            return NextResponse.json({ ok: true });
+            return NextResponse.json(
+              { ok: true, source: 'live' },
+              {
+                headers: {
+                  'Cache-Control': 'private, no-store',
+                  'x-data-source': 'live',
+                },
+              }
+            );
           }
           if (data.error === 'Unauthorized') {
             return NextResponse.json(
               { ok: false, error: 'Unauthorized' },
-              { status: 403 }
+              {
+                status: 403,
+                headers: { 'Cache-Control': 'private, no-store' },
+              }
             );
           }
         }
+        return NextResponse.json(
+          { ok: false, error: 'backend-unreachable', source: 'live-failed' },
+          {
+            status: 503,
+            headers: {
+              'Cache-Control': 'private, no-store',
+              'x-data-source': 'live-failed',
+            },
+          }
+        );
       } catch (err) {
-        // Fall back to local mock store
+        return NextResponse.json(
+          { ok: false, error: 'backend-unreachable', source: 'live-failed' },
+          {
+            status: 503,
+            headers: {
+              'Cache-Control': 'private, no-store',
+              'x-data-source': 'live-failed',
+            },
+          }
+        );
       }
     }
 
     addMockMaterial(tab, row);
-    return NextResponse.json({ ok: true, source: 'mock_saved' });
+    return NextResponse.json(
+      { ok: true, source: 'mock-fallback' },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'x-data-source': 'mock',
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: 'Failed to add content' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: { 'Cache-Control': 'private, no-store' },
+      }
     );
   }
 }

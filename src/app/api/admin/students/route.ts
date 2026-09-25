@@ -2,16 +2,22 @@ import { NextResponse } from 'next/server';
 import { verifyMockAdmin, getMockStudents } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { adminPhone: rawPhone, adminPassword } = body || {};
+    const { adminPhone: rawPhone, adminPassword: rawPassword } = body || {};
     const adminPhone = normalizePhone(rawPhone) || rawPhone;
+    const adminPassword = (rawPassword || '').trim();
 
     if (!adminPhone || !adminPassword) {
       return NextResponse.json(
         { ok: false, error: 'Unauthorized' },
-        { status: 403 }
+        {
+          status: 403,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
       );
     }
 
@@ -53,40 +59,102 @@ export async function POST(request: Request) {
               };
             });
 
-            return NextResponse.json({
-              ok: true,
-              students: sanitizedStudents,
-            });
+            return NextResponse.json(
+              {
+                ok: true,
+                students: sanitizedStudents,
+                source: 'live',
+              },
+              {
+                headers: {
+                  'Cache-Control': 'private, no-store',
+                  'x-data-source': 'live',
+                },
+              }
+            );
           }
           if (data.error === 'Unauthorized' || !data.ok) {
             return NextResponse.json(
               { ok: false, error: 'Unauthorized' },
-              { status: 403 }
+              {
+                status: 403,
+                headers: {
+                  'Cache-Control': 'private, no-store',
+                  'x-data-source': 'live',
+                },
+              }
             );
           }
         }
+
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'backend-unreachable',
+            source: 'live-failed',
+          },
+          {
+            status: 503,
+            headers: {
+              'Cache-Control': 'private, no-store',
+              'x-data-source': 'live-failed',
+            },
+          }
+        );
       } catch (err) {
-        // Fall back to local mock store
+        console.warn('Apps Script admin students fetch failed', err);
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'backend-unreachable',
+            source: 'live-failed',
+          },
+          {
+            status: 503,
+            headers: {
+              'Cache-Control': 'private, no-store',
+              'x-data-source': 'live-failed',
+            },
+          }
+        );
       }
     }
 
-    // Local Mock verification
+    // Local Mock verification ONLY when env vars are missing entirely (dev only)
     const isValid = verifyMockAdmin(adminPhone, adminPassword);
     if (!isValid) {
       return NextResponse.json(
         { ok: false, error: 'Unauthorized' },
-        { status: 403 }
+        {
+          status: 403,
+          headers: {
+            'Cache-Control': 'private, no-store',
+            'x-data-source': 'mock',
+          },
+        }
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      students: getMockStudents(),
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        students: getMockStudents(),
+        source: 'mock-fallback',
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'x-data-source': 'mock',
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: 'Unauthorized' },
-      { status: 403 }
+      {
+        status: 403,
+        headers: { 'Cache-Control': 'private, no-store' },
+      }
     );
   }
 }

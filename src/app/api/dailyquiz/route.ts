@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { SAMPLE_DAILY_QUIZZES } from '@/data/sampleData';
-import { DailyQuiz } from '@/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -23,17 +24,59 @@ export async function GET(request: Request) {
       const res = await fetch(externalUrl.toString(), {
         next: { revalidate: 60 },
       });
+
       if (res.ok) {
         const data = await res.json();
-        // data.quiz can be a DailyQuiz object or null
-        return NextResponse.json(data);
+        if (data && data.ok) {
+          return NextResponse.json(
+            {
+              ...data,
+              source: 'live',
+            },
+            {
+              headers: {
+                'Cache-Control': 'public, s-maxage=60',
+                'x-data-source': 'live',
+              },
+            }
+          );
+        }
       }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'backend-unreachable',
+          source: 'live-failed',
+        },
+        {
+          status: 503,
+          headers: {
+            'Cache-Control': 'no-store',
+            'x-data-source': 'live-failed',
+          },
+        }
+      );
     } catch (e) {
-      console.warn('Apps Script dailyquiz fetch failed, falling back', e);
+      console.warn('Apps Script dailyquiz fetch failed', e);
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'backend-unreachable',
+          source: 'live-failed',
+        },
+        {
+          status: 503,
+          headers: {
+            'Cache-Control': 'no-store',
+            'x-data-source': 'live-failed',
+          },
+        }
+      );
     }
   }
 
-  // Fallback sample data
+  // Fallback sample data ONLY when env vars are missing entirely (dev only)
   const found = SAMPLE_DAILY_QUIZZES.find((q) => {
     const matchClass = q.classLevel.toLowerCase() === classLevel.toLowerCase();
     const matchMedium = q.medium === medium;
@@ -41,9 +84,17 @@ export async function GET(request: Request) {
     return matchClass && matchMedium && matchStream;
   });
 
-  return NextResponse.json({
-    ok: true,
-    quiz: found || null,
-    source: 'sample_bundle',
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      quiz: found || null,
+      source: 'mock-fallback',
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=60',
+        'x-data-source': 'mock',
+      },
+    }
+  );
 }

@@ -10,6 +10,7 @@ export const LeaderboardBox: React.FC = () => {
   const { student, quizResults, leaderboardRefreshCount } = useApp();
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
   const studentStandard = student?.standard || '10th';
   const studentPhone = student?.phone || '';
@@ -17,17 +18,27 @@ export const LeaderboardBox: React.FC = () => {
   const studentDistrict = student?.district || '';
 
   const fetchLeaderboard = () => {
+    setIsLoading(true);
+    setIsError(false);
     const url = `/api/leaderboard?standard=${encodeURIComponent(studentStandard)}&phone=${encodeURIComponent(studentPhone)}&name=${encodeURIComponent(studentName)}&district=${encodeURIComponent(studentDistrict)}`;
 
     fetch(url)
-      .then((res) => res.json())
-      .then((data) => {
+      .then(async (res) => {
+        if (!res.ok) {
+          setIsError(true);
+          setIsLoading(false);
+          return;
+        }
+        const data = await res.json();
         if (data && data.leaderboard && Array.isArray(data.leaderboard)) {
           setEntries(data.leaderboard);
+        } else {
+          setIsError(true);
         }
         setIsLoading(false);
       })
       .catch(() => {
+        setIsError(true);
         setIsLoading(false);
       });
   };
@@ -35,6 +46,24 @@ export const LeaderboardBox: React.FC = () => {
   useEffect(() => {
     fetchLeaderboard();
   }, [studentStandard, studentPhone, quizResults.length, leaderboardRefreshCount]);
+
+  if (isError) {
+    return (
+      <div className="w-full bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs text-center py-6">
+        <span className="text-3xl mb-2 block">👻</span>
+        <p className="text-xs font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+          {texts.states.signalGhost}
+        </p>
+        <button
+          type="button"
+          onClick={fetchLeaderboard}
+          className="min-h-[36px] px-4 py-1.5 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
+        >
+          retry 🔄
+        </button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (

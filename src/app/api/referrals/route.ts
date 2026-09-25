@@ -1,18 +1,29 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone') || '';
 
   if (!phone) {
-    return NextResponse.json({
-      ok: true,
-      couponCode: null,
-      discountPercent: 20,
-      share: 150,
-      earnings: { total: 0, pending: 0, paid: 0 },
-      referrals: [],
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        couponCode: null,
+        discountPercent: 20,
+        share: 150,
+        earnings: { total: 0, pending: 0, paid: 0 },
+        referrals: [],
+        source: 'mock-fallback',
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60',
+          'x-data-source': 'mock',
+        },
+      }
+    );
   }
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
@@ -26,12 +37,20 @@ export async function GET(request: Request) {
       externalUrl.searchParams.set('key', secretKey);
 
       const res = await fetch(externalUrl.toString(), {
-        next: { revalidate: 30 },
+        next: { revalidate: 60 },
       });
 
       if (res.ok) {
         const data = await res.json();
-        return NextResponse.json(data);
+        return NextResponse.json(
+          { ...data, source: 'live' },
+          {
+            headers: {
+              'Cache-Control': 'public, s-maxage=60',
+              'x-data-source': 'live',
+            },
+          }
+        );
       }
     } catch (e) {
       console.warn('Apps Script referrals fetch failed, falling back to local info', e);

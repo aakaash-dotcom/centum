@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -9,7 +11,10 @@ export async function POST(request: Request) {
     if (!orderId || !paymentId) {
       return NextResponse.json(
         { ok: false, error: 'Missing payment parameters' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
       );
     }
 
@@ -22,7 +27,10 @@ export async function POST(request: Request) {
       if (!keySecret || keySecret.includes('YOUR_RAZORPAY_SECRET')) {
         return NextResponse.json(
           { ok: false, error: 'verification-unavailable' },
-          { status: 503 }
+          {
+            status: 503,
+            headers: { 'Cache-Control': 'private, no-store' },
+          }
         );
       }
 
@@ -36,7 +44,10 @@ export async function POST(request: Request) {
       if (generatedSignature !== signature) {
         return NextResponse.json(
           { ok: false, error: 'Invalid payment signature' },
-          { status: 400 }
+          {
+            status: 400,
+            headers: { 'Cache-Control': 'private, no-store' },
+          }
         );
       }
     }
@@ -63,32 +74,53 @@ export async function POST(request: Request) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          cache: 'no-store',
         });
 
         if (res.ok) {
           const resData = await res.json();
-          return NextResponse.json({
-            ok: true,
-            verified: true,
-            plan: 'pro',
-            ...resData,
-          });
+          return NextResponse.json(
+            {
+              ok: true,
+              verified: true,
+              plan: 'pro',
+              source: 'live',
+              ...resData,
+            },
+            {
+              headers: {
+                'Cache-Control': 'private, no-store',
+                'x-data-source': 'live',
+              },
+            }
+          );
         }
       } catch (err) {
         console.warn('Apps script payment logging failed, returning verified', err);
       }
     }
 
-    return NextResponse.json({
-      ok: true,
-      verified: true,
-      plan: 'pro',
-      source: 'local_verified',
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        verified: true,
+        plan: 'pro',
+        source: 'mock-fallback',
+      },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'x-data-source': 'mock',
+        },
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: 'Payment verification failed' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: { 'Cache-Control': 'private, no-store' },
+      }
     );
   }
 }

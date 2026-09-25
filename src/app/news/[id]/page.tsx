@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { texts } from '@/data/texts';
 import { News } from '@/types';
-import { SAMPLE_NEWS } from '@/data/sampleData';
 import { ArrowLeft, Calendar, ExternalLink } from 'lucide-react';
 
 export default function NewsDetailPage() {
@@ -14,39 +13,71 @@ export default function NewsDetailPage() {
 
   const [article, setArticle] = useState<News | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchArticle = () => {
     setIsLoading(true);
+    setIsError(false);
 
     fetch('/api/news')
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted) {
-          const list: News[] = data?.news || SAMPLE_NEWS;
-          const found = list.find((n) => n.id === id) || SAMPLE_NEWS[0];
-          setArticle(found);
+      .then(async (res) => {
+        if (!res.ok) {
+          setIsError(true);
+          setArticle(null);
           setIsLoading(false);
+          return;
         }
+        const data = await res.json();
+        const list: News[] = Array.isArray(data?.news) ? data.news : [];
+        const found = list.find((n) => n.id === id);
+        if (found) {
+          setArticle(found);
+        } else {
+          setIsError(true);
+          setArticle(null);
+        }
+        setIsLoading(false);
       })
       .catch(() => {
-        if (isMounted) {
-          const found = SAMPLE_NEWS.find((n) => n.id === id) || SAMPLE_NEWS[0];
-          setArticle(found);
-          setIsLoading(false);
-        }
+        setIsError(true);
+        setArticle(null);
+        setIsLoading(false);
       });
+  };
 
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    fetchArticle();
   }, [id]);
 
-  if (isLoading || !article) {
+  if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-12 h-12 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B0F6E] border-t-[#7C3AED] animate-spin mb-4" />
         <p className="text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">{texts.states.loading}</p>
+      </div>
+    );
+  }
+
+  if (isError || !article) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+        <span className="text-4xl mb-3">👻</span>
+        <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+          {texts.states.signalGhost}
+        </p>
+        <button
+          type="button"
+          onClick={fetchArticle}
+          className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer mb-3"
+        >
+          retry 🔄
+        </button>
+        <Link
+          href="/news"
+          className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] hover:underline"
+        >
+          back to news 📰
+        </Link>
       </div>
     );
   }

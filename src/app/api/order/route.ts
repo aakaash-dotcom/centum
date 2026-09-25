@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -9,7 +11,10 @@ export async function POST(request: Request) {
     if (plan !== 'pro') {
       return NextResponse.json(
         { ok: false, error: 'Only Pro plan can be purchased at this time' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
       );
     }
 
@@ -32,7 +37,7 @@ export async function POST(request: Request) {
           externalUrl.searchParams.set('code', cleanCoupon);
           externalUrl.searchParams.set('key', secretKey);
 
-          const res = await fetch(externalUrl.toString());
+          const res = await fetch(externalUrl.toString(), { cache: 'no-store' });
           if (res.ok) {
             const data = await res.json();
             if (data.valid && data.discountPercent) {
@@ -85,17 +90,23 @@ export async function POST(request: Request) {
               coupon: coupon || '',
             },
           }),
+          cache: 'no-store',
         });
 
         if (rzpResponse.ok) {
           const rzpData = await rzpResponse.json();
           // Send keyId only, NEVER secret
-          return NextResponse.json({
-            ok: true,
-            orderId: rzpData.id,
-            amount: rzpData.amount,
-            keyId,
-          });
+          return NextResponse.json(
+            {
+              ok: true,
+              orderId: rzpData.id,
+              amount: rzpData.amount,
+              keyId,
+            },
+            {
+              headers: { 'Cache-Control': 'private, no-store' },
+            }
+          );
         } else {
           const errData = await rzpResponse.text();
           console.error('Razorpay order creation failed:', errData);
@@ -108,21 +119,35 @@ export async function POST(request: Request) {
     // Fallback order ID for testing when keys are not active or in simulated test mode
     const simulationAllowed = process.env.ALLOW_PAYMENT_SIMULATION === 'true';
     if (!simulationAllowed) {
-      return NextResponse.json({ ok: false, error: 'payments-not-live' }, { status: 503 });
+      return NextResponse.json(
+        { ok: false, error: 'payments-not-live' },
+        {
+          status: 503,
+          headers: { 'Cache-Control': 'private, no-store' },
+        }
+      );
     }
 
     const mockOrderId = `order_test_${Date.now()}`;
-    return NextResponse.json({
-      ok: true,
-      orderId: mockOrderId,
-      amount: amountInPaise,
-      keyId: keyId || 'rzp_test_centum_demo',
-      isSimulated: true,
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        orderId: mockOrderId,
+        amount: amountInPaise,
+        keyId: keyId || 'rzp_test_centum_demo',
+        isSimulated: true,
+      },
+      {
+        headers: { 'Cache-Control': 'private, no-store' },
+      }
+    );
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: 'Order creation failed' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: { 'Cache-Control': 'private, no-store' },
+      }
     );
   }
 }

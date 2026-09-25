@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Paper, PaperCategory } from '@/types';
-import { SAMPLE_PAPERS } from '@/data/sampleData';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { FileText, ArrowRight, Sparkles, Lock, ChevronDown } from 'lucide-react';
 
@@ -84,35 +83,40 @@ function MaterialsContent() {
   const [showBothMediums, setShowBothMediums] = useState<boolean>(false);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [visibleCount, setVisibleCount] = useState<number>(40);
 
   // Fetch papers for the locked standard (retrieves both mediums for instant client toggle)
-  useEffect(() => {
-    let isMounted = true;
+  const fetchPapers = () => {
     setIsLoading(true);
+    setIsError(false);
 
     fetch(`/api/papers?classLevel=${encodeURIComponent(effectiveStandard)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted) {
-          if (data && data.papers && Array.isArray(data.papers)) {
-            setPapers(data.papers);
-          } else {
-            setPapers(SAMPLE_PAPERS);
-          }
+      .then(async (res) => {
+        if (!res.ok) {
+          setIsError(true);
+          setPapers([]);
           setIsLoading(false);
+          return;
         }
+        const data = await res.json();
+        if (data && data.ok && Array.isArray(data.papers)) {
+          setPapers(data.papers);
+        } else {
+          setIsError(true);
+          setPapers([]);
+        }
+        setIsLoading(false);
       })
       .catch(() => {
-        if (isMounted) {
-          setPapers(SAMPLE_PAPERS);
-          setIsLoading(false);
-        }
+        setIsError(true);
+        setPapers([]);
+        setIsLoading(false);
       });
+  };
 
-    return () => {
-      isMounted = false;
-    };
+  useEffect(() => {
+    fetchPapers();
   }, [effectiveStandard]);
 
   // Papers matching standard
@@ -418,6 +422,20 @@ function MaterialsContent() {
       <div className="flex-1 flex flex-col">
         {isLoading ? (
           <SkeletonCard count={3} />
+        ) : isError ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+            <span className="text-4xl mb-3">👻</span>
+            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+              {texts.states.signalGhost}
+            </p>
+            <button
+              type="button"
+              onClick={fetchPapers}
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
+            >
+              retry 🔄
+            </button>
+          </div>
         ) : filteredPapers.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
             <span className="text-4xl mb-2">🐶</span>

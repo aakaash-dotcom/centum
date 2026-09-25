@@ -1,11 +1,21 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const phone = searchParams.get('phone') || '';
 
   if (!phone) {
-    return NextResponse.json({ ok: true, plan: 'free' });
+    return NextResponse.json(
+      { ok: true, plan: 'free', source: 'live' },
+      {
+        headers: {
+          'Cache-Control': 'private, no-store',
+          'x-data-source': 'live',
+        },
+      }
+    );
   }
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
@@ -19,24 +29,41 @@ export async function GET(request: Request) {
       externalUrl.searchParams.set('key', secretKey);
 
       const res = await fetch(externalUrl.toString(), {
-        next: { revalidate: 15 },
+        cache: 'no-store',
       });
 
       if (res.ok) {
         const data = await res.json();
-        return NextResponse.json({
-          ok: true,
-          plan: data.plan || 'free',
-        });
+        return NextResponse.json(
+          {
+            ok: true,
+            plan: data.plan || 'free',
+            source: 'live',
+          },
+          {
+            headers: {
+              'Cache-Control': 'private, no-store',
+              'x-data-source': 'live',
+            },
+          }
+        );
       }
     } catch (e) {
-      console.warn('Apps Script plan fetch failed, falling back to free', e);
+      console.warn('Apps Script plan fetch failed', e);
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    plan: 'free',
-    source: 'default',
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      plan: 'free',
+      source: 'mock-fallback',
+    },
+    {
+      headers: {
+        'Cache-Control': 'private, no-store',
+        'x-data-source': 'mock',
+      },
+    }
+  );
 }
