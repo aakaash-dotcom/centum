@@ -54,12 +54,17 @@ export default function ChapterTestRunnerPage() {
               const c = String(q.classLevel || '').trim().toLowerCase();
               const target = cls.toLowerCase();
               const matchClass = c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
+              const qSubj = String(q.subject || '').trim().toLowerCase();
+              const qChapter = String(q.chapter || '').trim().toLowerCase();
+              const qType = String(q.type || '').trim().toLowerCase();
+              const qMedium = String(q.medium || '').trim().toLowerCase();
+
               return (
                 matchClass &&
-                q.subject.toLowerCase() === subj.toLowerCase() &&
-                (ch.toLowerCase() === 'all' || q.chapter.toLowerCase() === ch.toLowerCase()) &&
-                (tp === 'pro' || q.type === tp) &&
-                q.medium === medium
+                qSubj === subj.toLowerCase() &&
+                (ch.toLowerCase() === 'all' || qChapter === ch.toLowerCase()) &&
+                (tp.toLowerCase() === 'pro' || qType === tp.toLowerCase()) &&
+                qMedium === String(medium || '').trim().toLowerCase()
               );
             }
           );
@@ -67,7 +72,9 @@ export default function ChapterTestRunnerPage() {
 
         // Fallback: match by medium and class
         if (matched.length === 0) {
-          matched = pool.filter((q) => q.medium === medium);
+          matched = pool.filter(
+            (q) => String(q.medium || '').trim().toLowerCase() === String(medium || '').trim().toLowerCase()
+          );
         }
 
         if (shuffle) {

@@ -47,12 +47,12 @@ function TestsContent() {
   // If registered: their standard is locked from profile (12th or 10th), no class chips
   // If guest: use guestStandard if chosen, otherwise default 10th
   const effectiveStandard = isRegistered
-    ? student?.standard === '12th'
+    ? String(student?.standard || '').trim().toLowerCase() === '12th'
       ? '12th'
       : '10th'
     : guestStandard || '10th';
 
-  const isUserPro = plan === 'pro' || plan === 'live';
+  const isUserPro = String(plan || '').toLowerCase() === 'pro' || String(plan || '').toLowerCase() === 'live';
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,7 +106,7 @@ function TestsContent() {
       const c = String(q.classLevel || '').trim().toLowerCase();
       const target = effectiveStandard.toLowerCase();
       const matchClass = c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
-      return matchClass && q.medium === medium;
+      return matchClass && String(q.medium || '').toLowerCase() === String(medium || '').toLowerCase();
     });
   }, [questions, effectiveStandard, medium]);
 
@@ -169,16 +169,17 @@ function TestsContent() {
       )
       .forEach((q) => {
         const ch = q.chapter || 'General';
+        const qType = String(q.type || '').trim().toLowerCase();
         if (!map.has(ch)) {
           map.set(ch, {
             name: ch,
-            onewordCount: q.type === 'oneword' ? 1 : 0,
-            conceptCount: q.type === 'concept' ? 1 : 0,
+            onewordCount: qType === 'oneword' ? 1 : 0,
+            conceptCount: qType === 'concept' ? 1 : 0,
           });
         } else {
           const item = map.get(ch)!;
-          if (q.type === 'oneword') item.onewordCount += 1;
-          if (q.type === 'concept') item.conceptCount += 1;
+          if (qType === 'oneword') item.onewordCount += 1;
+          if (qType === 'concept') item.conceptCount += 1;
         }
       });
 
@@ -249,7 +250,7 @@ function TestsContent() {
             {texts.nav.tests} 🧠
           </h1>
           <p className="text-[11px] font-bold text-[#7C3AED] dark:text-[#A3E635]">
-            {effectiveStandard} standard · {medium === 'english' ? 'English' : 'தமிழ்'}
+            {effectiveStandard} standard · {String(medium || '').toLowerCase() === 'english' ? 'English' : 'தமிழ்'}
           </p>
         </div>
       </div>

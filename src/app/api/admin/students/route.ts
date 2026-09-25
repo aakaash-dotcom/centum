@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyMockAdmin, getMockStudents } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
+import { normClass, normMedium, normPlan } from '@/app/api/papers/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,10 +53,10 @@ export async function POST(request: Request) {
                 joined: s.joined || s.timestamp || 'Recent',
                 name: s.name,
                 phone: masked,
-                standard: s.standard,
+                standard: normClass(s.standard),
                 stream: s.stream || '—',
-                medium: s.medium || 'english',
-                plan: s.plan || 'free',
+                medium: normMedium(s.medium),
+                plan: normPlan(s.plan),
               };
             });
 

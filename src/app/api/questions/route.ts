@@ -10,6 +10,12 @@ export const normClass = (v: unknown) => {
   return s; // 6th–9th, 11th pass through text-normalized
 };
 
+export const normMedium = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'english' | 'tamil'
+export const normPlan = (v: unknown) => {
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === 'pro' || s === 'live' ? s : 'free';
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel');
@@ -35,6 +41,9 @@ export async function GET(request: Request) {
           const normalizedQuestions = data.questions.map((q: any) => ({
             ...q,
             classLevel: normClass(q.classLevel),
+            medium: normMedium(q.medium),
+            type: String(q.type ?? '').trim().toLowerCase(),
+            plan: normPlan(q.plan),
           }));
           return NextResponse.json(
             {
@@ -89,7 +98,14 @@ export async function GET(request: Request) {
   }
 
   // Fallback to bundled sample questions ONLY when env vars are missing entirely (dev only)
-  let questions = SAMPLE_QUESTIONS;
+  let questions = SAMPLE_QUESTIONS.map((q) => ({
+    ...q,
+    classLevel: normClass(q.classLevel),
+    medium: normMedium(q.medium),
+    type: String(q.type ?? '').trim().toLowerCase(),
+    plan: normPlan(q.plan),
+  }));
+
   if (classLevel) {
     questions = questions.filter(
       (q) => String(q.classLevel || '').toLowerCase() === classLevel.toLowerCase()
@@ -101,7 +117,9 @@ export async function GET(request: Request) {
     );
   }
   if (medium) {
-    questions = questions.filter((q) => q.medium === medium);
+    questions = questions.filter(
+      (q) => String(q.medium || '').toLowerCase() === medium.toLowerCase()
+    );
   }
 
   return NextResponse.json(

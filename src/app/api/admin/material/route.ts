@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyMockAdmin, addMockMaterial } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
-import { normClass } from '@/app/api/papers/route';
+import { normClass, normMedium, normCategory, normPlan } from '@/app/api/papers/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,13 +136,11 @@ export async function POST(request: Request) {
       );
     }
 
-    if (row && row.classLevel) {
-      row.classLevel = normClass(row.classLevel);
-    }
-
-    // Restrict plan dropdown to free or pro
-    if (row.plan && row.plan !== 'free' && row.plan !== 'pro') {
-      row.plan = 'free';
+    if (row) {
+      if (row.classLevel) row.classLevel = normClass(row.classLevel);
+      if (row.medium) row.medium = normMedium(row.medium);
+      if (row.category) row.category = normCategory(row.category);
+      if (row.plan) row.plan = normPlan(row.plan);
     }
 
     if (scriptUrl && secretKey) {

@@ -111,19 +111,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load persisted state on client mount
   useEffect(() => {
     try {
-      const savedMedium = localStorage.getItem(MEDIUM_STORAGE_KEY) as Medium | null;
-      if (savedMedium === 'english' || savedMedium === 'tamil') {
-        setMediumState(savedMedium);
+      const rawSavedMedium = localStorage.getItem(MEDIUM_STORAGE_KEY);
+      if (rawSavedMedium) {
+        const norm = String(rawSavedMedium).trim().toLowerCase();
+        if (norm === 'english' || norm === 'tamil') {
+          setMediumState(norm as Medium);
+        }
       }
 
-      const savedPlan = localStorage.getItem(PLAN_STORAGE_KEY) as PlanType | null;
-      if (savedPlan === 'free' || savedPlan === 'pro' || savedPlan === 'live') {
-        setPlanState(savedPlan);
+      const rawSavedPlan = localStorage.getItem(PLAN_STORAGE_KEY);
+      if (rawSavedPlan) {
+        const norm = String(rawSavedPlan).trim().toLowerCase();
+        if (norm === 'free' || norm === 'pro' || norm === 'live') {
+          setPlanState(norm as PlanType);
+        }
       }
 
       const savedStudent = localStorage.getItem(STUDENT_STORAGE_KEY);
       if (savedStudent) {
         const parsed: StudentProfile = JSON.parse(savedStudent);
+        if (parsed.medium) {
+          const normM = String(parsed.medium).trim().toLowerCase();
+          parsed.medium = (normM === 'tamil' ? 'tamil' : 'english') as Medium;
+        }
+        if (parsed.plan) {
+          const normP = String(parsed.plan).trim().toLowerCase();
+          parsed.plan = (normP === 'pro' || normP === 'live' ? normP : 'free') as PlanType;
+        }
         setStudent(parsed);
         // Automatically sync medium from stored student profile if present
         if (parsed.medium) {
@@ -309,16 +323,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         `/api/login?phone=${encodeURIComponent(cleanPhone)}&password=${encodeURIComponent(cleanPassword)}`
       );
       const data = await res.json();
-
       if (data.ok && data.student) {
+        const rawMed = String(data.student.medium || medium).trim().toLowerCase();
+        const normMed: Medium = rawMed === 'tamil' ? 'tamil' : 'english';
+        const rawPln = String(data.student.plan || 'free').trim().toLowerCase();
+        const normPln: PlanType = rawPln === 'pro' || rawPln === 'live' ? rawPln : 'free';
+
         const loggedStudent: StudentProfile = {
           name: data.student.name,
           phone: data.student.phone,
           district: data.student.district,
           standard: data.student.standard,
           stream: data.student.stream,
-          medium: data.student.medium || medium,
-          plan: data.student.plan || 'free',
+          medium: normMed,
+          plan: normPln,
           registeredAt: data.student.registeredAt || new Date().toISOString(),
           isAdmin: Boolean(data.student.isAdmin),
         };

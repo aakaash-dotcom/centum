@@ -4,6 +4,7 @@ import {
   findMockUser,
   setMockUserPassword,
 } from '@/lib/server-mock-store';
+import { normClass, normMedium, normPlan } from '@/app/api/papers/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
         if (res.ok) {
           const data = await res.json();
           if (data.ok) {
-            const studentData = data.student
+            const rawStudent = data.student
               ? {
                   ...data.student,
                   phone: data.student.phone || phone,
@@ -62,6 +63,13 @@ export async function GET(request: Request) {
                   plan: data.plan || 'free',
                   isAdmin: Boolean(data.isAdmin),
                 };
+
+            const studentData = {
+              ...rawStudent,
+              standard: normClass(rawStudent.standard),
+              medium: normMedium(rawStudent.medium),
+              plan: normPlan(rawStudent.plan),
+            };
             return NextResponse.json(
               { ok: true, student: studentData, source: 'live' },
               {
@@ -179,10 +187,10 @@ export async function GET(request: Request) {
           name: mockUser.name,
           phone: mockUser.phone,
           district: mockUser.district,
-          standard: mockUser.standard,
+          standard: normClass(mockUser.standard),
           stream: mockUser.stream,
-          medium: mockUser.medium,
-          plan: mockUser.plan,
+          medium: normMedium(mockUser.medium),
+          plan: normPlan(mockUser.plan),
           isAdmin: Boolean(mockUser.isAdmin),
         },
         source: 'mock-fallback',

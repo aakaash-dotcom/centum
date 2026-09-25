@@ -149,9 +149,10 @@ function ClassPageContent() {
 
   // Exam type options
   const availableExams = useMemo(() => {
-    const relevantPapers = standardPapers.filter(
-      (p) => p.category === 'pyq' || p.category === 'model'
-    );
+    const relevantPapers = standardPapers.filter((p) => {
+      const cat = String(p.category || '').toLowerCase();
+      return cat === 'pyq' || cat === 'model';
+    });
     const keysSet = new Set<string>();
     relevantPapers.forEach((p) => {
       const key = getExamCanonicalKey(p.exam);
@@ -174,8 +175,10 @@ function ClassPageContent() {
   // Filtered papers
   const filteredPapers = useMemo(() => {
     return standardPapers.filter((p) => {
-      const matchCategory = p.category === selectedCategory;
-      const matchMedium = showBothMediums ? true : p.medium === medium;
+      const matchCategory = String(p.category || '').toLowerCase() === String(selectedCategory || '').toLowerCase();
+      const matchMedium = showBothMediums
+        ? true
+        : String(p.medium || '').toLowerCase() === String(medium || '').toLowerCase();
       const matchSubject =
         selectedSubject === 'All' ||
         normalizeSubject(p.subject).toLowerCase() === selectedSubject.toLowerCase();
@@ -214,8 +217,8 @@ function ClassPageContent() {
   const visiblePapers = filteredPapers.slice(0, visibleCount);
   const hasMorePapers = filteredPapers.length > visibleCount;
 
-  const isUserPro = plan === 'pro' || plan === 'live';
-  const isPyqOrModel = selectedCategory === 'pyq' || selectedCategory === 'model';
+  const isUserPro = String(plan || '').toLowerCase() === 'pro' || String(plan || '').toLowerCase() === 'live';
+  const isPyqOrModel = String(selectedCategory || '').toLowerCase() === 'pyq' || String(selectedCategory || '').toLowerCase() === 'model';
 
   const handleOpenPaper = (paper: Paper, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -231,7 +234,7 @@ function ClassPageContent() {
       router.push(`/viewer?${query.toString()}`);
     };
 
-    if (paper.plan === 'pro') {
+    if (String(paper.plan || '').toLowerCase() === 'pro') {
       if (!isRegistered) {
         openGate(() => {
           navigateToViewer();
@@ -272,7 +275,7 @@ function ClassPageContent() {
               {effectiveStandard}
             </h1>
             <p className="text-[11px] font-bold text-[#7C3AED] dark:text-[#A3E635]">
-              {medium === 'english' ? 'English' : 'தமிழ்'} medium
+              {String(medium || '').toLowerCase() === 'english' ? 'English' : 'தமிழ்'} medium
             </p>
           </div>
         </div>
@@ -405,7 +408,7 @@ function ClassPageContent() {
         ) : (
           <div className="space-y-3">
             {visiblePapers.map((paper) => {
-              const isLockedForUser = paper.plan === 'pro' && !isUserPro && isRegistered;
+              const isLockedForUser = String(paper.plan || '').toLowerCase() === 'pro' && !isUserPro && isRegistered;
 
               return (
                 <div
@@ -431,14 +434,14 @@ function ClassPageContent() {
                           </span>
                           {paper.medium && (
                             <span className="text-[10px] font-semibold text-[#6D28D9]/50 dark:text-[#DDD6FE]/50">
-                              · {paper.medium === 'english' ? 'English' : 'தமிழ்'}
+                              · {String(paper.medium).toLowerCase() === 'english' ? 'English' : 'தமிழ்'}
                             </span>
                           )}
                         </div>
                       </div>
                     </div>
 
-                    {paper.plan === 'pro' && (
+                    {String(paper.plan || '').toLowerCase() === 'pro' && (
                       <span className="px-2 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-[10px] font-black flex items-center gap-1 shrink-0">
                         <Lock className="w-2.5 h-2.5" />
                         <span>Pro</span>

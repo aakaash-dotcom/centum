@@ -10,6 +10,13 @@ export const normClass = (v: unknown) => {
   return s; // 6th–9th, 11th pass through text-normalized
 };
 
+export const normMedium = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'english' | 'tamil'
+export const normCategory = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'pyq' | 'model' | 'important' | 'book'
+export const normPlan = (v: unknown) => {
+  const s = String(v ?? '').trim().toLowerCase();
+  return s === 'pro' || s === 'live' ? s : 'free';
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel');
@@ -34,6 +41,9 @@ export async function GET(request: Request) {
           const normalizedPapers = data.papers.map((p: any) => ({
             ...p,
             classLevel: normClass(p.classLevel),
+            medium: normMedium(p.medium),
+            category: normCategory(p.category),
+            plan: normPlan(p.plan),
           }));
           return NextResponse.json(
             {
@@ -89,14 +99,23 @@ export async function GET(request: Request) {
   }
 
   // Fallback to bundled sample data ONLY when env vars are missing entirely (dev only)
-  let papers = SAMPLE_PAPERS;
+  let papers = SAMPLE_PAPERS.map((p) => ({
+    ...p,
+    classLevel: normClass(p.classLevel),
+    medium: normMedium(p.medium),
+    category: normCategory(p.category),
+    plan: normPlan(p.plan),
+  }));
+
   if (classLevel) {
     papers = papers.filter(
       (p) => String(p.classLevel || '').toLowerCase() === classLevel.toLowerCase()
     );
   }
   if (medium) {
-    papers = papers.filter((p) => p.medium === medium);
+    papers = papers.filter(
+      (p) => String(p.medium || '').toLowerCase() === medium.toLowerCase()
+    );
   }
 
   return NextResponse.json(

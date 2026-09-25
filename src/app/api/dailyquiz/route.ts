@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { SAMPLE_DAILY_QUIZZES } from '@/data/sampleData';
+import { normClass, normMedium } from '@/app/api/papers/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,9 +29,17 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok) {
+          const normalizedQuiz = data.quiz
+            ? {
+                ...data.quiz,
+                classLevel: normClass(data.quiz.classLevel),
+                medium: normMedium(data.quiz.medium),
+              }
+            : null;
           return NextResponse.json(
             {
               ...data,
+              quiz: normalizedQuiz,
               source: 'live',
             },
             {
@@ -82,7 +91,7 @@ export async function GET(request: Request) {
   // Fallback sample data ONLY when env vars are missing entirely (dev only)
   const found = SAMPLE_DAILY_QUIZZES.find((q) => {
     const matchClass = String(q.classLevel || '').toLowerCase() === classLevel.toLowerCase();
-    const matchMedium = q.medium === medium;
+    const matchMedium = String(q.medium || '').toLowerCase() === String(medium || '').toLowerCase();
     const matchStream = !stream || !q.stream || q.stream.toLowerCase() === stream.toLowerCase();
     return matchClass && matchMedium && matchStream;
   });
