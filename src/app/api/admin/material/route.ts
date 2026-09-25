@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyMockAdmin, addMockMaterial } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
+import { normClass } from '@/app/api/papers/route';
 
 export const dynamic = 'force-dynamic';
 
@@ -133,6 +134,10 @@ export async function POST(request: Request) {
           headers: { 'Cache-Control': 'private, no-store' },
         }
       );
+    }
+
+    if (row && row.classLevel) {
+      row.classLevel = normClass(row.classLevel);
     }
 
     // Restrict plan dropdown to free or pro

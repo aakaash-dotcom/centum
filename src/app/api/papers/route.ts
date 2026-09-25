@@ -3,6 +3,13 @@ import { SAMPLE_PAPERS } from '@/data/sampleData';
 
 export const dynamic = 'force-dynamic';
 
+export const normClass = (v: unknown) => {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (s === '10' || s === '10th') return '10th';
+  if (s === '12' || s === '12th') return '12th';
+  return s; // 6th–9th, 11th pass through text-normalized
+};
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel');
@@ -18,21 +25,27 @@ export async function GET(request: Request) {
       externalUrl.searchParams.set('key', secretKey);
 
       const res = await fetch(externalUrl.toString(), {
-        next: { revalidate: 300 },
+        cache: 'no-store',
       });
 
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.papers)) {
+          const normalizedPapers = data.papers.map((p: any) => ({
+            ...p,
+            classLevel: normClass(p.classLevel),
+          }));
           return NextResponse.json(
             {
               ...data,
+              papers: normalizedPapers,
               source: 'live',
             },
             {
               headers: {
-                'Cache-Control': 'public, s-maxage=60',
+                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
                 'x-data-source': 'live',
+                'x-cache-version': 'cdn-v1',
               },
             }
           );
@@ -51,6 +64,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'no-store',
             'x-data-source': 'live-failed',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -67,6 +81,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'no-store',
             'x-data-source': 'live-failed',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -77,7 +92,7 @@ export async function GET(request: Request) {
   let papers = SAMPLE_PAPERS;
   if (classLevel) {
     papers = papers.filter(
-      (p) => p.classLevel.toLowerCase() === classLevel.toLowerCase()
+      (p) => String(p.classLevel || '').toLowerCase() === classLevel.toLowerCase()
     );
   }
   if (medium) {
@@ -92,8 +107,9 @@ export async function GET(request: Request) {
     },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=60',
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
         'x-data-source': 'mock',
+        'x-cache-version': 'cdn-v1',
       },
     }
   );

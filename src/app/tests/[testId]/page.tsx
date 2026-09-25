@@ -50,12 +50,18 @@ export default function ChapterTestRunnerPage() {
         if (parts.length >= 4) {
           const [cls, subj, ch, tp] = parts;
           matched = pool.filter(
-            (q) =>
-              q.classLevel.toLowerCase() === cls.toLowerCase() &&
-              q.subject.toLowerCase() === subj.toLowerCase() &&
-              (ch.toLowerCase() === 'all' || q.chapter.toLowerCase() === ch.toLowerCase()) &&
-              (tp === 'pro' || q.type === tp) &&
-              q.medium === medium
+            (q) => {
+              const c = String(q.classLevel || '').trim().toLowerCase();
+              const target = cls.toLowerCase();
+              const matchClass = c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
+              return (
+                matchClass &&
+                q.subject.toLowerCase() === subj.toLowerCase() &&
+                (ch.toLowerCase() === 'all' || q.chapter.toLowerCase() === ch.toLowerCase()) &&
+                (tp === 'pro' || q.type === tp) &&
+                q.medium === medium
+              );
+            }
           );
         }
 

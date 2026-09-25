@@ -22,6 +22,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'private, no-store',
             'x-data-source': 'live',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -67,6 +68,7 @@ export async function GET(request: Request) {
                 headers: {
                   'Cache-Control': 'private, no-store',
                   'x-data-source': 'live',
+                  'x-cache-version': 'cdn-v1',
                 },
               }
             );
@@ -83,6 +85,7 @@ export async function GET(request: Request) {
               headers: {
                 'Cache-Control': 'private, no-store',
                 'x-data-source': 'live',
+                'x-cache-version': 'cdn-v1',
               },
             }
           );
@@ -99,6 +102,7 @@ export async function GET(request: Request) {
             headers: {
               'Cache-Control': 'private, no-store',
               'x-data-source': 'live-failed',
+              'x-cache-version': 'cdn-v1',
             },
           }
         );
@@ -115,6 +119,7 @@ export async function GET(request: Request) {
             headers: {
               'Cache-Control': 'private, no-store',
               'x-data-source': 'live-failed',
+              'x-cache-version': 'cdn-v1',
             },
           }
         );
@@ -130,6 +135,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'private, no-store',
             'x-data-source': 'mock',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -142,6 +148,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'private, no-store',
             'x-data-source': 'mock',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -159,6 +166,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'private, no-store',
             'x-data-source': 'mock',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -183,6 +191,7 @@ export async function GET(request: Request) {
         headers: {
           'Cache-Control': 'private, no-store',
           'x-data-source': 'mock',
+          'x-cache-version': 'cdn-v1',
         },
       }
     );

@@ -19,8 +19,9 @@ export async function GET(request: Request) {
       },
       {
         headers: {
-          'Cache-Control': 'public, s-maxage=60',
+          'Cache-Control': 'private, no-store',
           'x-data-source': 'mock',
+          'x-cache-version': 'cdn-v1',
         },
       }
     );
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
       externalUrl.searchParams.set('key', secretKey);
 
       const res = await fetch(externalUrl.toString(), {
-        next: { revalidate: 60 },
+        cache: 'no-store',
       });
 
       if (res.ok) {
@@ -46,8 +47,9 @@ export async function GET(request: Request) {
           { ...data, source: 'live' },
           {
             headers: {
-              'Cache-Control': 'public, s-maxage=60',
+              'Cache-Control': 'private, no-store',
               'x-data-source': 'live',
+              'x-cache-version': 'cdn-v1',
             },
           }
         );
@@ -62,42 +64,51 @@ export async function GET(request: Request) {
   const hasReferralCode = phone.length >= 4;
   const couponCode = hasReferralCode ? `CENTUM${phone.slice(-4)}` : null;
 
-  return NextResponse.json({
-    ok: true,
-    couponCode,
-    discountPercent: 20,
-    share: 150,
-    earnings: hasReferralCode
-      ? { total: 450, pending: 150, paid: 300 }
-      : { total: 0, pending: 0, paid: 0 },
-    referrals: hasReferralCode
-      ? [
-          {
-            id: 'ref-1',
-            date: 'Sep 21, 2026',
-            maskedPhone: '98****4120',
-            amount: 639,
-            share: 150,
-            status: 'paid',
-          },
-          {
-            id: 'ref-2',
-            date: 'Sep 19, 2026',
-            maskedPhone: '94****8831',
-            amount: 639,
-            share: 150,
-            status: 'paid',
-          },
-          {
-            id: 'ref-3',
-            date: 'Yesterday',
-            maskedPhone: '97****5219',
-            amount: 639,
-            share: 150,
-            status: 'pending',
-          },
-        ]
-      : [],
-    source: 'sample_bundle',
-  });
+  return NextResponse.json(
+    {
+      ok: true,
+      couponCode,
+      discountPercent: 20,
+      share: 150,
+      earnings: hasReferralCode
+        ? { total: 450, pending: 150, paid: 300 }
+        : { total: 0, pending: 0, paid: 0 },
+      referrals: hasReferralCode
+        ? [
+            {
+              id: 'ref-1',
+              date: 'Sep 21, 2026',
+              maskedPhone: '98****4120',
+              amount: 639,
+              share: 150,
+              status: 'paid',
+            },
+            {
+              id: 'ref-2',
+              date: 'Sep 19, 2026',
+              maskedPhone: '94****8831',
+              amount: 639,
+              share: 150,
+              status: 'paid',
+            },
+            {
+              id: 'ref-3',
+              date: 'Yesterday',
+              maskedPhone: '97****5219',
+              amount: 639,
+              share: 150,
+              status: 'pending',
+            },
+          ]
+        : [],
+      source: 'mock-fallback',
+    },
+    {
+      headers: {
+        'Cache-Control': 'private, no-store',
+        'x-data-source': 'mock',
+        'x-cache-version': 'cdn-v1',
+      },
+    }
+  );
 }

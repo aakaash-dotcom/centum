@@ -121,9 +121,11 @@ function MaterialsContent() {
 
   // Papers matching standard
   const standardPapers = useMemo(() => {
-    return papers.filter(
-      (p) => p.classLevel.toLowerCase() === effectiveStandard.toLowerCase()
-    );
+    return papers.filter((p) => {
+      const c = String(p.classLevel || '').trim().toLowerCase();
+      const target = effectiveStandard.toLowerCase();
+      return c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
+    });
   }, [papers, effectiveStandard]);
 
   // Subject dropdown options = subjects present in the current data for that standard

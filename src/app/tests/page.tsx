@@ -102,11 +102,12 @@ function TestsContent() {
 
   // Questions matching current standard + medium
   const currentPool = useMemo(() => {
-    return questions.filter(
-      (q) =>
-        q.classLevel.toLowerCase() === effectiveStandard.toLowerCase() &&
-        q.medium === medium
-    );
+    return questions.filter((q) => {
+      const c = String(q.classLevel || '').trim().toLowerCase();
+      const target = effectiveStandard.toLowerCase();
+      const matchClass = c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
+      return matchClass && q.medium === medium;
+    });
   }, [questions, effectiveStandard, medium]);
 
   // Subject options for dropdown (derived from data, or standard fallback)

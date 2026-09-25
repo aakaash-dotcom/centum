@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       externalUrl.searchParams.set('key', secretKey);
 
       const res = await fetch(externalUrl.toString(), {
-        next: { revalidate: 60 },
+        cache: 'no-store',
       });
 
       if (res.ok) {
@@ -42,8 +42,9 @@ export async function GET(request: Request) {
             },
             {
               headers: {
-                'Cache-Control': 'public, s-maxage=60',
+                'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=90',
                 'x-data-source': 'live',
+                'x-cache-version': 'cdn-v1',
               },
             }
           );
@@ -61,6 +62,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'no-store',
             'x-data-source': 'live-failed',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -77,6 +79,7 @@ export async function GET(request: Request) {
           headers: {
             'Cache-Control': 'no-store',
             'x-data-source': 'live-failed',
+            'x-cache-version': 'cdn-v1',
           },
         }
       );
@@ -114,8 +117,9 @@ export async function GET(request: Request) {
     },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=60',
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=90',
         'x-data-source': 'mock',
+        'x-cache-version': 'cdn-v1',
       },
     }
   );
