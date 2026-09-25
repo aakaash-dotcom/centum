@@ -43,7 +43,7 @@ export const BottomNav: React.FC = () => {
   return (
     <nav
       aria-label="Bottom Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#3B0F6E]/95 backdrop-blur-md border-t border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-[0_-4px_20px_rgba(124,58,237,0.06)] transition-colors"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#1B0B2E]/95 backdrop-blur-md border-t border-[#EDE9FE] dark:border-[#3B2063] shadow-[0_-4px_20px_rgba(124,58,237,0.06)] transition-colors"
     >
       <div className="max-w-md mx-auto px-2 h-16 flex items-center justify-around">
         {navItems.map((item) => {
@@ -54,13 +54,13 @@ export const BottomNav: React.FC = () => {
               href={item.href}
               className={`flex-1 h-full min-h-[48px] flex flex-col items-center justify-center gap-1 transition-all ${
                 item.isActive
-                  ? 'text-[#7C3AED] dark:text-[#A3E635] font-black scale-105'
-                  : 'text-[#6D28D9]/60 dark:text-[#DDD6FE]/60 hover:text-[#2E1065] dark:hover:text-[#FAF5FF] font-semibold'
+                  ? 'text-[#7C3AED] dark:text-[#A78BFA] font-black scale-105'
+                  : 'text-[#6D28D9]/60 dark:text-[#B9A6D9] hover:text-[#2E1065] dark:hover:text-[#F5F0FF] font-semibold'
               }`}
             >
               <div
                 className={`p-1.5 rounded-full transition-all ${
-                  item.isActive ? 'bg-[#FAF5FF] dark:bg-[#230542] shadow-xs' : ''
+                  item.isActive ? 'bg-[#FAF5FF] dark:bg-[#2A1247] shadow-xs' : ''
                 }`}
               >
                 <Icon className={`w-5 h-5 ${item.isActive ? 'stroke-[2.5]' : 'stroke-[1.8]'}`} />

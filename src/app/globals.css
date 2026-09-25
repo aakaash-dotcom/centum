@@ -13,20 +13,26 @@
     --pop: #F472B6;
     --bg-page: #FAF5FF;
     --card-bg: #FFFFFF;
+    --card-elevated: #FFFFFF;
     --border-subtle: #EDE9FE;
+    --muted: #6D28D9;
+    --pro-gold: #F59E0B;
   }
 
   .dark {
-    --primary: #7C3AED;
+    --primary: #A78BFA;
     --primary-dark: #8B5CF6;
-    --headings: #FAF5FF;
+    --headings: #F5F0FF;
     --accent: #A3E635;
     --accent-hover: #84CC16;
     --accent-text: #18181B;
     --pop: #F472B6;
-    --bg-page: #230542;
-    --card-bg: #3B0F6E;
-    --border-subtle: rgba(221, 214, 254, 0.2);
+    --bg-page: #0F0618;
+    --card-bg: #1B0B2E;
+    --card-elevated: #2A1247;
+    --border-subtle: #3B2063;
+    --muted: #B9A6D9;
+    --pro-gold: #F5B544;
   }
 
   * {
@@ -69,9 +75,11 @@
 
 @keyframes fadeIn {
   from {
+    transform: translateY(0.5rem);
     opacity: 0;
   }
   to {
+    transform: translateY(0);
     opacity: 1;
   }
 }
@@ -85,6 +93,17 @@
   }
 }
 
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(124, 58, 237, 0.45);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(124, 58, 237, 0.75);
+    transform: scale(1.01);
+  }
+}
+
 .animate-slide-up {
   animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -95,4 +114,26 @@
 
 .animate-bounce-slight {
   animation: bounceSlight 1.2s infinite ease-in-out;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 1.8s infinite ease-in-out;
+}
+
+/* Gold Pro Identity utilities */
+.pro-gold-gradient {
+  background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 50%, #D97706 100%);
+  color: #451A03;
+}
+
+.pro-gold-badge {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+  color: #92400E;
+  border: 1px solid #FCD34D;
+}
+
+.dark .pro-gold-badge {
+  background: rgba(245, 181, 68, 0.15);
+  color: #F5B544;
+  border: 1px solid rgba(245, 181, 68, 0.4);
 }

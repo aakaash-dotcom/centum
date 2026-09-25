@@ -621,7 +621,7 @@ export default function AdminPage() {
                       {texts.admin.statsRevenue}
                     </span>
                     <span className="text-2xl font-black text-[#16A34A] dark:text-[#86EFAC]">
-                      ₹{stats.revenueTotal.toLocaleString('en-IN')}
+                      INR {stats.revenueTotal.toLocaleString('en-IN')}
                     </span>
                   </div>
 
@@ -630,7 +630,7 @@ export default function AdminPage() {
                       {texts.admin.statsRevenueMonth}
                     </span>
                     <span className="text-2xl font-black text-[#16A34A] dark:text-[#86EFAC]">
-                      ₹{stats.revenueThisMonth.toLocaleString('en-IN')}
+                      INR {stats.revenueThisMonth.toLocaleString('en-IN')}
                     </span>
                   </div>
 

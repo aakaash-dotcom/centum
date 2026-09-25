@@ -54,10 +54,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] antialiased min-h-screen flex justify-center transition-colors">
+      <body className="bg-[#FAF5FF] dark:bg-[#0F0618] text-[#2E1065] dark:text-[#F5F0FF] antialiased min-h-screen flex justify-center transition-colors">
         <AppProvider>
           {/* Mobile frame wrapper */}
-          <div className="w-full max-w-md min-h-screen flex flex-col bg-[#FAF5FF] dark:bg-[#230542] relative pb-20 shadow-2xl sm:border-x sm:border-[#EDE9FE] dark:sm:border-[#DDD6FE]/20 transition-colors">
+          <div className="w-full max-w-md min-h-screen flex flex-col bg-[#FAF5FF] dark:bg-[#0F0618] relative pb-20 shadow-2xl sm:border-x sm:border-[#EDE9FE] dark:sm:border-[#3B2063] transition-colors">
             <AppTopBar />
             <main className="flex-1 flex flex-col">{children}</main>
             <BottomNav />

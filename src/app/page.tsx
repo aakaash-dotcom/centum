@@ -6,8 +6,9 @@ import { useApp } from '@/context/AppContext';
 import { StreakChip } from '@/components/StreakChip';
 import { DailyQuizBox } from '@/components/DailyQuizBox';
 import { LeaderboardBox } from '@/components/LeaderboardBox';
+import { PWAInstallChip } from '@/components/PWAInstallChip';
 import { texts } from '@/data/texts';
-import { ArrowRight, Sparkles, BookOpen, Layers, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, Crown } from 'lucide-react';
 
 interface ClassBoxConfig {
   level: string;
@@ -27,16 +28,8 @@ const CLASSES: ClassBoxConfig[] = [
   { level: '6th', emoji: '🐣', isAvailable: false },
 ];
 
-const CATEGORIES = [
-  { id: 'pyq', label: texts.categories.pyq },
-  { id: 'model', label: texts.categories.model },
-  { id: 'important', label: texts.categories.important },
-  { id: 'book', label: texts.categories.book },
-];
-
 export default function HomePage() {
   const { student, isRegistered, showToast, medium, setMedium } = useApp();
-  const [showOtherClasses, setShowOtherClasses] = useState(false);
   const [isDemoContent, setIsDemoContent] = useState(false);
 
   useEffect(() => {
@@ -64,10 +57,20 @@ export default function HomePage() {
   const isAvailableStandard = userStandard === '10th' || userStandard === '12th';
   const targetClass = isAvailableStandard ? userStandard : '10th';
 
-  // REGISTERED STUDENT HOME SCREEN (Energy Pass Applied)
+  const categories = [
+    { id: 'pyq', label: texts.categories.pyq },
+    { id: 'model', label: texts.categories.model },
+    { id: 'important', label: texts.categories.important },
+    { id: 'book', label: texts.categories.book },
+  ];
+
+  // REGISTERED STUDENT HOME SCREEN
   if (isRegistered && student) {
     return (
-      <div className="flex-1 flex flex-col px-4 pt-4 pb-8 space-y-4 animate-fade-in">
+      <div className="flex-1 flex flex-col px-4 pt-4 pb-12 space-y-4 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
+        {/* PWA Add to Home Screen Chip (Android & iOS) */}
+        <PWAInstallChip />
+
         {/* 1. Purple Gradient Greeting Hero (Glow Shadow, Big Name, Lime/Pink Chips) */}
         <div className="w-full bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#9333EA] text-white rounded-3xl p-5 shadow-xl shadow-[#7C3AED]/30 border border-white/20">
           <div className="flex items-center justify-between">
@@ -93,86 +96,74 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 2. Hero-Level Lime Streak Card */}
+        {/* 2. Membership Button: Special Highlighted with Gold Gradient Ring/Badge -> /pricing */}
+        <Link
+          href="/pricing"
+          className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-400/20 via-yellow-400/25 to-amber-500/20 dark:from-amber-500/25 dark:via-yellow-500/20 dark:to-amber-400/30 border-2 border-amber-400 dark:border-amber-400/80 shadow-md shadow-amber-400/10 flex items-center justify-between text-left group transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-amber-950 font-black text-lg shadow-xs shrink-0">
+              👑
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-amber-950 dark:text-amber-200">
+                  {texts.membership.cardTitle}
+                </span>
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 shadow-2xs">
+                  Pro
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-amber-900/80 dark:text-amber-300/80 leading-snug">
+                {texts.membership.cardSubtitle}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-4 h-4 text-amber-700 dark:text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
+        </Link>
+
+        {/* 3. Hero-Level Lime Streak Card */}
         <StreakChip />
 
-        {/* 3. Quiz of the Day (Gradient-Bordered, Invisible if null) */}
+        {/* 4. Quiz of the Day (Gradient-Bordered, Invisible if null) */}
         <DailyQuizBox />
 
-        {/* 4. Medal Leaderboard Box (🥇🥈🥉, Lime "me" row) */}
+        {/* 5. Medal Leaderboard Box (🥇🥈🥉, Lime "me" row) */}
         <LeaderboardBox />
 
-        {/* 5. Purple-Tinted Category Cards */}
+        {/* 6. Purple-Tinted Category Cards */}
         <div className="pt-1">
           <div className="flex items-center justify-between mb-2.5 px-1">
-            <h2 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
+            <h2 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF] tracking-tight">
               {targetClass} prep
             </h2>
             {student.stream && (
-              <span className="text-[11px] font-bold text-[#7C3AED] dark:text-[#A3E635] truncate max-w-[160px]">
+              <span className="text-[11px] font-bold text-[#7C3AED] dark:text-[#A78BFA] truncate max-w-[160px]">
                 {student.stream}
               </span>
             )}
           </div>
 
           <div className="grid grid-cols-2 gap-2.5">
-            {CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <Link
                 key={cat.id}
                 href={`/materials?category=${cat.id}`}
-                className="min-h-[64px] p-3.5 rounded-2xl bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] dark:from-[#3B0F6E] dark:to-[#2E1065] hover:from-[#F3E8FF] hover:to-[#EDE9FE] dark:hover:from-[#4C1D95] dark:hover:to-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/50 shadow-xs flex items-center justify-between transition-all group cursor-pointer"
+                className="min-h-[64px] p-3.5 rounded-2xl bg-gradient-to-br from-[#FAF5FF] to-[#F3E8FF] dark:from-[#1B0B2E] dark:to-[#2A1247] hover:from-[#F3E8FF] hover:to-[#EDE9FE] dark:hover:from-[#2A1247] dark:hover:to-[#3B2063] border border-[#DDD6FE] dark:border-[#3B2063] hover:border-[#7C3AED]/50 shadow-xs flex items-center justify-between transition-all group cursor-pointer"
               >
-                <span className="font-extrabold text-xs text-[#2E1065] dark:text-[#FAF5FF] leading-snug">
+                <span className="font-extrabold text-xs text-[#2E1065] dark:text-[#F5F0FF] leading-snug">
                   {cat.label}
                 </span>
-                <ArrowRight className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
+                <ArrowRight className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA] group-hover:translate-x-0.5 transition-transform shrink-0 ml-1" />
               </Link>
             ))}
           </div>
         </div>
 
-        {/* 6. Demoted "explore other classes" link at bottom */}
-        <div className="pt-2 text-center">
-          <button
-            type="button"
-            onClick={() => setShowOtherClasses((prev) => !prev)}
-            className="text-xs font-black text-[#7C3AED] dark:text-[#A3E635] hover:underline transition-colors cursor-pointer py-2"
-          >
-            {showOtherClasses ? texts.home.backToMyHome : texts.home.exploreOtherClasses}
-          </button>
-
-          {showOtherClasses && (
-            <div className="grid grid-cols-2 gap-2.5 mt-3 pt-3 border-t border-[#EDE9FE] dark:border-[#DDD6FE]/20 animate-slide-up text-left">
-              {CLASSES.map((cls) => (
-                <div key={cls.level}>
-                  {cls.isAvailable ? (
-                    <Link
-                      href={`/class/${cls.level}`}
-                      className="p-3 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs flex items-center justify-between text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] hover:bg-[#FAF5FF] dark:hover:bg-[#4C1D95]"
-                    >
-                      <span>{cls.level} {cls.emoji}</span>
-                      <ArrowRight className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635]" />
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleUnavailableClick}
-                      className="w-full p-3 bg-white/70 dark:bg-[#3B0F6E]/50 rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 flex items-center justify-between text-xs font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60 cursor-pointer"
-                    >
-                      <span>{cls.level} {cls.emoji}</span>
-                      <span className="text-[10px] bg-[#FAF5FF] dark:bg-[#230542] px-1.5 py-0.5 rounded text-[#7C3AED] dark:text-[#A3E635]">soon 👀</span>
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Demo footnote if env vars missing and mock fallback used */}
         {isDemoContent && (
           <div className="pt-2 text-center">
-            <span className="text-[10px] font-bold text-[#6D28D9]/40 dark:text-[#DDD6FE]/40 uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-[#6D28D9]/40 dark:text-[#B9A6D9]/40 uppercase tracking-widest">
               {texts.states.demoFootnote}
             </span>
           </div>
@@ -181,22 +172,25 @@ export default function HomePage() {
     );
   }
 
-  // GUEST HOME SCREEN (Medium switch above 12th -> 6th class grid)
+  // GUEST HOME SCREEN
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-8 space-y-4 animate-fade-in">
-      {/* 1. Medium switch: lives ONLY on this guest home, big and thumb-friendly */}
-      <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-4 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-sm transition-colors">
-        <p className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A3E635] tracking-wider mb-2.5 text-center">
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-12 space-y-4 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
+      {/* PWA Add to Home Screen Chip */}
+      <PWAInstallChip />
+
+      {/* 1. Medium switch: lives on guest home, big and thumb-friendly */}
+      <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-4 border border-[#EDE9FE] dark:border-[#3B2063] shadow-sm transition-colors">
+        <p className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] tracking-wider mb-2.5 text-center">
           {texts.home.chooseMedium}
         </p>
-        <div className="grid grid-cols-2 gap-2 p-1 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
+        <div className="grid grid-cols-2 gap-2 p-1 bg-[#FAF5FF] dark:bg-[#0F0618] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063]">
           <button
             type="button"
             onClick={() => setMedium('english')}
             className={`min-h-[48px] rounded-xl font-black text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               medium === 'english'
                 ? 'bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/30 scale-[1.01]'
-                : 'text-[#6D28D9] dark:text-[#DDD6FE] hover:bg-white/60 dark:hover:bg-white/10'
+                : 'text-[#6D28D9] dark:text-[#B9A6D9] hover:bg-white/60 dark:hover:bg-white/10'
             }`}
           >
             <span>English</span>
@@ -209,7 +203,7 @@ export default function HomePage() {
             className={`min-h-[48px] rounded-xl font-black text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
               medium === 'tamil'
                 ? 'bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/30 scale-[1.01]'
-                : 'text-[#6D28D9] dark:text-[#DDD6FE] hover:bg-white/60 dark:hover:bg-white/10'
+                : 'text-[#6D28D9] dark:text-[#B9A6D9] hover:bg-white/60 dark:hover:bg-white/10'
             }`}
           >
             <span>தமிழ்</span>
@@ -220,7 +214,7 @@ export default function HomePage() {
 
       {/* 2. Choose your class header */}
       <div className="text-center pt-1">
-        <span className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A3E635] tracking-wider bg-[#F3E8FF] dark:bg-[#3B0F6E] px-3.5 py-1.5 rounded-full border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
+        <span className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] tracking-wider bg-[#F3E8FF] dark:bg-[#2A1247] px-3.5 py-1.5 rounded-full border border-[#DDD6FE] dark:border-[#3B2063]">
           {texts.home.chooseClass}
         </span>
       </div>
@@ -259,16 +253,16 @@ export default function HomePage() {
               key={cls.level}
               type="button"
               onClick={handleUnavailableClick}
-              className="min-h-[114px] bg-white dark:bg-[#3B0F6E]/50 hover:bg-[#F3E8FF]/30 dark:hover:bg-[#3B0F6E] active:scale-[0.98] rounded-2xl p-4 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs flex flex-col justify-between transition-all cursor-pointer text-left opacity-75"
+              className="min-h-[114px] bg-white dark:bg-[#1B0B2E]/60 hover:bg-[#F3E8FF]/30 dark:hover:bg-[#1B0B2E] active:scale-[0.98] rounded-2xl p-4 border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs flex flex-col justify-between transition-all cursor-pointer text-left opacity-75"
             >
               <div className="flex items-center justify-between">
                 <span className="text-2xl opacity-60">{cls.emoji}</span>
-                <span className="text-[10px] font-extrabold text-[#7C3AED] dark:text-[#A3E635] bg-[#F3E8FF] dark:bg-[#230542] px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-extrabold text-[#7C3AED] dark:text-[#A78BFA] bg-[#F3E8FF] dark:bg-[#0F0618] px-2 py-0.5 rounded-full">
                   {texts.classes.soonBadge}
                 </span>
               </div>
               <div>
-                <span className="text-2xl font-black text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
+                <span className="text-2xl font-black text-[#6D28D9]/70 dark:text-[#B9A6D9]/70">
                   {cls.level}
                 </span>
               </div>
@@ -280,7 +274,7 @@ export default function HomePage() {
       {/* Demo footnote if env vars missing and mock fallback used */}
       {isDemoContent && (
         <div className="pt-2 text-center">
-          <span className="text-[10px] font-bold text-[#6D28D9]/40 dark:text-[#DDD6FE]/40 uppercase tracking-widest">
+          <span className="text-[10px] font-bold text-[#6D28D9]/40 dark:text-[#B9A6D9]/40 uppercase tracking-widest">
             {texts.states.demoFootnote}
           </span>
         </div>

@@ -7,7 +7,7 @@ import { News } from '@/types';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { Calendar, ArrowRight } from 'lucide-react';
 
-export default function NewsFeedPage() {
+export default function NewsPage() {
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -45,15 +45,15 @@ export default function NewsFeedPage() {
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-6 animate-fade-in">
-      {/* Header */}
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-12 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
+      {/* Header - Title, summary, and date only */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
+          <h1 className="text-2xl font-black text-[#2E1065] dark:text-[#F5F0FF] tracking-tight">
             {texts.news.headline}
           </h1>
-          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635]">
-            official DGE & SCERT updates
+          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA]">
+            {texts.news.subheadline}
           </p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function NewsFeedPage() {
         ) : isError ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
             <span className="text-4xl mb-3">👻</span>
-            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#B9A6D9] mb-3">
               {texts.states.signalGhost}
             </p>
             <button
@@ -79,7 +79,7 @@ export default function NewsFeedPage() {
         ) : newsList.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
             <span className="text-4xl mb-2">🐶</span>
-            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75">
+            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#B9A6D9]">
               {texts.states.empty}
             </p>
           </div>
@@ -89,10 +89,10 @@ export default function NewsFeedPage() {
               <Link
                 key={item.id}
                 href={`/news/${item.id}`}
-                className="block bg-white dark:bg-[#3B0F6E] rounded-3xl overflow-hidden border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs hover:shadow-md transition-all group"
+                className="block bg-white dark:bg-[#1B0B2E] rounded-3xl overflow-hidden border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:shadow-md transition-all group"
               >
                 {/* Image on Top */}
-                <div className="relative w-full h-44 bg-[#F3E8FF] dark:bg-[#230542] overflow-hidden">
+                <div className="relative w-full h-44 bg-[#F3E8FF] dark:bg-[#0F0618] overflow-hidden">
                   <img
                     src={item.imageUrl}
                     alt={item.title}
@@ -115,22 +115,22 @@ export default function NewsFeedPage() {
                   )}
                 </div>
 
-                {/* Content */}
+                {/* Content - title · summary · date only */}
                 <div className="p-4">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7C3AED] dark:text-[#A3E635] mb-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7C3AED] dark:text-[#A78BFA] mb-1.5">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{item.date}</span>
                   </div>
 
-                  <h2 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF] leading-snug line-clamp-2 group-hover:text-[#7C3AED] dark:group-hover:text-[#A3E635] transition-colors mb-2">
+                  <h2 className="text-base font-black text-[#2E1065] dark:text-[#F5F0FF] leading-snug line-clamp-2 group-hover:text-[#7C3AED] dark:group-hover:text-[#A78BFA] transition-colors mb-2">
                     {item.title}
                   </h2>
 
-                  <p className="text-xs font-semibold text-[#6D28D9]/80 dark:text-[#DDD6FE]/80 line-clamp-2 leading-relaxed mb-3">
+                  <p className="text-xs font-semibold text-[#6D28D9]/80 dark:text-[#B9A6D9] line-clamp-2 leading-relaxed mb-3">
                     {item.summary}
                   </p>
 
-                  <div className="flex items-center justify-between text-xs font-extrabold text-[#7C3AED] dark:text-[#A3E635] pt-2 border-t border-[#FAF5FF] dark:border-[#230542]">
+                  <div className="flex items-center justify-between text-xs font-extrabold text-[#7C3AED] dark:text-[#A78BFA] pt-2 border-t border-[#FAF5FF] dark:border-[#3B2063]">
                     <span>read brief ⚡</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>

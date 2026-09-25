@@ -9,67 +9,117 @@ import {
   ArrowLeft,
   Copy,
   Check,
+  Share2,
+  Users,
+  Sparkles,
   Coins,
-  MessageCircle,
 } from 'lucide-react';
 
 export default function ReferPage() {
   const router = useRouter();
-  const { student, isRegistered, openGate, showToast } = useApp();
+  const { student, isRegistered, openGate, showToast, medium, getReferralCode } = useApp();
   const [data, setData] = useState<ReferralData | null>(null);
+  const [code, setCode] = useState<string>('');
+  const [isGeneratingCode, setIsGeneratingCode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+
+  // Fetch referrals ledger
+  const fetchReferrals = async () => {
+    if (!student?.phone) return;
+    try {
+      const res = await fetch(`/api/referrals?phone=${encodeURIComponent(student.phone)}`);
+      const resData = await res.json();
+      if (resData.ok) {
+        setData(resData);
+        if (resData.couponCode) {
+          setCode(resData.couponCode);
+        }
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!isRegistered || !student) {
       setIsLoading(false);
       return;
     }
-
-    fetch(`/api/referrals?phone=${encodeURIComponent(student.phone)}`)
-      .then((res) => res.json())
-      .then((resData) => {
-        if (resData.ok) {
-          setData(resData);
-        }
-        setIsLoading(false);
-      })
-      .catch(() => {
-        setIsLoading(false);
-      });
+    fetchReferrals();
   }, [isRegistered, student]);
 
+  const handleGetCode = async () => {
+    setIsGeneratingCode(true);
+    try {
+      const fetchedCode = await getReferralCode();
+      if (fetchedCode) {
+        setCode(fetchedCode);
+        showToast(texts.refer.codeGenerated || 'Your referral code is ready! 🎯');
+      } else {
+        showToast('Could not generate code. Please try again.');
+      }
+    } catch {
+      showToast('Could not generate code. Please try again.');
+    } finally {
+      setIsGeneratingCode(false);
+    }
+  };
+
+  const getShareUrl = () => {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}?ref=${code}`;
+  };
+
+  const getShareMessage = () => {
+    const url = getShareUrl();
+    const rawTemplate = texts.refer.shareTemplate;
+    return rawTemplate.replace(/{CODE}/g, code).replace(/{url}/g, url);
+  };
+
   const handleCopy = () => {
-    if (!data?.couponCode) return;
-    navigator.clipboard.writeText(data.couponCode);
+    if (!code) return;
+    navigator.clipboard.writeText(code);
     setCopied(true);
-    showToast(texts.refer.copied);
+    showToast(texts.refer.copied || 'pasted ✅');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShareWhatsApp = () => {
-    if (!data?.couponCode) return;
-    const shareMessage = texts.refer.shareText.replace('{CODE}', data.couponCode);
-    const waUrl = `https://wa.me/?text=${encodeURIComponent(shareMessage)}`;
-    window.open(waUrl, '_blank');
-  };
+  const handleShare = async () => {
+    if (!code) return;
+    const text = getShareMessage();
+    const url = getShareUrl();
 
-  const handleAskWhatsApp = () => {
-    const waUrl = `https://wa.me/919876543210?text=${encodeURIComponent(
-      'Hey Centum team! I want to activate my student referral code 🐣'
-    )}`;
-    window.open(waUrl, '_blank');
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Centum - TN Board Exam Prep',
+          text,
+          url,
+        });
+        return;
+      } catch {
+        // Fallback to clipboard
+      }
+    }
+
+    navigator.clipboard.writeText(`${text}`);
+    setCopied(true);
+    showToast(texts.refer.copied || 'pasted ✅');
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!isRegistered || !student) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
-        <span className="text-4xl mb-3">💸</span>
-        <h1 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] mb-2">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
+        <span className="text-5xl mb-3">🪙</span>
+        <h1 className="text-xl font-black mb-2">
           {texts.refer.title}
         </h1>
-        <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-6 max-w-xs">
-          Unlock your student profile to access your unique referral code and earn on every friend who joins Pro.
+        <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#B9A6D9] mb-6 max-w-xs">
+          Unlock your profile to generate your unique referral code and earn coins for every friend who joins!
         </p>
         <button
           type="button"
@@ -82,197 +132,214 @@ export default function ReferPage() {
     );
   }
 
-  const couponCode = data?.couponCode;
-  const discountPercent = data?.discountPercent || 20;
-  const shareAmount = data?.share || 150;
-  const earnings = data?.earnings || { total: 0, pending: 0, paid: 0 };
   const referrals = data?.referrals || [];
 
-  const ruleText = texts.refer.rule
-    .replace('{discountPercent}', String(discountPercent))
-    .replace('{share}', String(shareAmount));
-
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-12 animate-fade-in">
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-16 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
       {/* Top Header */}
       <div className="flex items-center justify-between mb-5">
         <button
           type="button"
           onClick={() => router.back()}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] transition-all cursor-pointer shadow-xs"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#F3E8FF] dark:hover:bg-[#2A1247] transition-all cursor-pointer shadow-xs"
           aria-label="Back"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
         </button>
 
         <div className="text-right">
-          <h1 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
+          <h1 className="text-xl font-black tracking-tight text-[#2E1065] dark:text-[#F5F0FF]">
             {texts.refer.title}
           </h1>
-          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635]">
+          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA]">
             {texts.refer.subtitle}
           </p>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-12">
-          <div className="w-10 h-10 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B0F6E] border-t-[#7C3AED] animate-spin mb-3" />
-          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635]">loading your rewards... ⚡</p>
-        </div>
-      ) : couponCode ? (
-        /* ACTIVE REFERRAL DASHBOARD */
-        <div className="space-y-4">
-          {/* Coupon Code Card */}
-          <div className="bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white rounded-3xl p-6 shadow-xl shadow-[#7C3AED]/20 text-center flex flex-col items-center">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#E9D5FF] mb-1">
-              Your Referral Code
-            </span>
+      <div className="space-y-4">
+        {/* Code Activation Card or Big Share Card */}
+        {!code ? (
+          <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs text-center flex flex-col items-center gap-3">
+            <span className="text-4xl">🎯</span>
+            <h2 className="text-base font-black text-[#2E1065] dark:text-[#F5F0FF]">
+              Get your unique student code
+            </h2>
+            <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#B9A6D9] max-w-xs">
+              Generate your persistent referral link to invite classmates and earn coins on every signup.
+            </p>
+            <button
+              type="button"
+              onClick={handleGetCode}
+              disabled={isGeneratingCode}
+              className="mt-2 min-h-[48px] px-6 rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white font-black text-sm shadow-md shadow-[#7C3AED]/25 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-60"
+            >
+              {isGeneratingCode ? (
+                <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  <span>get my code 🎯</span>
+                </>
+              )}
+            </button>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-br from-[#FAF5FF] via-white to-[#F3E8FF] dark:from-[#1B0B2E] dark:via-[#2A1247] dark:to-[#0F0618] rounded-3xl p-6 border-2 border-[#7C3AED]/30 dark:border-[#3B2063] shadow-lg shadow-[#7C3AED]/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA]">
+                Your Referral Code
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-[#A3E635] text-[#18181B] text-[10px] font-black uppercase shadow-2xs">
+                Active 🟢
+              </span>
+            </div>
 
-            <div className="my-2 px-5 py-2.5 rounded-2xl bg-white/15 border border-white/25 flex items-center gap-3">
-              <span className="text-2xl font-black tracking-widest text-[#A3E635]">
-                {couponCode}
+            {/* Code Box with Copy */}
+            <div className="flex items-center justify-between p-3.5 bg-white dark:bg-[#0F0618] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063]">
+              <span className="text-xl font-black tracking-wider text-[#2E1065] dark:text-[#F5F0FF] select-all">
+                {code}
               </span>
               <button
                 type="button"
                 onClick={handleCopy}
-                className="p-1.5 rounded-xl bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
-                aria-label="Copy coupon code"
+                className="min-h-[38px] px-3.5 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] border border-[#DDD6FE] dark:border-[#3B2063] text-xs font-black text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#F3E8FF] transition-all cursor-pointer flex items-center gap-1.5"
               >
                 {copied ? (
-                  <Check className="w-4 h-4 text-[#A3E635] stroke-[3]" />
+                  <>
+                    <Check className="w-3.5 h-3.5 text-[#16A34A] stroke-[3]" />
+                    <span>pasted ✅</span>
+                  </>
                 ) : (
-                  <Copy className="w-4 h-4" />
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copy</span>
+                  </>
                 )}
               </button>
             </div>
 
-            <p className="text-xs font-bold text-[#E9D5FF] max-w-xs mt-1">
-              Friends get {discountPercent}% off & you earn ₹{shareAmount} per upgrade!
-            </p>
+            {/* Gen-Z Share Message Preview */}
+            <div className="p-3 bg-[#FAF5FF] dark:bg-[#0F0618]/70 rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063]/60 text-[11px] font-medium text-[#2E1065]/85 dark:text-[#B9A6D9] leading-relaxed">
+              &ldquo;{getShareMessage()}&rdquo;
+            </div>
 
-            {/* Big WhatsApp Share CTA */}
+            {/* Big Share CTA */}
             <button
               type="button"
-              onClick={handleShareWhatsApp}
-              className="w-full min-h-[50px] mt-4 flex items-center justify-center gap-2 font-black text-sm text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer"
+              onClick={handleShare}
+              className="w-full min-h-[52px] rounded-2xl bg-[#A3E635] hover:bg-[#84CC16] active:scale-[0.98] text-[#18181B] font-black text-sm shadow-md shadow-[#A3E635]/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
-              <MessageCircle className="w-5 h-5 fill-current" />
-              <span>{texts.refer.shareWhatsApp}</span>
+              <Share2 className="w-4 h-4 stroke-[2.5]" />
+              <span>{texts.refer.shareCta || 'share with friends 🚀'}</span>
             </button>
           </div>
+        )}
 
-          {/* Rule Card */}
-          <div className="bg-[#FAF5FF] dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 rounded-2xl p-3.5 text-xs font-bold text-[#5B21B6] dark:text-[#DDD6FE] flex items-center gap-2.5">
-            <Coins className="w-5 h-5 text-[#7C3AED] dark:text-[#A3E635] shrink-0" />
-            <p className="leading-snug">{ruleText}</p>
+        {/* In-Coins Rewards Explainer Card */}
+        <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs space-y-3">
+          <div className="flex items-center gap-2">
+            <Coins className="w-5 h-5 text-amber-500" />
+            <h3 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF]">
+              {texts.refer.rewardsTitle || 'How coins work'}
+            </h3>
           </div>
 
-          {/* Earnings Card */}
-          <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-3">
-              Earnings Summary
-            </h3>
-
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
-                <span className="block text-[10px] font-extrabold uppercase text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
-                  {texts.refer.earningsTotal}
-                </span>
-                <span className="text-lg font-black text-[#2E1065] dark:text-[#FAF5FF]">
-                  ₹{earnings.total}
-                </span>
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#0F0618] border border-[#EDE9FE] dark:border-[#3B2063]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">🤝</span>
+                <div>
+                  <div className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF]">
+                    Friend joins with your code
+                  </div>
+                  <div className="text-[10px] font-bold text-[#6D28D9]/70 dark:text-[#B9A6D9]">
+                    Credited immediately on signup
+                  </div>
+                </div>
               </div>
+              <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-400/15 px-2.5 py-1 rounded-full">
+                +20 🪙
+              </span>
+            </div>
 
-              <div className="p-3 bg-[#FFFBEB] dark:bg-[#78350F]/30 rounded-2xl border border-[#FEF3C7] dark:border-[#F59E0B]/30">
-                <span className="block text-[10px] font-extrabold uppercase text-[#B45309] dark:text-[#FCD34D]">
-                  {texts.refer.earningsPending}
-                </span>
-                <span className="text-lg font-black text-[#B45309] dark:text-[#FCD34D]">
-                  ₹{earnings.pending}
-                </span>
+            <div className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#0F0618] border border-[#EDE9FE] dark:border-[#3B2063]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">⚡</span>
+                <div>
+                  <div className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF]">
+                    Friend finishes 3 quizzes on 2 days
+                  </div>
+                  <div className="text-[10px] font-bold text-[#6D28D9]/70 dark:text-[#B9A6D9]">
+                    Auto-verified qualification bonus
+                  </div>
+                </div>
               </div>
-
-              <div className="p-3 bg-[#F0FDF4] dark:bg-[#14532D]/30 rounded-2xl border border-[#DCFCE7] dark:border-[#22C55E]/30">
-                <span className="block text-[10px] font-extrabold uppercase text-[#15803D] dark:text-[#86EFAC]">
-                  {texts.refer.earningsPaid}
-                </span>
-                <span className="text-lg font-black text-[#15803D] dark:text-[#86EFAC]">
-                  ₹{earnings.paid}
-                </span>
-              </div>
+              <span className="text-xs font-black text-amber-600 dark:text-amber-400 bg-amber-400/15 px-2.5 py-1 rounded-full">
+                +80 🪙
+              </span>
             </div>
           </div>
 
-          {/* Referrals Activity List */}
-          {referrals.length > 0 && (
-            <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
-              <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-3">
-                Recent Referrals
+          <p className="text-[11px] font-bold text-[#7C3AED] dark:text-[#A78BFA] pt-1">
+            💡 coins can cut up to 50% off Centum Pro 🤑
+          </p>
+        </div>
+
+        {/* Live Progress Chips / Friends List */}
+        <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
+              <h3 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF]">
+                {texts.refer.friendsJoined || 'Friends invited'}
               </h3>
+            </div>
+            <span className="text-xs font-black text-[#7C3AED] dark:text-[#A78BFA]">
+              {referrals.length} total
+            </span>
+          </div>
 
-              <div className="space-y-2.5">
-                {referrals.map((ref) => (
-                  <div
-                    key={ref.id}
-                    className="p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF]">
-                          {ref.maskedPhone}
-                        </span>
-                        <span
-                          className={`text-[9px] font-black uppercase px-2 py-0.2 rounded-full ${
-                            ref.status === 'paid'
-                              ? 'bg-[#DCFCE7] dark:bg-[#166534] text-[#15803D] dark:text-[#86EFAC]'
-                              : 'bg-[#FEF3C7] dark:bg-[#78350F] text-[#B45309] dark:text-[#FDE68A]'
-                          }`}
-                        >
-                          {ref.status}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-semibold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
-                        {ref.date}
-                      </span>
-                    </div>
-
-                    <div className="text-right">
-                      <span className="font-black text-[#16A34A] dark:text-[#4ADE80] block">
-                        +₹{ref.share}
-                      </span>
-                    </div>
+          {isLoading ? (
+            <div className="py-6 text-center text-xs font-bold text-[#6D28D9]/60 dark:text-[#B9A6D9]/60">
+              loading progress...
+            </div>
+          ) : referrals.length === 0 ? (
+            <div className="p-6 text-center bg-[#FAF5FF] dark:bg-[#0F0618] rounded-2xl border border-dashed border-[#DDD6FE] dark:border-[#3B2063]">
+              <span className="text-2xl block mb-1">🐣</span>
+              <p className="text-xs font-bold text-[#6D28D9]/70 dark:text-[#B9A6D9]">
+                no friends invited yet. share your code to start earning coins!
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {referrals.map((r, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#0F0618] border border-[#EDE9FE] dark:border-[#3B2063]"
+                >
+                  <div className="min-w-0">
+                    <span className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF] truncate block">
+                      {r.name || 'Student'}
+                    </span>
+                    <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#B9A6D9]/60">
+                      {r.date || 'Joined'}
+                    </span>
                   </div>
-                ))}
-              </div>
+                  <span
+                    className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      r.status === 'qualified'
+                        ? 'bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-300'
+                        : 'bg-[#A3E635]/20 text-[#166534] dark:text-[#A3E635]'
+                    }`}
+                  >
+                    {r.status === 'qualified' ? 'Qualified (+80 🪙)' : 'Joined (+20 🪙)'}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
         </div>
-      ) : (
-        /* NO COUPON ASSIGNED YET */
-        <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-6 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-md shadow-[#7C3AED]/5 text-center flex flex-col items-center">
-          <div className="w-16 h-16 rounded-full bg-[#FAF5FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center mb-3 border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
-            <span className="text-3xl">🐣</span>
-          </div>
-
-          <h2 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF] mb-2">
-            Referral Program
-          </h2>
-
-          <p className="text-xs font-semibold text-[#6D28D9]/80 dark:text-[#DDD6FE]/80 mb-6 max-w-xs leading-relaxed">
-            {texts.refer.noCodeMessage}
-          </p>
-
-          <button
-            type="button"
-            onClick={handleAskWhatsApp}
-            className="w-full min-h-[48px] flex items-center justify-center gap-2 font-black text-sm text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] rounded-2xl shadow-md shadow-[#A3E635]/25 transition-all cursor-pointer"
-          >
-            <MessageCircle className="w-4 h-4 fill-current" />
-            <span>{texts.refer.askWhatsApp}</span>
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

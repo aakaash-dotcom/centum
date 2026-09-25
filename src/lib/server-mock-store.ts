@@ -21,6 +21,8 @@ interface MockStore {
   adminPhones: Set<string>;
   adminPasswords: Map<string, string>;
   materials: Array<{ tab: string; row: Record<string, unknown>; addedAt: string }>;
+  coins: Map<string, { balance: number; recent: Array<{ reason: string; amount: number; timestamp: string; ref: string }> }>;
+  referralCodes: Map<string, string>;
 }
 
 declare global {
@@ -119,6 +121,8 @@ function initMockStore(): MockStore {
     adminPhones,
     adminPasswords,
     materials: [],
+    coins: new Map(),
+    referralCodes: new Map(),
   };
 }
 
@@ -241,4 +245,92 @@ export function addMockMaterial(tab: string, row: Record<string, unknown>) {
     addedAt: new Date().toISOString(),
   });
   return true;
+}
+
+export function getMockCoins(phone: string) {
+  const clean = normalizePhone(phone) || phone;
+  if (!clean) return { balance: 0, recent: [] };
+  const entry = store.coins.get(clean);
+  if (!entry) {
+    return { balance: 20, recent: [{ reason: 'welcome', amount: 20, timestamp: new Date().toISOString(), ref: 'welcome' }] };
+  }
+  return { balance: entry.balance, recent: entry.recent };
+}
+
+export function earnMockCoins(phone: string, reason: string, ref: string) {
+  const clean = normalizePhone(phone) || phone;
+  if (!clean) return { ok: false, error: 'phone required' };
+
+  let entry = store.coins.get(clean);
+  if (!entry) {
+    entry = { balance: 20, recent: [{ reason: 'welcome', amount: 20, timestamp: new Date().toISOString(), ref: 'welcome' }] };
+    store.coins.set(clean, entry);
+  }
+
+  // Check if already credited for this ref
+  const existing = entry.recent.find((r) => r.reason === reason && r.ref === ref);
+  if (existing) {
+    return { ok: true, balance: entry.balance, earned: 0, duplicate: true };
+  }
+
+  const rewardMap: Record<string, number> = {
+    'daily-quiz': 5,
+    'test-complete': 2,
+    'test-perfect': 3,
+    'streak-7': 20,
+    'streak-30': 100,
+    'referral-signup': 20,
+    'referral-qualify': 80,
+    'welcome': 20,
+  };
+  const amount = rewardMap[reason] || 2;
+  entry.balance += amount;
+  entry.recent.unshift({
+    reason,
+    amount,
+    timestamp: new Date().toISOString(),
+    ref,
+  });
+
+  return { ok: true, balance: entry.balance, earned: amount };
+}
+
+export function spendMockCoins(phone: string, reason: string, ref: string, amount: number) {
+  const clean = normalizePhone(phone) || phone;
+  if (!clean) return { ok: false, error: 'phone required' };
+
+  let entry = store.coins.get(clean);
+  if (!entry) {
+    entry = { balance: 20, recent: [] };
+    store.coins.set(clean, entry);
+  }
+
+  if (entry.balance < amount) {
+    return { ok: false, error: 'insufficient coins', balance: entry.balance };
+  }
+
+  entry.balance -= amount;
+  entry.recent.unshift({
+    reason,
+    amount: -amount,
+    timestamp: new Date().toISOString(),
+    ref,
+  });
+
+  return { ok: true, balance: entry.balance };
+}
+
+export function getOrCreateMockReferralCode(phone: string, name?: string) {
+  const clean = normalizePhone(phone) || phone;
+  if (!clean) return { ok: false, error: 'phone required' };
+
+  let code = store.referralCodes.get(clean);
+  if (!code) {
+    const prefix = (name ? name.replace(/[^a-zA-Z]/g, '').slice(0, 4) : 'CENT').toUpperCase() || 'CENT';
+    const suffix = clean.slice(-4);
+    code = `${prefix}${suffix}`;
+    store.referralCodes.set(clean, code);
+  }
+
+  return { ok: true, code };
 }

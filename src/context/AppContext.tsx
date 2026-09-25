@@ -4,11 +4,21 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { Medium, StudentProfile, QuizResult, ScorePayload, PlanType } from '@/types';
 import { calculateStreak } from '@/utils/streak';
 import { normalizePhone } from '@/lib/phone';
+import { texts, getTexts, t, setCurrentLanguage } from '@/data/texts';
+
+interface CoinRecentItem {
+  reason: string;
+  amount: number;
+  timestamp: string;
+  ref: string;
+}
 
 interface AppContextType {
   medium: Medium;
   setMedium: (medium: Medium) => void;
   toggleMedium: () => void;
+  texts: ReturnType<typeof getTexts>;
+  t: (path: string) => string;
   student: StudentProfile | null;
   isRegistered: boolean;
   isGateOpen: boolean;
@@ -60,6 +70,19 @@ interface AppContextType {
   // Guest Session Standard
   guestStandard: string | null;
   setGuestStandard: (std: string) => void;
+  // Coins & Rewards
+  coinsBalance: number;
+  coinsRecent: CoinRecentItem[];
+  fetchCoins: () => Promise<void>;
+  earnCoins: (reason: string, ref: string, estimatedAmount?: number) => Promise<boolean>;
+  spendCoins: (reason: string, ref: string, amount: number) => Promise<boolean>;
+  equippedAvatar: string;
+  equippedAvatarFrame: string;
+  setEquippedAvatar: (avatarId: string) => void;
+  equipAvatarFrame: (avatarId: string) => void;
+  // Referral Code
+  referralCode: string | null;
+  getReferralCode: () => Promise<string | null>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -70,6 +93,8 @@ const QUIZ_RESULTS_KEY = 'centum_quiz_results';
 const PLAN_STORAGE_KEY = 'centum_plan';
 const THEME_STORAGE_KEY = 'centum_theme';
 const GUEST_STANDARD_KEY = 'centum_guest_standard';
+const AVATAR_FRAME_KEY = 'centum_avatar_frame';
+const REFERRAL_CODE_KEY = 'centum_my_referral_code';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [medium, setMediumState] = useState<Medium>('english');
@@ -85,7 +110,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
   const [leaderboardRefreshCount, setLeaderboardRefreshCount] = useState(0);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [coinsBalance, setCoinsBalance] = useState<number>(20);
+  const [coinsRecent, setCoinsRecent] = useState<CoinRecentItem[]>([]);
+  const [equippedAvatar, setEquippedAvatarState] = useState<string>('default');
+  const [referralCode, setReferralCode] = useState<string | null>(null);
+
+  // Sync language singleton
+  useEffect(() => {
+    setCurrentLanguage(medium);
+  }, [medium]);
 
   // Resolve plan from server
   const fetchPlanFromServer = useCallback(async (phone: string) => {
@@ -108,6 +141,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return null;
   }, []);
 
+  // Fetch Coins
+  const fetchCoins = useCallback(async () => {
+    if (!student?.phone) return;
+    try {
+      const res = await fetch(`/api/coins?phone=${encodeURIComponent(student.phone)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.ok) {
+          setCoinsBalance(Number(data.balance ?? 0));
+          if (Array.isArray(data.recent)) {
+            setCoinsRecent(data.recent);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch coins', e);
+    }
+  }, [student?.phone]);
+
   // Load persisted state on client mount
   useEffect(() => {
     try {
@@ -116,6 +168,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const norm = String(rawSavedMedium).trim().toLowerCase();
         if (norm === 'english' || norm === 'tamil') {
           setMediumState(norm as Medium);
+          setCurrentLanguage(norm as Medium);
         }
       }
 
@@ -139,14 +192,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           parsed.plan = (normP === 'pro' || normP === 'live' ? normP : 'free') as PlanType;
         }
         setStudent(parsed);
-        // Automatically sync medium from stored student profile if present
         if (parsed.medium) {
           setMediumState(parsed.medium);
+          setCurrentLanguage(parsed.medium);
+        }
+        if (parsed.avatarFrame) {
+          setEquippedAvatarState(parsed.avatarFrame);
         }
         if (parsed.phone) {
           fetchPlanFromServer(parsed.phone);
         }
       }
+
+      const savedAvatar = localStorage.getItem(AVATAR_FRAME_KEY);
+      if (savedAvatar) {
+        setEquippedAvatarState(savedAvatar);
+      }
+
+      const savedRefCode = localStorage.getItem(REFERRAL_CODE_KEY);
+      if (savedRefCode) {
+        setReferralCode(savedRefCode);
+      }
+
+      // Capture ?ref=CODE from URL if visiting via referral link
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = urlParams.get('ref');
+        if (refParam) {
+          localStorage.setItem('centum_signup_ref', refParam.trim().toUpperCase());
+        }
+      } catch (e) {}
 
       const savedQuizzes = localStorage.getItem(QUIZ_RESULTS_KEY);
       if (savedQuizzes) {
@@ -169,10 +244,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (e) {
       console.error('Storage reading error', e);
-    } finally {
-      setIsInitialized(true);
     }
   }, [fetchPlanFromServer]);
+
+  // Fetch coins whenever student is loaded or changed
+  useEffect(() => {
+    if (student?.phone) {
+      fetchCoins();
+    }
+  }, [student?.phone, fetchCoins]);
 
   const setTheme = (newTheme: 'light' | 'dark') => {
     setThemeState(newTheme);
@@ -213,6 +293,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const setMedium = (newMedium: Medium) => {
     setMediumState(newMedium);
+    setCurrentLanguage(newMedium);
     try {
       localStorage.setItem(MEDIUM_STORAGE_KEY, newMedium);
       if (student) {
@@ -254,6 +335,123 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPaywallPitch(null);
   };
 
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+  };
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => {
+      setToastMessage(null);
+    }, 2400);
+    return () => clearTimeout(timer);
+  }, [toastMessage]);
+
+  const earnCoins = async (reason: string, ref: string, estimatedAmount?: number): Promise<boolean> => {
+    if (!student?.phone) return false;
+    try {
+      const res = await fetch('/api/coins/earn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: student.phone,
+          reason,
+          ref,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          if (typeof data.balance === 'number') {
+            setCoinsBalance(data.balance);
+          }
+          if (data.earned && data.earned > 0) {
+            showToast(`+${data.earned} 🪙`);
+          } else if (estimatedAmount && !data.duplicate) {
+            showToast(`+${estimatedAmount} 🪙`);
+          }
+          fetchCoins();
+          return true;
+        }
+      }
+    } catch (e) {
+      console.warn('Silent coin earn failure', e);
+    }
+    return false;
+  };
+
+  const spendCoins = async (reason: string, ref: string, amount: number): Promise<boolean> => {
+    if (!student?.phone) {
+      showToast(texts.gate.noAccountToast);
+      return false;
+    }
+    try {
+      const res = await fetch('/api/coins/spend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: student.phone,
+          reason,
+          ref,
+          amount,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        if (typeof data.balance === 'number') {
+          setCoinsBalance(data.balance);
+        }
+        fetchCoins();
+        return true;
+      }
+      showToast(data.error || 'insufficient coins');
+      return false;
+    } catch (e) {
+      showToast('failed to spend coins');
+      return false;
+    }
+  };
+
+  const setEquippedAvatar = (avatarId: string) => {
+    setEquippedAvatarState(avatarId);
+    try {
+      localStorage.setItem(AVATAR_FRAME_KEY, avatarId);
+      if (student) {
+        const updated = { ...student, avatarFrame: avatarId };
+        setStudent(updated);
+        localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(updated));
+      }
+    } catch (e) {}
+  };
+
+  const getReferralCode = async (): Promise<string | null> => {
+    if (referralCode) return referralCode;
+    if (!student?.phone) return null;
+    try {
+      const res = await fetch('/api/referrals/code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: student.phone,
+          name: student.name,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && data.code) {
+          setReferralCode(data.code);
+          try {
+            localStorage.setItem(REFERRAL_CODE_KEY, data.code);
+          } catch (e) {}
+          return data.code;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to get referral code', e);
+    }
+    return null;
+  };
+
   const registerStudent = async (data: {
     name: string;
     phone: string;
@@ -262,53 +460,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     district: string;
     password?: string;
   }) => {
-    const { password, ...profileFields } = data;
-    const cleanPhone = normalizePhone(data.phone) || data.phone;
-    const newProfile: StudentProfile = {
-      ...profileFields,
-      phone: cleanPhone,
-      medium,
-      plan: 'free',
-      registeredAt: new Date().toISOString(),
-    };
-
-    // Password is NEVER stored client-side in localStorage/state
-    setStudent(newProfile);
     try {
-      localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(newProfile));
-    } catch (e) {
-      console.error('Failed to save student profile', e);
-    }
+      const cleanPhone = normalizePhone(data.phone) || data.phone;
+      const cleanPassword = data.password ? data.password.trim() : '';
 
-    try {
-      await fetch('/api/register', {
+      // Check URL for referral code if any
+      let refCode: string | null = null;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        refCode = params.get('ref') || localStorage.getItem('centum_signup_ref');
+      } catch (e) {}
+
+      const newProfile: StudentProfile = {
+        name: data.name,
+        phone: cleanPhone,
+        district: data.district,
+        standard: data.standard,
+        stream: data.stream,
+        medium,
+        plan: 'free',
+        registeredAt: new Date().toISOString(),
+        avatarFrame: equippedAvatar,
+      };
+
+      setStudent(newProfile);
+      setPlanState('free');
+
+      try {
+        localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(newProfile));
+        localStorage.setItem(PLAN_STORAGE_KEY, 'free');
+      } catch (e) {
+        console.error('Storage saving error', e);
+      }
+
+      fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          ...data,
+          phone: cleanPhone,
+          password: cleanPassword,
+          medium,
           type: 'student',
-          name: newProfile.name,
-          phone: newProfile.phone,
-          district: newProfile.district,
-          standard: newProfile.standard,
-          stream: newProfile.stream,
-          medium: newProfile.medium,
-          password: password ? password.trim() : undefined,
+          refCode,
         }),
+      }).catch((err) => {
+        console.warn('Registration POST failed (silenced)', err);
       });
+
+      // Credit welcome bonus coins (20 coins)
+      earnCoins('welcome', cleanPhone, 20);
+
+      setIsGateOpen(false);
+      if (pendingAction) {
+        const actionToExecute = pendingAction;
+        setPendingAction(null);
+        setTimeout(() => {
+          actionToExecute();
+        }, 100);
+      }
     } catch (err) {
-      console.warn('Backend sync failed, saved locally', err);
-    }
-
-    // Also resolve plan in background
-    fetchPlanFromServer(newProfile.phone);
-
-    setIsGateOpen(false);
-    if (pendingAction) {
-      const actionToExecute = pendingAction;
-      setPendingAction(null);
-      setTimeout(() => {
-        actionToExecute();
-      }, 100);
+      console.error('Registration error', err);
     }
   };
 
@@ -339,9 +551,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           plan: normPln,
           registeredAt: data.student.registeredAt || new Date().toISOString(),
           isAdmin: Boolean(data.student.isAdmin),
+          avatarFrame: data.student.avatarFrame || equippedAvatar,
         };
 
-        // Hydrate full profile from server response into state & localStorage
         setStudent(loggedStudent);
         try {
           localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(loggedStudent));
@@ -351,6 +563,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (loggedStudent.medium) {
           setMediumState(loggedStudent.medium);
+          setCurrentLanguage(loggedStudent.medium);
           try {
             localStorage.setItem(MEDIUM_STORAGE_KEY, loggedStudent.medium);
           } catch (e) {}
@@ -363,8 +576,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           } catch (e) {}
         }
 
-        // Refresh plan from server
         fetchPlanFromServer(loggedStudent.phone);
+        fetchCoins();
 
         setIsGateOpen(false);
         if (pendingAction) {
@@ -410,25 +623,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setStudent(null);
     setPlanState('free');
+    setCoinsBalance(20);
+    setCoinsRecent([]);
     try {
       localStorage.removeItem(STUDENT_STORAGE_KEY);
       localStorage.removeItem(PLAN_STORAGE_KEY);
+      localStorage.removeItem(REFERRAL_CODE_KEY);
     } catch (e) {
       console.error('Failed to clear profile', e);
     }
   };
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-  };
-
-  useEffect(() => {
-    if (!toastMessage) return;
-    const timer = setTimeout(() => {
-      setToastMessage(null);
-    }, 2400);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
 
   const triggerLeaderboardRefresh = () => {
     setLeaderboardRefreshCount((prev) => prev + 1);
@@ -446,7 +650,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
 
-    // 2. Post score to Apps Script backend (silenced error, never block UX)
+    // 2. Post score to Apps Script backend
     if (student) {
       try {
         const payload: ScorePayload = {
@@ -468,12 +672,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           body: JSON.stringify(payload),
         })
           .then(() => {
-            // Refetch leaderboard after recording score!
             triggerLeaderboardRefresh();
           })
           .catch((err) => console.warn('Score POST failed (silenced)', err));
-      } catch (err) {
-        // Silenced
+      } catch (err) {}
+
+      // 3. Earn Coins hooks!
+      const todayDate = new Date().toISOString().slice(0, 10);
+      const scoreRef = String(Date.now());
+
+      if (res.type === 'daily') {
+        earnCoins('daily-quiz', todayDate, 5);
+      } else {
+        earnCoins('test-complete', scoreRef, 2);
+        if (res.accuracy === 100) {
+          earnCoins('test-perfect', scoreRef, 3);
+        }
+      }
+
+      // Check milestones for streak
+      const updatedStreak = calculateStreak([res, ...quizResults]);
+      if (updatedStreak.streak === 7) {
+        earnCoins('streak-7', todayDate, 20);
+      } else if (updatedStreak.streak === 30) {
+        earnCoins('streak-30', todayDate, 100);
       }
     }
   };
@@ -486,6 +708,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         medium,
         setMedium,
         toggleMedium,
+        texts: getTexts(medium),
+        t: (path: string) => t(path, medium),
         student,
         isRegistered: Boolean(student),
         isGateOpen,
@@ -516,6 +740,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleTheme,
         guestStandard,
         setGuestStandard,
+        coinsBalance,
+        coinsRecent,
+        fetchCoins,
+        earnCoins,
+        spendCoins,
+        equippedAvatar,
+        equippedAvatarFrame: equippedAvatar,
+        setEquippedAvatar,
+        equipAvatarFrame: setEquippedAvatar,
+        referralCode,
+        getReferralCode,
       }}
     >
       {children}

@@ -17,10 +17,13 @@ export async function POST(request: Request) {
       password,
       type = 'student',
       plan,
+      refCode,
+      source,
     } = body;
 
     const phone = normalizePhone(rawPhone) || rawPhone;
     const cleanPassword = typeof password === 'string' ? password.trim() : password;
+    const referralSource = refCode ? `ref:${refCode}` : (source || 'app');
 
     const scriptUrl = process.env.APPS_SCRIPT_URL;
     const secretKey = process.env.APPS_SCRIPT_SECRET;
@@ -46,6 +49,8 @@ export async function POST(request: Request) {
                 stream,
                 medium,
                 password: cleanPassword, // forwarded to Apps Script
+                source: referralSource,
+                ref: refCode || '',
               };
 
         const res = await fetch(scriptUrl, {

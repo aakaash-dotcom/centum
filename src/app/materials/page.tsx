@@ -485,22 +485,22 @@ function MaterialsContent() {
                     </div>
 
                     {String(paper.plan || '').toLowerCase() === 'pro' && (
-                      <span className="px-2 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-[10px] font-black flex items-center gap-1 shrink-0">
-                        <Lock className="w-2.5 h-2.5" />
+                      <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 text-[10px] font-black flex items-center gap-1 shrink-0 border border-amber-300 shadow-2xs">
+                        <Lock className="w-2.5 h-2.5 text-amber-950" />
                         <span>Pro</span>
                       </span>
                     )}
                   </div>
 
                   {/* Single Tap Target "Open →" */}
-                  <div className="flex items-center justify-end pt-2 border-t border-[#FAF5FF] dark:border-[#230542]">
+                  <div className="flex items-center justify-end pt-2 border-t border-[#FAF5FF] dark:border-[#3B2063]">
                     {isLockedForUser ? (
                       <button
                         type="button"
                         onClick={(e) => handleOpenPaper(paper, e)}
-                        className="min-h-[44px] px-4 py-1.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] text-xs font-black text-[#7C3AED] dark:text-[#A3E635] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center gap-1.5 transition-all cursor-pointer"
+                        className="min-h-[44px] px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-400/20 via-yellow-400/25 to-amber-500/20 dark:from-amber-500/25 dark:via-yellow-500/20 dark:to-amber-400/30 text-amber-950 dark:text-amber-200 border-2 border-amber-400 dark:border-amber-400/80 hover:bg-amber-400/30 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                       >
-                        <Lock className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635]" />
+                        <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                         <span>Unlock Pro 👑</span>
                       </button>
                     ) : (

@@ -52,8 +52,8 @@ export default function NewsDetailPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B0F6E] border-t-[#7C3AED] animate-spin mb-4" />
-        <p className="text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">{texts.states.loading}</p>
+        <div className="w-12 h-12 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B2063] border-t-[#7C3AED] animate-spin mb-4" />
+        <p className="text-sm font-bold text-[#7C3AED] dark:text-[#A78BFA]">{texts.states.loading}</p>
       </div>
     );
   }
@@ -62,7 +62,7 @@ export default function NewsDetailPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
         <span className="text-4xl mb-3">👻</span>
-        <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+        <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#B9A6D9] mb-3">
           {texts.states.signalGhost}
         </p>
         <button
@@ -74,7 +74,7 @@ export default function NewsDetailPage() {
         </button>
         <Link
           href="/news"
-          className="text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] hover:underline"
+          className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA] hover:underline"
         >
           back to news 📰
         </Link>
@@ -83,25 +83,25 @@ export default function NewsDetailPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col px-4 pt-4 pb-8 animate-fade-in">
+    <div className="flex-1 flex flex-col px-4 pt-4 pb-8 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
       {/* Back button */}
       <div className="flex items-center justify-between mb-4">
         <Link
           href="/news"
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] transition-all cursor-pointer shadow-xs"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#F3E8FF] dark:hover:bg-[#2A1247] transition-all cursor-pointer shadow-xs"
           aria-label="Back to news"
         >
           <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
         </Link>
-        <span className="px-3 py-1 rounded-full bg-[#F3E8FF] dark:bg-[#3B0F6E] text-[#7C3AED] dark:text-[#A3E635] text-xs font-black uppercase tracking-wider border border-[#DDD6FE]/20">
+        <span className="px-3 py-1 rounded-full bg-[#F3E8FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black uppercase tracking-wider border border-[#DDD6FE]/30 dark:border-[#3B2063]">
           {article.category}
         </span>
       </div>
 
       {/* Main Card */}
-      <article className="bg-white dark:bg-[#3B0F6E] rounded-3xl overflow-hidden border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-md shadow-[#7C3AED]/5 transition-colors">
+      <article className="bg-white dark:bg-[#1B0B2E] rounded-3xl overflow-hidden border border-[#EDE9FE] dark:border-[#3B2063] shadow-md shadow-[#7C3AED]/5 transition-colors">
         {/* Cover Image */}
-        <div className="w-full h-52 bg-[#F3E8FF] dark:bg-[#230542] relative">
+        <div className="w-full h-52 bg-[#F3E8FF] dark:bg-[#0F0618] relative">
           <img
             src={article.imageUrl}
             alt={article.title}
@@ -111,34 +111,36 @@ export default function NewsDetailPage() {
 
         <div className="p-5">
           {/* Date */}
-          <div className="flex items-center gap-1.5 text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] mb-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA] mb-2">
             <Calendar className="w-3.5 h-3.5" />
             <span>{article.date}</span>
           </div>
 
           {/* Headline */}
-          <h1 className="text-lg sm:text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight mb-4">
+          <h1 className="text-lg sm:text-xl font-black text-[#2E1065] dark:text-[#F5F0FF] leading-tight mb-4">
             {article.title}
           </h1>
 
           {/* Body */}
-          <div className="text-sm font-medium text-[#2E1065]/90 dark:text-[#DDD6FE]/90 leading-relaxed space-y-3 mb-6">
-            <p className="font-bold text-[#6D28D9] dark:text-[#A3E635]">{article.summary}</p>
+          <div className="text-sm font-medium text-[#2E1065]/90 dark:text-[#F5F0FF]/90 leading-relaxed space-y-3 mb-6">
+            <p className="font-bold text-[#7C3AED] dark:text-[#A78BFA]">{article.summary}</p>
             <p>{article.body}</p>
           </div>
 
-          {/* Official Source Outbound Link */}
-          <div className="pt-4 border-t border-[#EDE9FE] dark:border-[#DDD6FE]/20">
-            <a
-              href={article.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full min-h-[48px] flex items-center justify-center gap-2 font-black text-sm text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] rounded-2xl shadow-xs transition-all cursor-pointer"
-            >
-              <span>{texts.news.source}</span>
-              <ExternalLink className="w-4 h-4 stroke-[2.5]" />
-            </a>
-          </div>
+          {/* Outbound Link */}
+          {article.sourceUrl && (
+            <div className="pt-4 border-t border-[#EDE9FE] dark:border-[#3B2063]">
+              <a
+                href={article.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[48px] flex items-center justify-center gap-2 font-black text-sm text-[#18181B] bg-[#A3E635] hover:bg-[#84CC16] rounded-2xl shadow-xs transition-all cursor-pointer"
+              >
+                <span>{texts.news.source}</span>
+                <ExternalLink className="w-4 h-4 stroke-[2.5]" />
+              </a>
+            </div>
+          )}
         </div>
       </article>
     </div>

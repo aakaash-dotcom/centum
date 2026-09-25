@@ -86,6 +86,7 @@ export interface StudentProfile {
   plan?: PlanType;
   registeredAt?: string;
   isAdmin?: boolean;
+  avatarFrame?: string;
 }
 
 export interface AdminStats {
@@ -162,10 +163,11 @@ export interface OrderResponse {
 export interface ReferralHistoryItem {
   id: string;
   date: string;
-  maskedPhone: string;
-  amount: number;
-  share: number;
-  status: 'pending' | 'paid';
+  maskedPhone?: string;
+  name?: string;
+  amount?: number;
+  share?: number;
+  status: 'pending' | 'paid' | 'qualified';
 }
 
 export interface ReferralData {
