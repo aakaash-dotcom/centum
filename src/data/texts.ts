@@ -209,6 +209,28 @@ export const rawTexts = {
     perfectScore: { en: 'centum achieved! 👑💯', ta: 'Centum அடித்தாச்சு! 👑💯' },
     goodScore: { en: 'solid run! 🔥', ta: 'அருமையான முயற்சி! 🔥' },
     practiceMore: { en: 'cook more chapters 👨‍🍳', ta: 'இன்னும் பயிற்சி செய்க 👨‍🍳' },
+    skip: { en: 'Skip ⏩', ta: 'தவிர் ⏩' },
+    noQuestionsFound: {
+      en: 'No questions found for this chapter yet 🌱',
+      ta: 'இந்தப் பாடத்திற்கான கேள்விகள் இன்னும் பதிவேற்றப்படவில்லை 🌱',
+    },
+    backToTests: { en: 'Back to Tests 🏠', ta: 'தேர்வுகளுக்குத் திரும்ப 🏠' },
+    coinsEarned: { en: 'coins earned', ta: 'வென்ற நாணயங்கள்' },
+    questionsReview: { en: 'Question Review', ta: 'வினாக்கள் மறுஆய்வு' },
+    timeSpent: { en: 'Time Spent', ta: 'எடுத்துக்கொண்ட நேரம்' },
+    unanswered: { en: 'unanswered', ta: 'பதிலளிக்கப்படவில்லை' },
+    exitConfirm: {
+      en: 'Leave test? Your progress will be lost.',
+      ta: 'தேர்விலிருந்து வெளியேறவா? உங்கள் விடைகள் சேமிக்கப்படாது.',
+    },
+    cancel: { en: 'Cancel', ta: 'ரத்து' },
+    exit: { en: 'Exit', ta: 'வெளியேறு' },
+    retry: { en: 'Retry 🔄', ta: 'மீண்டும் முயற்சி 🔄' },
+    chooseChapterPrompt: {
+      en: 'Please choose a subject and chapter to start your test.',
+      ta: 'தேர்வைத் தொடங்க பாடம் மற்றும் அத்தியாயத்தைத் தேர்ந்தெடுக்கவும்.',
+    },
+    testShuffled: { en: 'test shuffled! 🔀', ta: 'வினாக்கள் மாற்றப்பட்டன! 🔀' },
   },
   news: {
     headline: { en: 'Student News 📰', ta: 'மாணவர் செய்திகள் 📰' },

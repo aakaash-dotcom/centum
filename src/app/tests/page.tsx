@@ -417,11 +417,11 @@ function TestsContent() {
           role="dialog"
           aria-modal="true"
           aria-label="Confirm Test Start"
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
           onClick={() => setConfirmModal(null)}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-[#1B0B2E] rounded-t-3xl p-6 shadow-2xl border-t border-[#EDE9FE] dark:border-[#3B2063] animate-slide-up flex flex-col gap-4 text-[#2E1065] dark:text-[#F5F0FF] transition-colors"
+            className="w-full max-w-md bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 shadow-2xl border border-[#EDE9FE] dark:border-[#3B2063] max-h-[85vh] overflow-y-auto animate-zoom-in flex flex-col gap-4 text-[#2E1065] dark:text-[#F5F0FF] transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Close */}
