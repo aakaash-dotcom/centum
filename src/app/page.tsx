@@ -212,7 +212,10 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 2. Choose your class header */}
+      {/* 2. Scheduled Quiz of the Day (Hidden if null) */}
+      <DailyQuizBox />
+
+      {/* 3. Choose your class header */}
       <div className="text-center pt-1">
         <span className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] tracking-wider bg-[#F3E8FF] dark:bg-[#2A1247] px-3.5 py-1.5 rounded-full border border-[#DDD6FE] dark:border-[#3B2063]">
           {texts.home.chooseClass}

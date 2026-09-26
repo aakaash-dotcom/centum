@@ -389,7 +389,7 @@ export default function ChapterTestRunnerPage() {
                     })}
                   </div>
 
-                  {q.explanation && (
+                  {Boolean(q.explanation && String(q.explanation).trim()) && (
                     <div className="p-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-xs font-semibold text-[#5B21B6] dark:text-[#DDD6FE]">
                       <span className="font-black uppercase tracking-wider block mb-0.5 text-[10px] text-[#7C3AED] dark:text-[#A3E635]">
                         {texts.tests.explanation}:

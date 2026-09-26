@@ -234,7 +234,7 @@ function TestsContent() {
             }`}
           >
             <span className="text-base font-black tracking-tight">
-              📖 {texts.tests.bookBackLine1 || 'book-back'}
+              📚 {texts.tests.bookBackLine1 || 'book-back'}
             </span>
             <span className="text-xs font-bold opacity-90">
               {texts.tests.bookBackLine2 || 'one-words'}

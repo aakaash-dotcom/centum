@@ -46,6 +46,7 @@ function TestRunnerContent() {
   const typeParam = (searchParams.get('type') || '') as TestType;
   const standardParam = searchParams.get('standard') || '';
   const countParam = searchParams.get('count') || '';
+  const quizIdParam = searchParams.get('quizId') || '';
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -56,6 +57,7 @@ function TestRunnerContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showExplanations, setShowExplanations] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Record<number, boolean>>({});
 
   const questionStartTimeRef = useRef<number>(Date.now());
@@ -165,9 +167,6 @@ function TestRunnerContent() {
   };
 
   const handleSelectAnswer = (optionIndex: number) => {
-    // Only allow selection once per question for instant feedback
-    if (selectedAnswers[currentIndex] !== undefined) return;
-
     recordTimeForCurrentQuestion();
     setSelectedAnswers((prev) => ({
       ...prev,
@@ -232,9 +231,22 @@ function TestRunnerContent() {
       } catch {}
     }
 
+    // Record schedule quiz completion if quizId present (e.g. sch_2026-09-26)
+    if (quizIdParam) {
+      try {
+        localStorage.setItem(`centum_today_quiz_completed_${quizIdParam}`, 'true');
+        const dateStr = quizIdParam.replace('sch_', '');
+        localStorage.setItem(
+          `centum_today_quiz_completed_${dateStr}_${standardParam}_${subjectParam}_${chapterParam}`,
+          'true'
+        );
+        localStorage.setItem(`centum_today_quiz_completed_${dateStr}`, 'true');
+      } catch (e) {}
+    }
+
     const firstQ = questions[0];
     const quizResult: QuizResult = {
-      testId: `tr_${standardParam || '10th'}_${subjectParam || 'Maths'}_${chapterParam || 'General'}_${typeParam || 'oneword'}`,
+      testId: quizIdParam || `tr_${standardParam || '10th'}_${subjectParam || 'Maths'}_${chapterParam || 'General'}_${typeParam || 'oneword'}`,
       title: firstQ ? `${firstQ.subject} - ${firstQ.chapter}` : `${subjectParam} - ${chapterParam}`,
       classLevel: standardParam || firstQ?.classLevel || '10th',
       subject: subjectParam || firstQ?.subject || 'Maths',
@@ -253,6 +265,7 @@ function TestRunnerContent() {
 
   const handleRetake = () => {
     setIsFinished(false);
+    setShowExplanations(false);
     setCurrentIndex(0);
     setSelectedAnswers({});
     setQuestionTimes({});
@@ -264,7 +277,7 @@ function TestRunnerContent() {
   const toggleReviewExpand = (idx: number) => {
     setExpandedReviews((prev) => ({
       ...prev,
-      [idx]: !prev[idx],
+      [idx]: prev[idx] !== undefined ? !prev[idx] : false,
     }));
   };
 
@@ -411,107 +424,129 @@ function TestRunnerContent() {
           </Link>
         </div>
 
-        {/* Question Review Section */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A78BFA]">
-              {texts.tests.questionsReview} ({correctCount}/{totalCount})
-            </h3>
-          </div>
+        {/* Primary Button: See Explanations 📖 */}
+        <button
+          type="button"
+          onClick={() => setShowExplanations((prev) => !prev)}
+          className="w-full min-h-[50px] mb-6 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:from-[#6D28D9] hover:to-[#7E22CE] text-white font-black text-sm shadow-lg shadow-[#7C3AED]/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
+        >
+          <span>
+            {showExplanations
+              ? texts.tests.hideExplanations || 'Hide Explanations 📖'
+              : texts.tests.seeExplanations || 'See Explanations 📖'}
+          </span>
+          {showExplanations ? (
+            <ChevronUp className="w-4 h-4 stroke-[3]" />
+          ) : (
+            <ChevronDown className="w-4 h-4 stroke-[3]" />
+          )}
+        </button>
 
-          {questions.map((q, idx) => {
-            const userPick = selectedAnswers[idx];
-            const isCorrect = userPick === q.answerIndex;
-            const isSkipped = userPick === undefined || userPick === -1;
-            const isExpanded = expandedReviews[idx] ?? false;
+        {/* Question Review Section (Expanded via See Explanations) */}
+        {showExplanations && (
+          <div className="space-y-3 animate-fade-in">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A78BFA]">
+                {texts.tests.questionsReview} ({correctCount}/{totalCount})
+              </h3>
+            </div>
 
-            return (
-              <div
-                key={q.id || idx}
-                className="bg-white dark:bg-[#1B0B2E] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063] overflow-hidden shadow-xs transition-all"
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleReviewExpand(idx)}
-                  className="w-full p-4 flex items-center justify-between text-left gap-3 cursor-pointer hover:bg-[#FAF5FF]/50 dark:hover:bg-[#2A1247]/50 transition-colors"
+            {questions.map((q, idx) => {
+              const userPick = selectedAnswers[idx];
+              const isCorrect = userPick === q.answerIndex;
+              const isSkipped = userPick === undefined || userPick === -1;
+              const isExpanded = expandedReviews[idx] ?? true;
+              const hasExplanation = Boolean(q.explanation && String(q.explanation).trim());
+
+              return (
+                <div
+                  key={q.id || idx}
+                  className="bg-white dark:bg-[#1B0B2E] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063] overflow-hidden shadow-xs transition-all"
                 >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <span
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${
-                        isCorrect
-                          ? 'bg-[#A3E635]/20 text-[#14532D] dark:text-[#A3E635]'
-                          : 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
-                      }`}
-                    >
-                      {isCorrect ? '✓' : '✗'}
-                    </span>
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] block">
-                        q {idx + 1}
+                  <button
+                    type="button"
+                    onClick={() => toggleReviewExpand(idx)}
+                    className="w-full p-4 flex items-center justify-between text-left gap-3 cursor-pointer hover:bg-[#FAF5FF]/50 dark:hover:bg-[#2A1247]/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 mt-0.5 ${
+                          isCorrect
+                            ? 'bg-[#A3E635]/20 text-[#14532D] dark:text-[#A3E635]'
+                            : 'bg-rose-500/20 text-rose-700 dark:text-rose-300'
+                        }`}
+                      >
+                        {isCorrect ? '✓' : '✗'}
                       </span>
-                      <p className="text-xs font-bold text-[#2E1065] dark:text-[#F5F0FF] truncate">
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] block">
+                          q {idx + 1}
+                        </span>
+                        <p className="text-xs font-bold text-[#2E1065] dark:text-[#F5F0FF] truncate">
+                          {q.question}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="text-[#7C3AED] dark:text-[#A78BFA] shrink-0">
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </span>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="p-4 pt-0 border-t border-[#FAF5FF] dark:border-[#0F0618] text-xs space-y-2.5 animate-fade-in">
+                      <p className="font-extrabold text-[#2E1065] dark:text-[#F5F0FF] leading-relaxed pt-3">
                         {q.question}
                       </p>
-                    </div>
-                  </div>
 
-                  <span className="text-[#7C3AED] dark:text-[#A78BFA] shrink-0">
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                  </span>
-                </button>
+                      <div className="space-y-1.5 pt-1">
+                        {q.options.map((opt, optIdx) => {
+                          const isThisCorrect = optIdx === q.answerIndex;
+                          const isThisUserPick = optIdx === userPick;
 
-                {isExpanded && (
-                  <div className="p-4 pt-0 border-t border-[#FAF5FF] dark:border-[#0F0618] text-xs space-y-2.5 animate-fade-in">
-                    <p className="font-extrabold text-[#2E1065] dark:text-[#F5F0FF] leading-relaxed pt-3">
-                      {q.question}
-                    </p>
-
-                    <div className="space-y-1.5 pt-1">
-                      {q.options.map((opt, optIdx) => {
-                        const isThisCorrect = optIdx === q.answerIndex;
-                        const isThisUserPick = optIdx === userPick;
-
-                        return (
-                          <div
-                            key={optIdx}
-                            className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
-                              isThisCorrect
-                                ? 'bg-[#A3E635]/15 border-[#84CC16] text-[#14532D] dark:text-[#A3E635]'
-                                : isThisUserPick
-                                ? 'bg-rose-500/15 border-rose-400 text-rose-800 dark:text-rose-200'
-                                : 'bg-[#FAF5FF] dark:bg-[#0F0618] border-[#EDE9FE] dark:border-[#3B2063] text-[#2E1065]/70 dark:text-[#F5F0FF]/70'
-                            }`}
-                          >
-                            <span>{opt}</span>
-                            {isThisCorrect && <span className="text-[10px] font-black">✓ {texts.tests.correctAnswer}</span>}
-                            {isThisUserPick && !isThisCorrect && (
-                              <span className="text-[10px] font-black">✗ {texts.tests.yourPick}</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {isSkipped && (
-                      <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 block pt-1">
-                        ⚠️ {texts.tests.unanswered}
-                      </span>
-                    )}
-
-                    {q.explanation && (
-                      <div className="p-3 rounded-xl bg-[#FAF5FF] dark:bg-[#0F0618] border border-[#DDD6FE] dark:border-[#3B2063] text-[11px] font-medium text-[#2E1065]/90 dark:text-[#F5F0FF]/90 mt-2">
-                        <span className="font-black text-[#7C3AED] dark:text-[#A78BFA] block mb-0.5">
-                          💡 {texts.tests.explanation}:
-                        </span>
-                        {q.explanation}
+                          return (
+                            <div
+                              key={optIdx}
+                              className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                                isThisCorrect
+                                  ? 'bg-[#A3E635]/15 border-[#84CC16] text-[#14532D] dark:text-[#A3E635]'
+                                  : isThisUserPick
+                                  ? 'bg-rose-500/15 border-rose-400 text-rose-800 dark:text-rose-200'
+                                  : 'bg-[#FAF5FF] dark:bg-[#0F0618] border-[#EDE9FE] dark:border-[#3B2063] text-[#2E1065]/70 dark:text-[#F5F0FF]/70'
+                              }`}
+                            >
+                              <span>{opt}</span>
+                              {isThisCorrect && <span className="text-[10px] font-black">✓ {texts.tests.correctAnswer}</span>}
+                              {isThisUserPick && !isThisCorrect && (
+                                <span className="text-[10px] font-black">✗ {texts.tests.yourPick}</span>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                      {isSkipped && (
+                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 block pt-1">
+                          ⚠️ {texts.tests.unanswered}
+                        </span>
+                      )}
+
+                      {/* E2: Render explanation container ONLY if non-empty */}
+                      {hasExplanation && (
+                        <div className="p-3 rounded-xl bg-[#FAF5FF] dark:bg-[#0F0618] border border-[#DDD6FE] dark:border-[#3B2063] text-[11px] font-medium text-[#2E1065]/90 dark:text-[#F5F0FF]/90 mt-2">
+                          <span className="font-black text-[#7C3AED] dark:text-[#A78BFA] block mb-0.5">
+                            💡 {texts.tests.explanation}:
+                          </span>
+                          {q.explanation}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     );
   }
@@ -578,48 +613,26 @@ function TestRunnerContent() {
             </h2>
           </div>
 
-          {/* 4 Options Grid with Instant Green/Red Feedback */}
+          {/* 4 Options Grid with Neutral Selected Highlight (Exam-style delay) */}
           <div className="space-y-2.5">
             {currentQ.options.map((optionText, optIdx) => {
               const optionLetters = ['A', 'B', 'C', 'D'];
               const isSelected = userSelection === optIdx;
-              const isCorrectAnswer = optIdx === currentQ.answerIndex;
 
-              let buttonStyle =
-                'bg-white dark:bg-[#1B0B2E] border-[#EDE9FE] dark:border-[#3B2063] text-[#2E1065] dark:text-[#F5F0FF] hover:border-[#7C3AED]/40 hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]';
-              let badgeStyle =
-                'bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border-[#DDD6FE] dark:border-[#3B2063]';
+              const buttonStyle = isSelected
+                ? 'bg-[#FAF5FF] dark:bg-[#2A1247] border-2 border-[#7C3AED] dark:border-[#A78BFA] text-[#7C3AED] dark:text-[#A78BFA] shadow-xs'
+                : 'bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] text-[#2E1065] dark:text-[#F5F0FF] hover:border-[#7C3AED]/40 hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]';
 
-              if (hasAnswered) {
-                if (isSelected && isCorrectAnswer) {
-                  // User chose correct
-                  buttonStyle =
-                    'bg-[#A3E635]/20 border-2 border-[#84CC16] text-[#14532D] dark:text-[#A3E635] shadow-xs';
-                  badgeStyle = 'bg-[#84CC16] text-white border-[#84CC16]';
-                } else if (isSelected && !isCorrectAnswer) {
-                  // User chose wrong
-                  buttonStyle =
-                    'bg-rose-500/15 border-2 border-rose-500 text-rose-800 dark:text-rose-200 shadow-xs';
-                  badgeStyle = 'bg-rose-500 text-white border-rose-500';
-                } else if (!isSelected && isCorrectAnswer) {
-                  // Reveal correct answer
-                  buttonStyle =
-                    'bg-[#A3E635]/10 border-2 border-[#A3E635] text-[#14532D] dark:text-[#A3E635]';
-                  badgeStyle = 'bg-[#A3E635] text-[#18181B] border-[#A3E635]';
-                } else {
-                  // Other unselected options
-                  buttonStyle =
-                    'bg-white/60 dark:bg-[#1B0B2E]/60 border-transparent text-[#2E1065]/40 dark:text-[#F5F0FF]/40 opacity-60';
-                }
-              }
+              const badgeStyle = isSelected
+                ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
+                : 'bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border-[#DDD6FE] dark:border-[#3B2063]';
 
               return (
                 <button
                   key={optIdx}
                   type="button"
                   onClick={() => handleSelectAnswer(optIdx)}
-                  disabled={hasAnswered}
-                  className={`w-full min-h-[50px] p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer disabled:cursor-default ${buttonStyle}`}
+                  className={`w-full min-h-[50px] p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${buttonStyle}`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span
@@ -632,54 +645,35 @@ function TestRunnerContent() {
                     </span>
                   </div>
 
-                  {hasAnswered && isSelected && isCorrectAnswer && (
-                    <CheckCircle2 className="w-5 h-5 text-[#84CC16] shrink-0 stroke-[2.5]" />
-                  )}
-                  {hasAnswered && isSelected && !isCorrectAnswer && (
-                    <XCircle className="w-5 h-5 text-rose-500 shrink-0 stroke-[2.5]" />
-                  )}
-                  {hasAnswered && !isSelected && isCorrectAnswer && (
-                    <CheckCircle2 className="w-5 h-5 text-[#84CC16] shrink-0 stroke-[2.5]" />
+                  {isSelected && (
+                    <div className="w-5 h-5 rounded-full bg-[#7C3AED] dark:bg-[#A78BFA] text-white flex items-center justify-center shrink-0">
+                      <div className="w-2 h-2 rounded-full bg-white dark:bg-[#1B0B2E]" />
+                    </div>
                   )}
                 </button>
               );
             })}
           </div>
-
-          {/* Instant Explanation Box (Revealed after answering) */}
-          {hasAnswered && currentQ.explanation && (
-            <div className="bg-[#FAF5FF] dark:bg-[#0F0618] rounded-2xl p-4 border border-[#DDD6FE] dark:border-[#3B2063] animate-fade-in text-xs">
-              <span className="font-black text-[#7C3AED] dark:text-[#A78BFA] block mb-1">
-                💡 {texts.tests.explanation}:
-              </span>
-              <p className="font-semibold text-[#2E1065]/90 dark:text-[#F5F0FF]/90 leading-relaxed">
-                {currentQ.explanation}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Footer Navigation Bar */}
         <div className="pt-6 pb-2">
-          {!hasAnswered ? (
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSkip}
-                className="w-full min-h-[50px] rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#F3E8FF] dark:hover:bg-[#2A1247] font-black text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-              >
-                <span>{texts.tests.skip}</span>
-              </button>
-            </div>
-          ) : (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="min-h-[50px] px-5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#F3E8FF] dark:hover:bg-[#2A1247] font-black text-xs shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+            >
+              <span>{texts.tests.skip}</span>
+            </button>
             <button
               type="button"
               onClick={handleNext}
-              className="w-full min-h-[50px] rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] active:scale-[0.98] text-white font-black text-sm shadow-lg shadow-[#7C3AED]/25 transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="flex-1 min-h-[50px] rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] active:scale-[0.98] text-white font-black text-sm shadow-lg shadow-[#7C3AED]/25 transition-all cursor-pointer flex items-center justify-center gap-2"
             >
               <span>{isLastQuestion ? texts.tests.finish : texts.tests.next}</span>
             </button>
-          )}
+          </div>
         </div>
       </div>
 

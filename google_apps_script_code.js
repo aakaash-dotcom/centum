@@ -1,12 +1,15 @@
 /**
- * Centum Tamil Nadu Student Portal - Google Apps Script Backend
+ * Centum Tamil Nadu Student Portal - Google Apps Script Backend (v5.2)
  * 
  * Instructions:
  * 1. Open Google Sheets -> Extensions -> Apps Script.
  * 2. Paste this code into Code.gs.
  * 3. Set SCRIPT_SECRET = "YOUR_SECRET_KEY".
- * 4. Create sheets named: "Students", "Scores", "Papers", "News", "Questions", "DailyQuiz", "Leaderboard", "Subscriptions", "Coupons", "Referrals".
- * 5. Deploy -> New Deployment -> Web App (Execute as: Me, Who has access: Anyone).
+ * 4. Sheets: Students, Scores, Papers, News, Questions, DailyQuiz, Leaderboard, Subscriptions, Coupons, Referrals, QuizSchedule, Coins.
+ *    (QuizSchedule is created idempotently if missing).
+ * 5. ⚠️ DEPLOYMENT TRAP:
+ *    Deploy -> Manage deployments -> ✏️ (Edit) -> Version: New version -> Deploy.
+ *    (Saving alone does NOT republish the web app!)
  * 6. Copy Web App URL to APPS_SCRIPT_URL in your Vercel project environment variables.
  */
 
@@ -17,13 +20,98 @@ function doGet(e) {
   const action = params.action;
   const key = params.key;
 
-  // Validate Secret Key
-  if (key !== SCRIPT_SECRET) {
+  // Validate Secret Key (Public read actions do not require SCRIPT_SECRET)
+  const isPublicAction = (action === "today-quiz" || action === "papers" || action === "news" || action === "questions" || action === "dailyquiz");
+  if (!isPublicAction && key !== SCRIPT_SECRET) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unauthorized" }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 0. Today's Scheduled Quiz (v5.2: Founder Portion Control)
+  if (action === "today-quiz") {
+    const sheet = ensureQuizScheduleSheet(ss);
+    const data = sheet ? sheet.getDataRange().getValues() : [];
+    const targetClass = String(params.classLevel || "10th").trim().toLowerCase().replace("th", "");
+    const targetMedium = String(params.medium || "english").trim().toLowerCase();
+    const todayIST = Utilities.formatDate(new Date(), "Asia/Kolkata", "yyyy-MM-dd");
+    const targetDate = String(params.date || todayIST).trim();
+
+    let matchedSchedule = null;
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      let rowDate = "";
+      if (row[0] instanceof Date) {
+        rowDate = Utilities.formatDate(row[0], "Asia/Kolkata", "yyyy-MM-dd");
+      } else {
+        rowDate = String(row[0] || "").trim().slice(0, 10);
+      }
+
+      const rowClass = String(row[1] || "").trim().toLowerCase().replace("th", "");
+      const rowMedium = String(row[2] || "").trim().toLowerCase();
+
+      if (rowDate === targetDate && rowClass === targetClass && rowMedium === targetMedium) {
+        matchedSchedule = {
+          date: rowDate,
+          classLevel: String(row[1] || "10th").trim(),
+          medium: String(row[2] || "english").trim(),
+          subject: String(row[3] || "").trim(),
+          chapter: String(row[4] || "").trim(),
+          type: String(row[5] || "oneword").trim(),
+          count: parseInt(row[6] || "10", 10)
+        };
+        break;
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      quiz: matchedSchedule
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 0b. Ops Schema: action=ops-schema&tab=QuizSchedule
+  if (action === "ops-schema") {
+    const tabName = findAllowedTab(ss, params.tab);
+    if (!tabName) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unknown-tab" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const sheet = ss.getSheetByName(tabName) || ensureTab(ss, tabName);
+    const data = sheet.getDataRange().getValues();
+    const headers = data.length > 0 ? data[0] : [];
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      tab: tabName,
+      headers: headers,
+      rowCount: data.length
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 0c. Ops Rows: action=ops-rows&tab=QuizSchedule
+  if (action === "ops-rows") {
+    const tabName = findAllowedTab(ss, params.tab);
+    if (!tabName) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unknown-tab" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+    const sheet = ss.getSheetByName(tabName) || ensureTab(ss, tabName);
+    const data = sheet.getDataRange().getValues();
+    const headers = data.length > 0 ? data[0] : [];
+    const limit = parseInt(params.limit || "100", 10);
+    const rows = [];
+    for (let i = 1; i < data.length && rows.length < limit; i++) {
+      rows.push(data[i]);
+    }
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      tab: tabName,
+      headers: headers,
+      rows: rows
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 
   // 1. Question Papers
   if (action === "papers") {
@@ -493,6 +581,34 @@ function doGet(e) {
     })).setMimeType(ContentService.MimeType.JSON);
   }
 
+  // 12. Coins balance and recent ledger: action=coins&phone=...
+  if (action === "coins") {
+    const phone = String(params.phone || "").trim();
+    const coinsSheet = ss.getSheetByName("Coins");
+    let balance = 0;
+    const recent = [];
+    if (coinsSheet) {
+      const data = coinsSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][1]).trim() === phone) {
+          const amt = parseInt(data[i][4] || "0", 10);
+          balance += amt;
+          recent.unshift({
+            date: data[i][0] ? new Date(data[i][0]).toISOString().split("T")[0] : "",
+            reason: data[i][2],
+            amount: amt,
+            ref: data[i][3]
+          });
+        }
+      }
+    }
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      balance: balance,
+      recent: recent.slice(0, 10)
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+
   return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Invalid action" }))
     .setMimeType(ContentService.MimeType.JSON);
 }
@@ -819,12 +935,144 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // 8. Ops Add Single Row: type=ops-add
+    if (payload.type === "ops-add" || payload.action === "ops-add") {
+      const tabName = findAllowedTab(ss, payload.tab);
+      if (!tabName) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unknown-tab" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      const sheet = ss.getSheetByName(tabName) || ensureTab(ss, tabName);
+      const row = payload.row;
+      if (Array.isArray(row)) {
+        sheet.appendRow(row);
+      } else if (typeof row === "object" && row !== null) {
+        const headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+        const rowVals = headers.map(h => row[h] !== undefined ? row[h] : "");
+        sheet.appendRow(rowVals);
+      }
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, added: 1 }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 9. Ops Add Multiple Rows: type=ops-add_many
+    if (payload.type === "ops-add_many" || payload.action === "ops-add_many") {
+      const tabName = findAllowedTab(ss, payload.tab);
+      if (!tabName) {
+        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "unknown-tab" }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      const sheet = ss.getSheetByName(tabName) || ensureTab(ss, tabName);
+      const rows = Array.isArray(payload.rows) ? payload.rows : [];
+      const headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (Array.isArray(r)) {
+          sheet.appendRow(r);
+        } else if (typeof r === "object" && r !== null) {
+          const rowVals = headers.map(h => r[h] !== undefined ? r[h] : "");
+          sheet.appendRow(rowVals);
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, added: rows.length }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 10. Earn Coins: type=coin-earn
+    if (payload.type === "coin-earn") {
+      let sheet = ss.getSheetByName("Coins");
+      if (!sheet) {
+        sheet = ss.insertSheet("Coins");
+        sheet.appendRow(["Timestamp", "Phone", "Reason", "Ref", "Amount"]);
+      }
+      const phone = String(payload.phone || "").trim();
+      const reason = String(payload.reason || "reward");
+      const ref = String(payload.ref || "");
+      const amount = parseInt(payload.amount || "2", 10);
+      sheet.appendRow([new Date().toISOString(), phone, reason, ref, amount]);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, earned: amount }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 11. Spend Coins: type=coin-spend
+    if (payload.type === "coin-spend") {
+      let sheet = ss.getSheetByName("Coins");
+      if (!sheet) {
+        sheet = ss.insertSheet("Coins");
+        sheet.appendRow(["Timestamp", "Phone", "Reason", "Ref", "Amount"]);
+      }
+      const phone = String(payload.phone || "").trim();
+      const reason = String(payload.reason || "redeem");
+      const ref = String(payload.ref || "");
+      const amount = -Math.abs(parseInt(payload.amount || "0", 10));
+      sheet.appendRow([new Date().toISOString(), phone, reason, ref, amount]);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, spent: Math.abs(amount) }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 12. Referral Code Generation: type=referral-code
+    if (payload.type === "referral-code") {
+      let couponSheet = ss.getSheetByName("Coupons");
+      if (!couponSheet) {
+        couponSheet = ss.insertSheet("Coupons");
+        couponSheet.appendRow(["Code", "DiscountPercent", "Description", "Type", "Active", "AssignedPhone", "ShareAmount"]);
+      }
+      const phone = String(payload.phone || "").trim();
+      const name = String(payload.name || "Student").trim();
+      const data = couponSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][5]).trim() === phone) {
+          return ContentService.createTextOutput(JSON.stringify({ ok: true, code: String(data[i][0]) }))
+            .setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+      const cleanName = name.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6) || "STUDENT";
+      const code = `${cleanName}${phone.slice(-4)}`;
+      couponSheet.appendRow([code, 20, `${name}'s Referral Code`, "referral", true, phone, 150]);
+      return ContentService.createTextOutput(JSON.stringify({ ok: true, code: code }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: "Unknown payload type" }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ ok: false, error: err.toString() }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+}
+
+/**
+ * Tab Whitelist & Management for Ops actions
+ */
+function findAllowedTab(ss, tabInput) {
+  if (!tabInput) return null;
+  const inputLower = String(tabInput).trim().toLowerCase();
+  const ALLOWED_OPS_TABS = [
+    "Students", "Scores", "Papers", "News", "Questions",
+    "DailyQuiz", "Leaderboard", "Subscriptions", "Coupons",
+    "Referrals", "QuizSchedule", "Waitlist", "Coins"
+  ];
+  for (let i = 0; i < ALLOWED_OPS_TABS.length; i++) {
+    if (ALLOWED_OPS_TABS[i].toLowerCase() === inputLower) {
+      return ALLOWED_OPS_TABS[i];
+    }
+  }
+  return null;
+}
+
+function ensureTab(ss, tabName) {
+  let sheet = ss.getSheetByName(tabName);
+  if (!sheet) {
+    sheet = ss.insertSheet(tabName);
+  }
+  if (tabName === "QuizSchedule" && sheet.getLastRow() === 0) {
+    sheet.appendRow(["date", "classLevel", "medium", "subject", "chapter", "type", "count"]);
+  }
+  return sheet;
+}
+
+function ensureQuizScheduleSheet(ss) {
+  return ensureTab(ss, "QuizSchedule");
 }
 
 /**

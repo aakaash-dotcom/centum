@@ -1,42 +1,73 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
-import { DailyQuiz, QuizResult } from '@/types';
-import { Target, CheckCircle2, XCircle, Flame } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { normalizeSubject } from '@/app/materials/page';
+
+interface ScheduledQuiz {
+  date: string;
+  classLevel: string;
+  medium: string;
+  subject: string;
+  chapter: string;
+  type: string;
+  count: number;
+}
 
 export const DailyQuizBox: React.FC = () => {
-  const { student, medium, saveQuizResult, showToast } = useApp();
-  const [quiz, setQuiz] = useState<DailyQuiz | null>(null);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [hasAnswered, setHasAnswered] = useState(false);
+  const { student, isRegistered, medium, guestStandard, quizResults } = useApp();
+  const [quiz, setQuiz] = useState<ScheduledQuiz | null>(null);
   const [isFetched, setIsFetched] = useState(false);
+  const [isCompletedToday, setIsCompletedToday] = useState(false);
 
-  const studentStandard = student?.standard || '10th';
-  const studentStream = student?.stream || '';
+  const viewerClass = isRegistered && student?.standard ? student.standard : guestStandard || '10th';
 
   useEffect(() => {
     let isMounted = true;
 
-    const url = `/api/dailyquiz?classLevel=${encodeURIComponent(studentStandard)}&stream=${encodeURIComponent(studentStream)}&medium=${medium}`;
+    // Current date in IST (Indian Standard Time YYYY-MM-DD)
+    const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+
+    const url = `/api/today-quiz?classLevel=${encodeURIComponent(viewerClass)}&medium=${encodeURIComponent(medium)}&date=${encodeURIComponent(todayIST)}`;
 
     fetch(url)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error('Schedule fetch failed');
+        return res.json();
+      })
       .then((data) => {
         if (isMounted) {
-          if (data && data.quiz) {
-            setQuiz(data.quiz);
+          if (data && data.ok && data.quiz) {
+            const q: ScheduledQuiz = data.quiz;
+            setQuiz(q);
 
+            // Check if completed today
             try {
-              const answeredKey = `centum_daily_${data.quiz.id}_${new Date().toDateString()}`;
-              const saved = localStorage.getItem(answeredKey);
-              if (saved !== null) {
-                setSelectedOption(parseInt(saved, 10));
-                setHasAnswered(true);
-              }
-            } catch (e) {}
+              const key1 = `centum_today_quiz_completed_sch_${q.date}`;
+              const key2 = `centum_today_quiz_completed_${q.date}_${q.classLevel}_${q.subject}_${q.chapter}`;
+              const fromStorage =
+                localStorage.getItem(key1) === 'true' ||
+                localStorage.getItem(key2) === 'true' ||
+                localStorage.getItem(`centum_today_quiz_completed_${q.date}`) === 'true';
+
+              const fromResults =
+                Array.isArray(quizResults) &&
+                quizResults.some(
+                  (r) =>
+                    r.testId === `sch_${q.date}` ||
+                    (r.testId && r.testId.startsWith(`sch_${q.date}`)) ||
+                    (normalizeSubject(r.subject).toLowerCase() === normalizeSubject(q.subject).toLowerCase() &&
+                      r.completedAt &&
+                      r.completedAt.startsWith(q.date))
+                );
+
+              setIsCompletedToday(Boolean(fromStorage || fromResults));
+            } catch (e) {
+              setIsCompletedToday(false);
+            }
           } else {
             setQuiz(null);
           }
@@ -45,6 +76,7 @@ export const DailyQuizBox: React.FC = () => {
       })
       .catch(() => {
         if (isMounted) {
+          // Safety: hide silently on error / unknown action
           setQuiz(null);
           setIsFetched(true);
         }
@@ -53,158 +85,101 @@ export const DailyQuizBox: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [studentStandard, studentStream, medium]);
+  }, [viewerClass, medium, quizResults]);
 
+  // Card hidden if not fetched yet, or quiz === null (no skeleton loop, no error state)
   if (!isFetched || !quiz) {
     return null;
   }
 
-  const handleSelectOption = (index: number) => {
-    if (hasAnswered) return;
+  const mappedSubject = normalizeSubject(quiz.subject);
+  const testRunnerHref = `/test-runner?${new URLSearchParams({
+    subject: mappedSubject,
+    chapter: quiz.chapter,
+    type: quiz.type || 'oneword',
+    standard: quiz.classLevel,
+    count: String(quiz.count || 10),
+    quizId: `sch_${quiz.date}`,
+  }).toString()}`;
 
-    setSelectedOption(index);
-    setHasAnswered(true);
+  // Completed State for Today
+  if (isCompletedToday) {
+    return (
+      <div className="w-full p-[2px] rounded-3xl bg-gradient-to-r from-[#7C3AED] via-[#8B5CF6] to-[#A3E635] shadow-lg shadow-[#7C3AED]/10 animate-fade-in">
+        <div className="w-full bg-white dark:bg-[#1B0B2E] rounded-[22px] p-5 text-[#2E1065] dark:text-[#F5F0FF] transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-xl bg-[#F3E8FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA]">
+                <Sparkles className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
+              </span>
+              <span className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] tracking-wider">
+                {texts.tests.todaysQuiz || "Today's Quiz"}
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#A3E635]/20 text-[#14532D] dark:text-[#A3E635] text-[11px] font-black border border-[#84CC16]/30">
+              <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>{texts.tests.completedForToday || 'completed for today ✅'}</span>
+            </span>
+          </div>
 
-    const isCorrect = index === quiz.answerIndex;
+          <div className="pt-1">
+            <h3 className="text-sm sm:text-base font-black text-[#2E1065] dark:text-[#F5F0FF] leading-snug">
+              {quiz.subject} · {quiz.chapter}
+            </h3>
+            <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#B9A6D9] mt-0.5">
+              {quiz.count} {quiz.type === 'concept' ? texts.tests.concept : texts.tests.oneword} · {texts.home.streakSafe || 'Streak safe 🔥'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-    if (isCorrect) {
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: ['#A3E635', '#7C3AED', '#F472B6'],
-        });
-      } catch (e) {}
-    }
-
-    try {
-      const answeredKey = `centum_daily_${quiz.id}_${new Date().toDateString()}`;
-      localStorage.setItem(answeredKey, String(index));
-    } catch (e) {}
-
-    const result: QuizResult = {
-      testId: `daily_${quiz.id}`,
-      title: `${texts.home.dailyQuizTitle} - ${quiz.subject}`,
-      classLevel: quiz.classLevel,
-      subject: quiz.subject,
-      chapter: quiz.chapter || 'Daily Quiz',
-      type: 'daily',
-      score: isCorrect ? 1 : 0,
-      total: 1,
-      accuracy: isCorrect ? 100 : 0,
-      totalTimeSeconds: 15,
-      answers: [
-        {
-          questionId: quiz.id,
-          selectedIndex: index,
-          isCorrect,
-          timeSpentSeconds: 15,
-        },
-      ],
-      completedAt: new Date().toISOString(),
-    };
-
-    saveQuizResult(result);
-    showToast(texts.home.streakSafe);
-  };
-
-  const isUserCorrect = selectedOption === quiz.answerIndex;
-
+  // Active Scheduled Quiz Card
   return (
-    <div className="w-full p-[2px] rounded-3xl bg-gradient-to-r from-[#7C3AED] via-[#F472B6] to-[#A3E635] shadow-lg shadow-[#7C3AED]/10 animate-fade-in">
-      <div className="w-full bg-white dark:bg-[#3B0F6E] rounded-[22px] p-5 transition-colors">
-        {/* Header */}
+    <div className="w-full p-[2px] rounded-3xl bg-gradient-to-r from-[#7C3AED] via-[#F472B6] to-[#A3E635] shadow-lg shadow-[#7C3AED]/15 animate-fade-in">
+      <div className="w-full bg-white dark:bg-[#1B0B2E] rounded-[22px] p-5 text-[#2E1065] dark:text-[#F5F0FF] transition-colors">
+        {/* Top Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-xl bg-[#F3E8FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635]">
-              <Target className="w-4 h-4" />
+            <span className="p-1.5 rounded-xl bg-[#F3E8FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA]">
+              <Sparkles className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
             </span>
-            <h2 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
-              {texts.home.dailyQuizTitle}
-            </h2>
+            <span className="text-xs font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] tracking-wider">
+              {texts.tests.todaysQuiz || "Today's Quiz ⚡"}
+            </span>
           </div>
-
-          {hasAnswered ? (
-            <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#A3E635] text-[#18181B] flex items-center gap-1 shadow-xs">
-              <Flame className="w-3 h-3 text-[#18181B]" />
-              {texts.home.streakSafe}
-            </span>
-          ) : (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635]">
-              {quiz.subject}
-            </span>
-          )}
+          <span className="px-2.5 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] text-[10px] font-black uppercase">
+            {quiz.classLevel}
+          </span>
         </div>
 
-        {/* Question */}
-        <p className="text-sm font-extrabold text-[#2E1065] dark:text-[#FAF5FF] leading-snug mb-4">
-          {quiz.question}
-        </p>
-
-        {/* 4 Options */}
-        <div className="space-y-2">
-          {quiz.options.map((opt, idx) => {
-            const isSelected = selectedOption === idx;
-            const isCorrect = idx === quiz.answerIndex;
-
-            let btnClass = 'bg-[#FAF5FF] dark:bg-[#230542] hover:bg-[#F3E8FF] dark:hover:bg-[#4C1D95] text-[#2E1065] dark:text-[#FAF5FF] border-[#EDE9FE] dark:border-[#DDD6FE]/20';
-
-            if (hasAnswered) {
-              if (isCorrect) {
-                btnClass = 'bg-[#F0FDF4] dark:bg-[#14532D]/40 border-[#86EFAC] dark:border-[#86EFAC]/40 text-[#166534] dark:text-[#86EFAC] font-black';
-              } else if (isSelected && !isCorrect) {
-                btnClass = 'bg-[#FFF1F2] dark:bg-[#881337]/40 border-[#FDA4AF] dark:border-[#FDA4AF]/40 text-[#9F1239] dark:text-[#FDA4AF] line-through';
-              } else {
-                btnClass = 'bg-white dark:bg-[#230542] opacity-40 border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-[#2E1065] dark:text-[#FAF5FF]';
-              }
-            }
-
-            return (
-              <button
-                key={idx}
-                type="button"
-                disabled={hasAnswered}
-                onClick={() => handleSelectOption(idx)}
-                className={`w-full min-h-[44px] p-3 rounded-2xl text-left text-xs font-bold transition-all border flex items-center justify-between ${btnClass} ${
-                  hasAnswered ? 'cursor-default' : 'cursor-pointer active:scale-[0.99]'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-5 h-5 rounded-lg bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center justify-center text-[10px] font-black text-[#7C3AED] dark:text-[#A3E635]">
-                    {String.fromCharCode(65 + idx)}
-                  </span>
-                  <span>{opt}</span>
-                </div>
-
-                {hasAnswered && isCorrect && (
-                  <CheckCircle2 className="w-4 h-4 text-[#16A34A] dark:text-[#4ADE80] shrink-0" />
-                )}
-                {hasAnswered && isSelected && !isCorrect && (
-                  <XCircle className="w-4 h-4 text-[#E11D48] dark:text-[#FB7185] shrink-0" />
-                )}
-              </button>
-            );
-          })}
+        {/* Portion Details */}
+        <div className="mb-4">
+          <h3 className="text-base sm:text-lg font-black text-[#2E1065] dark:text-[#F5F0FF] leading-snug">
+            {quiz.subject}
+          </h3>
+          <p className="text-xs sm:text-sm font-bold text-[#7C3AED] dark:text-[#A78BFA] mt-0.5 leading-snug">
+            {quiz.chapter}
+          </p>
+          <div className="inline-flex items-center gap-2 mt-2.5">
+            <span className="text-[11px] font-black px-2.5 py-0.5 rounded-lg bg-[#A3E635] text-[#18181B] shadow-2xs">
+              {quiz.count} Qs
+            </span>
+            <span className="text-[11px] font-bold text-[#6D28D9]/70 dark:text-[#B9A6D9]">
+              {quiz.type === 'concept' ? texts.tests.concept : texts.tests.oneword}
+            </span>
+          </div>
         </div>
 
-        {/* Immediate Explanation upon answering */}
-        {hasAnswered && quiz.explanation && (
-          <div className="mt-3.5 p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-xs font-semibold text-[#5B21B6] dark:text-[#DDD6FE] animate-slide-up">
-            <div className="flex items-center gap-1.5 mb-1">
-              {isUserCorrect ? (
-                <span className="text-[11px] font-black text-[#16A34A] dark:text-[#4ADE80] uppercase tracking-wide">
-                  {texts.tests.correct}
-                </span>
-              ) : (
-                <span className="text-[11px] font-black text-[#E11D48] dark:text-[#FB7185] uppercase tracking-wide">
-                  {texts.tests.wrong}
-                </span>
-              )}
-            </div>
-            <p className="leading-relaxed">{quiz.explanation}</p>
-          </div>
-        )}
+        {/* Action CTA */}
+        <Link
+          href={testRunnerHref}
+          className="w-full min-h-[48px] rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] active:scale-[0.98] text-white font-black text-sm shadow-md shadow-[#7C3AED]/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+        >
+          <span>{texts.tests.startScheduledQuiz || texts.tests.startConfirmCta || 'start test →'}</span>
+          <ArrowRight className="w-4 h-4 stroke-[3]" />
+        </Link>
       </div>
     </div>
   );
