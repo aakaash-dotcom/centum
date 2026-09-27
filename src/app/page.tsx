@@ -17,15 +17,15 @@ interface ClassBoxConfig {
   tag?: string;
 }
 
-// Reverse class grid order: 12th -> 6th (12th 👑 and 10th 🎯 active, 12th FIRST)
+// Class grid order: 12th -> 6th (all standards 6th–12th unlocked)
 const CLASSES: ClassBoxConfig[] = [
   { level: '12th', emoji: '👑', isAvailable: true, tag: 'HSC' },
-  { level: '11th', emoji: '💎', isAvailable: false },
+  { level: '11th', emoji: '💎', isAvailable: true },
   { level: '10th', emoji: '🎯', isAvailable: true, tag: 'SSLC' },
-  { level: '9th', emoji: '🔮', isAvailable: false },
-  { level: '8th', emoji: '🚀', isAvailable: false },
-  { level: '7th', emoji: '⚡', isAvailable: false },
-  { level: '6th', emoji: '🐣', isAvailable: false },
+  { level: '9th', emoji: '🔮', isAvailable: true },
+  { level: '8th', emoji: '🚀', isAvailable: true },
+  { level: '7th', emoji: '⚡', isAvailable: true },
+  { level: '6th', emoji: '🐣', isAvailable: true },
 ];
 
 export default function HomePage() {
@@ -54,8 +54,7 @@ export default function HomePage() {
   };
 
   const userStandard = student?.standard || '10th';
-  const isAvailableStandard = userStandard === '10th' || userStandard === '12th';
-  const targetClass = isAvailableStandard ? userStandard : '10th';
+  const targetClass = userStandard;
 
   const categories = [
     { id: 'pyq', label: texts.categories.pyq },

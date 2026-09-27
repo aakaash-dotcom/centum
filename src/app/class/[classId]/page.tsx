@@ -33,7 +33,12 @@ function ClassPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const rawClassId = (params?.classId as string) || '10th';
-  const paramStandard = rawClassId.endsWith('th') ? rawClassId : `${rawClassId}th`;
+  const digits = rawClassId.replace(/\D/g, '');
+  const paramStandard = ['6', '7', '8', '9', '10', '11', '12'].includes(digits)
+    ? `${digits}th`
+    : rawClassId.endsWith('th')
+    ? rawClassId
+    : `${rawClassId}th`;
 
   const {
     medium,
@@ -51,7 +56,7 @@ function ClassPageContent() {
 
   // Lock guest standard when directly browsing a class link
   useEffect(() => {
-    if (!isRegistered && (paramStandard === '10th' || paramStandard === '12th')) {
+    if (!isRegistered && paramStandard) {
       setGuestStandard(paramStandard);
     }
   }, [isRegistered, paramStandard, setGuestStandard]);
@@ -100,9 +105,9 @@ function ClassPageContent() {
 
   const standardPapers = useMemo(() => {
     return papers.filter((p) => {
-      const c = String(p.classLevel || '').trim().toLowerCase();
-      const target = effectiveStandard.toLowerCase();
-      return c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
+      const c = String(p.classLevel || '').replace(/\D/g, '');
+      const target = effectiveStandard.replace(/\D/g, '');
+      return c === target;
     });
   }, [papers, effectiveStandard]);
 
@@ -399,11 +404,21 @@ function ClassPageContent() {
             </button>
           </div>
         ) : filteredPapers.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <span className="text-4xl mb-2">🐶</span>
-            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75">
-              {texts.states.empty}
+          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+            <span className="text-4xl mb-3">🌱</span>
+            <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
+              {texts.tests.lessonsArrivingSoon}
             </p>
+            <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-5">
+              {effectiveStandard} {texts.papers.papersCount}
+            </p>
+            <Link
+              href="/"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-xs font-black shadow-xs hover:bg-[#F3E8FF] transition-all flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{texts.tests.back || 'Back'}</span>
+            </Link>
           </div>
         ) : (
           <div className="space-y-3">

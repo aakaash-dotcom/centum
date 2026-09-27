@@ -5,9 +5,11 @@ export const dynamic = 'force-dynamic';
 
 export const normClass = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
-  if (s === '10' || s === '10th') return '10th';
-  if (s === '12' || s === '12th') return '12th';
-  return s; // 6th–9th, 11th pass through text-normalized
+  const digits = s.replace(/\D/g, '');
+  if (['6', '7', '8', '9', '10', '11', '12'].includes(digits)) {
+    return `${digits}th`;
+  }
+  return s;
 };
 
 export const normMedium = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'english' | 'tamil'

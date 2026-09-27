@@ -1,15 +1,5 @@
 /**
- * CENTUM Backend v5.2 — founder-scheduled home quiz + today-quiz (includes v5.1 fully)
- * Paste ALL over v5.1 → Deploy → Manage deployments → edit (✏️) → New version → Deploy.
- *
- * New in v5.2:
- *  - GET action=today-quiz&classLevel=10th&medium=english[&date=YYYY-MM-DD] (public read, no key)
- *    Reads QuizSchedule tab (date | classLevel | medium | subject | chapter | type | count)
- *    Returns { ok: true, quiz: {...} } or { ok: true, quiz: null }
- *  - QuizSchedule tab added to SCHEMA (auto-whitelisted for ops-schema, ops-rows, ops-add, ops-add_many, ops-set, ops-delete)
- *    Created idempotently if missing.
- *
- * Previous v5.1 notes:
+ * CENTUM Backend v5.1 — coins + bulk ops-import + auto daily-quiz trigger (includes v5 fully)
  * Paste ALL over v5 → Deploy → Manage deployments → edit → New version → Deploy.
  * Then OPTIONALLY run `installCentumTriggers` ONCE to arm the 6AM auto daily-quiz.
  * (NO setupCentum re-run — no new tabs.)
@@ -174,13 +164,9 @@ function findStudent_(phone) {
 function doGet(e) {
   autoSetup_();
   try {
-    const a = e.parameter.action;
-    // v5.2: public read action (key not required)
-    if (a === "today-quiz") {
-      return json_(todayQuiz_(e.parameter.classLevel, e.parameter.medium, e.parameter.date));
-    }
-
     if ((e.parameter.key || "") !== getSecret_()) return json_({ ok: false, error: "unauthorized" });
+    const a = e.parameter.action;
+    if (a === "today-quiz") { ensureQuizSchedule_(); const cl = String(e.parameter.classLevel || "").replace(/\D/g, ""); const md = String(e.parameter.medium || "").trim().toLowerCase(); const targetDate = String(e.parameter.date || Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd")).slice(0, 10); const data = sheet_("QuizSchedule").getDataRange().getValues(); if (data.length < 2) return json_({ ok: true, quiz: null }); const h = data[0].map(String); const g = function (r, name) { const i = h.indexOf(name); return i === -1 ? "" : data[r][i]; }; for (let r = 1; r < data.length; r++) { const d = g(r, "date"); const rd = d instanceof Date ? Utilities.formatDate(d, TZ, "yyyy-MM-dd") : String(d).slice(0, 10); if (rd !== targetDate) continue; if (cl && String(g(r, "classLevel")).replace(/\D/g, "") !== cl) continue; if (md && String(g(r, "medium")).trim().toLowerCase() !== md) continue; return json_({ ok: true, quiz: { date: rd, classLevel: String(g(r, "classLevel")), medium: String(g(r, "medium")), subject: String(g(r, "subject")), chapter: String(g(r, "chapter")), type: String(g(r, "type") || "oneword"), count: Number(g(r, "count")) || 10 } }); } return json_({ ok: true, quiz: null }); }
     if (a === "papers")      return json_({ ok: true, papers: rows_("Papers") });
     if (a === "news")        return json_({ ok: true, news: rows_("News") });
     if (a === "questions")   return json_({ ok: true, questions: questionRows_() });
@@ -225,7 +211,6 @@ function doGet(e) {
     }
     // ---- v4.1 agent ops (key-guarded) ----
     if (a === "ops-schema") {
-      ensureQuizSchedule_();
       const out = {};
       Object.keys(SCHEMA).forEach(function (t) {
         try { out[t] = { headers: SCHEMA[t], rows: Math.max(sheet_(t).getLastRow() - 1, 0) }; }
@@ -236,17 +221,12 @@ function doGet(e) {
     if (a === "ops-rows") {
       const tab = e.parameter.tab;
       if (!SCHEMA[tab]) return json_({ ok: false, error: "unknown-tab" });
-      if (tab === "QuizSchedule") ensureQuizSchedule_();
       return json_({ ok: true, tab: tab, rows: rows_(tab) });
     }
     // ---- v4.2: GET write-ops (params mirror the POST bodies) ----
     if (a === "ops-add") {
       let rowObj; try { rowObj = JSON.parse(e.parameter.row || "{}"); } catch (err) { return json_({ ok: false, error: "row-json-parse" }); }
       return opsAdd_({ tab: e.parameter.tab, row: rowObj });
-    }
-    if (a === "ops-add_many") {
-      let rowsArr; try { rowsArr = JSON.parse(e.parameter.rows || "[]"); } catch (err) { return json_({ ok: false, error: "rows-json-parse" }); }
-      return opsAddMany_({ tab: e.parameter.tab, rows: rowsArr });
     }
     if (a === "ops-delete") {
       return opsDelete_({ tab: e.parameter.tab, col: e.parameter.col, value: e.parameter.value,
@@ -327,8 +307,6 @@ function doPost(e) {
       }
     } else if (body.type === "ops-add") {
       return opsAdd_(body);
-    } else if (body.type === "ops-add_many") {
-      return opsAddMany_(body);
     } else if (body.type === "ops-delete") {
       return opsDelete_(body);
     } else if (body.type === "ops-set") {
@@ -378,28 +356,19 @@ function importQuestions() {
     } catch (e) { skipped.push("row " + (i + 1) + ": " + e.message); }
   });
   imp.getRange("A2").setValue(JSON.stringify([{ note: "✅ " + added + " questions added " + new Date().toLocaleString() + (skipped.length ? " — skipped: " + skipped.join("; ") : "") }], null, 2));
-  ui.alert("✅ Added " + added + " questions." + (skipped.length ? "\nSkipped:\n" + skipped.join("\n") : ""));
+  ui.alert("✅ Added " + added + " questions." + (skipped.length ? "
+Skipped:
+" + skipped.join("
+") : ""));
 }
 
 // =================== v4.1/v4.2 ops implementations (shared by GET + POST) ===================
 function opsAdd_(body) {
   const tab = body.tab;
   if (!SCHEMA[tab]) return json_({ ok: false, error: "unknown-tab" });
-  if (tab === "QuizSchedule") ensureQuizSchedule_();
   const row = SCHEMA[tab].map(function (c) { return body.row && body.row[c] !== undefined ? body.row[c] : ""; });
   append_(tab, row);
   return json_({ ok: true, added: tab, rowsNow: sheet_(tab).getLastRow() - 1 });
-}
-function opsAddMany_(body) {
-  const tab = body.tab;
-  if (!SCHEMA[tab]) return json_({ ok: false, error: "unknown-tab" });
-  if (tab === "QuizSchedule") ensureQuizSchedule_();
-  const rows = Array.isArray(body.rows) ? body.rows : [];
-  rows.forEach(function (r) {
-    const row = SCHEMA[tab].map(function (c) { return r && r[c] !== undefined ? r[c] : ""; });
-    append_(tab, row);
-  });
-  return json_({ ok: true, added: rows.length, rowsNow: sheet_(tab).getLastRow() - 1 });
 }
 function opsDelete_(body) {
   const tab = body.tab;
@@ -593,7 +562,7 @@ function dailyQuizAuto_() {
   if (existing.some(function (r) { const d = r.date instanceof Date ? Utilities.formatDate(r.date, TZ, "yyyy-MM-dd") : String(r.date); return d === today; })) return;
   const recentQ = new Set(existing.slice(-60).map(function (r) { return String(r.question).trim().toLowerCase(); }));
   const qs = rows_("Questions").filter(function (q) { return !recentQ.has(String(q.question).trim().toLowerCase()); });
-  [10, 12].forEach(function (cl) {
+  [6, 7, 8, 9, 10, 11, 12].forEach(function (cl) {
     ["english", "tamil"].forEach(function (m) {
       const pool = qs.filter(function (q) { return String(q.classLevel) === String(cl) && String(q.medium || "english").toLowerCase() === m; });
       if (!pool.length) return;
@@ -658,52 +627,7 @@ function dailyQuiz_(classLevel, stream, medium) {
   return null;
 }
 
-// =================== v5.2 today-quiz + QuizSchedule ===================
-function ensureQuizSchedule_() {
-  const id = PropertiesService.getScriptProperties().getProperty("SHEET_ID");
-  if (!id) return null;
-  const ss = SpreadsheetApp.openById(id);
-  let sh = ss.getSheetByName("QuizSchedule");
-  if (!sh) {
-    sh = ss.insertSheet("QuizSchedule");
-    ensureHeaders_(sh, SCHEMA.QuizSchedule);
-    sh.setFrozenRows(1);
-  }
-  return sh;
-}
-
-function todayQuiz_(classLevel, medium, dateParam) {
-  ensureQuizSchedule_();
-  const targetDate = String(dateParam || Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd")).trim();
-  const targetClass = String(classLevel || "10th").trim().toLowerCase().replace("th", "");
-  const targetMed = String(medium || "english").trim().toLowerCase();
-
-  const all = rows_("QuizSchedule");
-  for (let i = 0; i < all.length; i++) {
-    const r = all[i];
-    const d = r.date instanceof Date ? Utilities.formatDate(r.date, TZ, "yyyy-MM-dd") : String(r.date || "").trim().slice(0, 10);
-    if (d !== targetDate) continue;
-    const cl = String(r.classLevel || "").trim().toLowerCase().replace("th", "");
-    if (targetClass && cl !== targetClass) continue;
-    const m = String(r.medium || "").trim().toLowerCase();
-    if (targetMed && m !== targetMed) continue;
-
-    return {
-      ok: true,
-      quiz: {
-        date: d,
-        classLevel: String(r.classLevel || "10th").trim(),
-        medium: String(r.medium || "english").trim(),
-        subject: String(r.subject || "").trim(),
-        chapter: String(r.chapter || "").trim(),
-        type: String(r.type || "oneword").trim(),
-        count: Number(r.count) || 10
-      }
-    };
-  }
-  return { ok: true, quiz: null };
-}
-
+function ensureQuizSchedule_() { const id = PropertiesService.getScriptProperties().getProperty("SHEET_ID"); const ss = SpreadsheetApp.openById(id); let sh = ss.getSheetByName("QuizSchedule"); if (!sh) { sh = ss.insertSheet("QuizSchedule"); sh.appendRow(SCHEMA.QuizSchedule); sh.setFrozenRows(1); } return sh; }
 function leaderboard_(standard, viewerPhone) {
   const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
   const totals = {};

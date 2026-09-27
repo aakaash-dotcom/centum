@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Paper, PaperCategory } from '@/types';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { FileText, ArrowRight, Sparkles, Lock, ChevronDown } from 'lucide-react';
+import { FileText, ArrowRight, ArrowLeft, Sparkles, Lock, ChevronDown } from 'lucide-react';
 
 const CATEGORIES: { id: PaperCategory; label: string }[] = [
   { id: 'pyq', label: texts.categories.pyq },
@@ -67,12 +67,10 @@ function MaterialsContent() {
     setGuestStandard,
   } = useApp();
 
-  // If registered: strictly fixed from profile (12th or 10th)
+  // If registered: strictly fixed from profile (6th..12th)
   // If guest: use guestStandard if picked; otherwise default 10th
   const effectiveStandard = isRegistered
-    ? student?.standard === '12th'
-      ? '12th'
-      : '10th'
+    ? student?.standard || '10th'
     : guestStandard || '10th';
 
   const [selectedCategory, setSelectedCategory] = useState<PaperCategory>(
@@ -122,9 +120,9 @@ function MaterialsContent() {
   // Papers matching standard
   const standardPapers = useMemo(() => {
     return papers.filter((p) => {
-      const c = String(p.classLevel || '').trim().toLowerCase();
-      const target = effectiveStandard.toLowerCase();
-      return c === target || (target === '10th' && c === '10') || (target === '12th' && c === '12');
+      const c = String(p.classLevel || '').replace(/\D/g, '');
+      const target = effectiveStandard.replace(/\D/g, '');
+      return c === target;
     });
   }, [papers, effectiveStandard]);
 
@@ -295,11 +293,11 @@ function MaterialsContent() {
           </p>
         </div>
 
-        {/* Guest one-time standard pick: ONLY visible for guests who haven't locked yet */}
-        {!isRegistered && !guestStandard && (
-          <div className="inline-flex p-1 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
-            {['10th', '12th'].map((cls) => {
-              const isSelected = effectiveStandard === cls;
+        {/* Guest standard picker: offer 6th–12th */}
+        {!isRegistered && (
+          <div className="flex items-center gap-1 overflow-x-auto p-1 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs max-w-full">
+            {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((cls) => {
+              const isSelected = effectiveStandard.replace(/\D/g, '') === cls.replace(/\D/g, '');
               return (
                 <button
                   key={cls}
@@ -309,7 +307,7 @@ function MaterialsContent() {
                     setSelectedSubject('All');
                     setSelectedExam('all');
                   }}
-                  className={`min-h-[38px] px-3.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+                  className={`min-h-[34px] px-2.5 rounded-xl font-black text-xs transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                     isSelected
                       ? 'bg-[#7C3AED] text-white shadow-xs'
                       : 'text-[#6D28D9] dark:text-[#DDD6FE] hover:bg-[#FAF5FF] dark:hover:bg-[#230542]'
@@ -442,11 +440,22 @@ function MaterialsContent() {
             </button>
           </div>
         ) : filteredPapers.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <span className="text-4xl mb-2">🐶</span>
-            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75">
-              {texts.states.empty}
+          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+            <span className="text-4xl mb-3">🌱</span>
+            <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
+              {texts.tests.lessonsArrivingSoon}
             </p>
+            <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-5">
+              {effectiveStandard} {texts.papers.papersCount}
+            </p>
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-xs font-black shadow-xs hover:bg-[#F3E8FF] transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{texts.tests.back || 'Back'}</span>
+            </button>
           </div>
         ) : (
           <div className="space-y-3">

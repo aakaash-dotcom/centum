@@ -46,7 +46,7 @@ export const GateSheet: React.FC = () => {
 
   if (!isGateOpen) return null;
 
-  const isHigherSecondary = standard === '11th' || standard === '12th';
+  const hasStream = standard === '12th';
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +78,7 @@ export const GateSheet: React.FC = () => {
         name: cleanName,
         phone: cleanPhone,
         standard,
-        stream: isHigherSecondary ? stream : undefined,
+        stream: hasStream ? stream : undefined,
         district,
         password: cleanPassword,
       });
@@ -383,8 +383,8 @@ export const GateSheet: React.FC = () => {
               </div>
             </div>
 
-            {/* Conditional Stream Dropdown for 11th & 12th only */}
-            {isHigherSecondary && (
+            {/* Conditional Stream Dropdown for 12th only */}
+            {hasStream && (
               <div className="animate-fade-in">
                 <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
                   {texts.gate.streamLabel}

@@ -191,6 +191,22 @@ export const rawTexts = {
       en: 'no chapters uploaded yet for this subject 👨‍🍳',
       ta: 'இந்தப் பாடத்திற்கான தேர்வுகள் விரைவில் வரும் 👨‍🍳',
     },
+    lessonsArrivingSoon: {
+      en: 'Lessons arriving this week 🌱',
+      ta: 'பாடங்கள் இந்த வாரம் சேர்க்கப்படும் 🌱',
+    },
+    back: {
+      en: 'Back ⬅',
+      ta: 'பின்செல் ⬅',
+    },
+    contentCookingNotice: {
+      en: 'lessons and chapter tests are arriving this week 🌱',
+      ta: 'பாடங்களும் தேர்வுகளும் இந்த வாரம் சேர்க்கப்படும் 🌱',
+    },
+    selectStandard: {
+      en: 'Standard',
+      ta: 'வகுப்பு',
+    },
     timeRemaining: { en: 'time left ⏳', ta: 'மீதமுள்ள நேரம் ⏳' },
     questionProgress: { en: 'q', ta: 'கேள்வி' },
     next: { en: 'Next ⚡', ta: 'அடுத்து ⚡' },

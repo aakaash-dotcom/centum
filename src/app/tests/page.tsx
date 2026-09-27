@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
@@ -13,6 +14,7 @@ import {
   X,
   Play,
   ArrowRight,
+  ArrowLeft,
   Check,
 } from 'lucide-react';
 import { normalizeSubject } from '@/app/materials/page';
@@ -40,14 +42,13 @@ function TestsContent() {
     plan,
     openPaywall,
     guestStandard,
+    setGuestStandard,
   } = useApp();
 
-  // If registered: their standard is locked from profile (12th or 10th), no class chips
+  // If registered: their standard is locked from profile (6th..12th)
   // If guest: use guestStandard if chosen, otherwise default 10th
   const effectiveStandard = isRegistered
-    ? String(student?.standard || '').trim().toLowerCase() === '12th'
-      ? '12th'
-      : '10th'
+    ? student?.standard || '10th'
     : guestStandard || '10th';
 
   const isUserPro = String(plan || '').toLowerCase() === 'pro' || String(plan || '').toLowerCase() === 'live';
@@ -97,12 +98,12 @@ function TestsContent() {
     fetchQuestions();
   }, [medium]);
 
-  // Questions filtered strictly by user's standard (10th vs 12th)
+  // Questions filtered strictly by user's standard (6th..12th)
   const standardQuestions = useMemo(() => {
     return questions.filter((q) => {
-      const qStd = String(q.classLevel || (q as unknown as { standard?: string }).standard || '').trim().toLowerCase();
-      const normQStd = qStd === '12' || qStd === '12th' ? '12th' : '10th';
-      return normQStd === effectiveStandard;
+      const qStd = String(q.classLevel || (q as unknown as { standard?: string }).standard || '').replace(/\D/g, '');
+      const targetStd = effectiveStandard.replace(/\D/g, '');
+      return qStd === targetStd;
     });
   }, [questions, effectiveStandard]);
 
@@ -202,7 +203,7 @@ function TestsContent() {
   return (
     <div className="flex-1 flex flex-col px-4 pt-4 pb-12 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
       {/* Top Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-2">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-[#2E1065] dark:text-[#F5F0FF]">
             {texts.tests.headline}
@@ -212,15 +213,68 @@ function TestsContent() {
           </p>
         </div>
 
-        {/* Standard chip */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="px-3 py-1 rounded-full bg-[#A3E635] text-[#18181B] text-xs font-black shadow-xs">
-            {effectiveStandard}
-          </span>
-        </div>
+        {/* Standard selector for guests, or fixed badge for registered students */}
+        {!isRegistered ? (
+          <div className="flex items-center gap-1 overflow-x-auto p-1 bg-white dark:bg-[#1B0B2E] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs max-w-[210px] sm:max-w-none">
+            {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((cls) => {
+              const isSelected = effectiveStandard.replace(/\D/g, '') === cls.replace(/\D/g, '');
+              return (
+                <button
+                  key={cls}
+                  type="button"
+                  onClick={() => {
+                    setGuestStandard(cls);
+                    setSelectedSubject('');
+                  }}
+                  className={`min-h-[32px] px-2 rounded-xl font-black text-xs transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    isSelected
+                      ? 'bg-[#7C3AED] text-white shadow-xs'
+                      : 'text-[#6D28D9] dark:text-[#A78BFA] hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]'
+                  }`}
+                >
+                  {cls}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="px-3 py-1 rounded-full bg-[#A3E635] text-[#18181B] text-xs font-black shadow-xs">
+              {effectiveStandard}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="space-y-4">
+      {/* If standard has zero questions: Honest Friendly Empty State */}
+      {!isLoading && !isError && standardQuestions.length === 0 ? (
+        <div className="w-full bg-white dark:bg-[#1B0B2E] rounded-3xl p-8 text-center border border-[#EDE9FE] dark:border-[#3B2063] shadow-md flex flex-col items-center justify-center my-6 animate-fade-in">
+          <span className="text-5xl mb-3">🌱</span>
+          <h2 className="text-lg font-black text-[#2E1065] dark:text-[#F5F0FF] mb-1">
+            {texts.tests.lessonsArrivingSoon}
+          </h2>
+          <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA] mb-6 max-w-xs">
+            {effectiveStandard} {texts.tests.contentCookingNotice || 'lessons and chapter tests are arriving this week 🌱'}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-white dark:bg-[#2A1247] border border-[#DDD6FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#FAF5FF] text-xs font-black shadow-xs hover:bg-[#FAF5FF] transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>{texts.tests.back || 'Back'}</span>
+            </button>
+            <Link
+              href="/"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <span>{texts.home.backToMyHome || 'Home 🏠'}</span>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
         {/* Row 1: TWO BIG equal boxes (grid-cols-2, min-h-[96px]) */}
         <div className="grid grid-cols-2 gap-3">
           {/* Box 1: [📖 book-back \n one-words] */}
@@ -410,6 +464,7 @@ function TestsContent() {
           </div>
         )}
       </div>
+      )}
 
       {/* START FLOW: Slide-up confirmation card */}
       {confirmModal && (
