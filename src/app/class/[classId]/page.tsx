@@ -20,6 +20,8 @@ import {
   getExamCanonicalKey,
   getExamFriendlyLabel,
 } from '@/app/materials/page';
+import { isLanguageSubject } from '@/lib/data';
+import { PYQ_BETA_GATE } from '@/data/config';
 
 const CATEGORIES: { id: PaperCategory; label: string }[] = [
   { id: 'pyq', label: texts.categories.pyq },
@@ -42,6 +44,7 @@ function ClassPageContent() {
 
   const {
     medium,
+    setMedium,
     student,
     isRegistered,
     openGate,
@@ -65,11 +68,73 @@ function ClassPageContent() {
   const [selectedCategory, setSelectedCategory] = useState<PaperCategory>(initialCat);
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [selectedExam, setSelectedExam] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const [showBothMediums, setShowBothMediums] = useState<boolean>(false);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [visibleCount, setVisibleCount] = useState<number>(40);
+
+  // Bug #12: Restore filters from localStorage on mount (URL params win!)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storageKey = `centum:filters:${effectiveStandard}`;
+      const savedStr = localStorage.getItem(storageKey);
+      const saved = savedStr ? JSON.parse(savedStr) : {};
+
+      const urlSubject = searchParams.get('subject');
+      const urlExam = searchParams.get('exam');
+      const urlYear = searchParams.get('year');
+      const urlMedium = searchParams.get('medium');
+
+      const resolvedSubject = urlSubject || saved.subject || 'All';
+      const resolvedExam = urlExam || saved.exam || 'all';
+      const resolvedYear = urlYear || saved.year || 'all';
+      const resolvedMedium = urlMedium || saved.medium;
+
+      if (resolvedSubject && resolvedSubject !== selectedSubject) {
+        setSelectedSubject(resolvedSubject);
+      }
+      if (resolvedExam && resolvedExam !== selectedExam) {
+        setSelectedExam(resolvedExam);
+      }
+      if (resolvedYear && resolvedYear !== selectedYear) {
+        setSelectedYear(resolvedYear);
+      }
+      if (resolvedMedium && (resolvedMedium === 'english' || resolvedMedium === 'tamil')) {
+        if (resolvedMedium !== medium) {
+          setMedium(resolvedMedium);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to restore filter state', err);
+    }
+  }, [effectiveStandard]);
+
+  // Bug #12: Persist filters to localStorage on change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storageKey = `centum:filters:${effectiveStandard}`;
+      const payload = {
+        subject: selectedSubject,
+        exam: selectedExam,
+        year: selectedYear,
+        medium,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch (err) {
+      console.error('Failed to save filter state', err);
+    }
+  }, [effectiveStandard, selectedSubject, selectedExam, selectedYear, medium]);
+
+  // Bug #6: When beta-gated and user not registered, prompt GateSheet
+  useEffect(() => {
+    if (PYQ_BETA_GATE && !isRegistered) {
+      openGate();
+    }
+  }, [isRegistered, openGate]);
 
   const fetchPapers = () => {
     setIsLoading(true);
@@ -155,7 +220,7 @@ function ClassPageContent() {
   // Exam type options
   const availableExams = useMemo(() => {
     const relevantPapers = standardPapers.filter((p) => {
-      const cat = String(p.category || '').toLowerCase();
+      const cat = String(p.category || 'pyq').toLowerCase();
       return cat === 'pyq' || cat === 'model';
     });
     const keysSet = new Set<string>();
@@ -177,13 +242,23 @@ function ClassPageContent() {
     return ['all', ...sortedKeys];
   }, [standardPapers]);
 
-  // Filtered papers
+  // Filtered papers (Bug #11: Language subjects are common to both mediums)
   const filteredPapers = useMemo(() => {
     return standardPapers.filter((p) => {
-      const matchCategory = String(p.category || '').toLowerCase() === String(selectedCategory || '').toLowerCase();
-      const matchMedium = showBothMediums
-        ? true
-        : String(p.medium || '').toLowerCase() === String(medium || '').toLowerCase();
+      const matchCategory =
+        String(p.category || 'pyq').toLowerCase() ===
+        String(selectedCategory || '').toLowerCase();
+
+      // Bug #11: Tamil and English language papers are medium-neutral
+      const isLang = isLanguageSubject(p.subject);
+      const paperMed = String(p.medium || '').toLowerCase();
+      const targetMed = String(medium || '').toLowerCase();
+      const matchMedium =
+        showBothMediums ||
+        isLang ||
+        paperMed === targetMed ||
+        (targetMed.length > 0 && paperMed.startsWith(targetMed.slice(0, 1)));
+
       const matchSubject =
         selectedSubject === 'All' ||
         normalizeSubject(p.subject).toLowerCase() === selectedSubject.toLowerCase();
@@ -196,7 +271,12 @@ function ClassPageContent() {
         matchExam = getExamCanonicalKey(p.exam) === selectedExam;
       }
 
-      return matchCategory && matchMedium && matchSubject && matchExam;
+      let matchYear = true;
+      if (selectedYear && selectedYear !== 'all') {
+        matchYear = String(p.year) === String(selectedYear);
+      }
+
+      return matchCategory && matchMedium && matchSubject && matchExam && matchYear;
     });
   }, [
     standardPapers,
@@ -205,7 +285,49 @@ function ClassPageContent() {
     medium,
     selectedSubject,
     selectedExam,
+    selectedYear,
   ]);
+
+  // Check if papers exist across ANY medium for current category, subject, exam, year filters
+  const papersInAnyMedium = useMemo(() => {
+    return standardPapers.filter((p) => {
+      const matchCategory =
+        String(p.category || 'pyq').toLowerCase() ===
+        String(selectedCategory || '').toLowerCase();
+
+      const matchSubject =
+        selectedSubject === 'All' ||
+        normalizeSubject(p.subject).toLowerCase() === selectedSubject.toLowerCase();
+
+      let matchExam = true;
+      if (
+        (selectedCategory === 'pyq' || selectedCategory === 'model') &&
+        selectedExam !== 'all'
+      ) {
+        matchExam = getExamCanonicalKey(p.exam) === selectedExam;
+      }
+
+      let matchYear = true;
+      if (selectedYear && selectedYear !== 'all') {
+        matchYear = String(p.year) === String(selectedYear);
+      }
+
+      return matchCategory && matchSubject && matchExam && matchYear;
+    });
+  }, [
+    standardPapers,
+    selectedCategory,
+    selectedSubject,
+    selectedExam,
+    selectedYear,
+  ]);
+
+  // Bug #8: Selected medium has zero papers, but other medium has papers for this filter
+  const isMediumUnavailable =
+    !isLoading &&
+    !isError &&
+    filteredPapers.length === 0 &&
+    papersInAnyMedium.length > 0;
 
   // Reset pagination on filter change
   useEffect(() => {
@@ -214,6 +336,7 @@ function ClassPageContent() {
     selectedCategory,
     selectedSubject,
     selectedExam,
+    selectedYear,
     showBothMediums,
     medium,
     effectiveStandard,
@@ -231,10 +354,10 @@ function ClassPageContent() {
     const navigateToViewer = () => {
       const query = new URLSearchParams({
         id: paper.id,
-        fileId: paper.driveFileId,
+        fileId: paper.pdfUrl || paper.driveFileId || '',
         title: paper.title,
         subject: normalizeSubject(paper.subject),
-        year: paper.year,
+        year: String(paper.year),
       });
       router.push(`/viewer?${query.toString()}`);
     };
@@ -387,7 +510,33 @@ function ClassPageContent() {
 
       {/* Item List (Windowed / Virtualized to 40 max initially) */}
       <div className="flex-1 flex flex-col">
-        {isLoading ? (
+        {PYQ_BETA_GATE && selectedCategory === 'pyq' ? (
+          <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in bg-white dark:bg-[#3B0F6E] rounded-3xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs my-2">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#9333EA] text-white flex items-center justify-center text-3xl mb-4 shadow-md shadow-[#7C3AED]/25">
+              🔒
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-[11px] font-black uppercase tracking-wider mb-2">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Private Beta Access</span>
+            </div>
+            <h2 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight mb-2">
+              {effectiveStandard} Question Papers
+            </h2>
+            <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 max-w-sm mb-6 leading-relaxed">
+              {String(medium).toLowerCase() === 'english'
+                ? 'Official Tamil Nadu State Board previous year question papers are currently under early access. Unlock with your mobile number to get instant access.'
+                : 'தமிழ்நாடு அரசு முந்தைய ஆண்டு பொதுத் தேர்வு வினாத்தாள்கள் முன்னோட்டமாக கிடைக்கின்றன. முழு அணுகலைப் பெற உங்கள் எண்ணை உள்ளிடவும்.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => openGate()}
+              className="min-h-[48px] px-6 py-2.5 rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-sm font-black shadow-md shadow-[#7C3AED]/25 transition-all cursor-pointer flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span>{texts.gate.button}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        ) : isLoading ? (
           <SkeletonCard count={3} />
         ) : isError ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
@@ -404,22 +553,57 @@ function ClassPageContent() {
             </button>
           </div>
         ) : filteredPapers.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-fade-in">
-            <span className="text-4xl mb-3">🌱</span>
-            <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
-              {texts.tests.lessonsArrivingSoon}
-            </p>
-            <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-5">
-              {effectiveStandard} {texts.papers.papersCount}
-            </p>
-            <Link
-              href="/"
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-xs font-black shadow-xs hover:bg-[#F3E8FF] transition-all flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>{texts.tests.back || 'Back'}</span>
-            </Link>
-          </div>
+          isMediumUnavailable ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in bg-white dark:bg-[#3B0F6E] rounded-3xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs my-2">
+              <div className="w-14 h-14 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] flex items-center justify-center text-2xl mb-3 shadow-xs">
+                🌐
+              </div>
+              <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
+                {texts.papers.notAvailableInMedium || 'Paper not available in this medium yet'}
+              </p>
+              <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-4 max-w-xs">
+                {String(medium).toLowerCase() === 'english'
+                  ? 'This paper is available in Tamil medium. Switch medium or view both to access it.'
+                  : 'இந்த வினாத்தாள் ஆங்கில வழியில் கிடைக்கிறது. பயிற்றுமொழியை மாற்றவும்.'}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextMedium = String(medium).toLowerCase() === 'english' ? 'tamil' : 'english';
+                    setMedium(nextMedium);
+                  }}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
+                >
+                  {String(medium).toLowerCase() === 'english' ? 'Switch to Tamil (தமிழ்)' : 'Switch to English'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBothMediums(true)}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-xs font-black shadow-xs hover:bg-[#F3E8FF] transition-all cursor-pointer"
+                >
+                  {texts.papers.bothMediums}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-fade-in">
+              <span className="text-4xl mb-3">🌱</span>
+              <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
+                {texts.tests.lessonsArrivingSoon}
+              </p>
+              <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-5">
+                {effectiveStandard} {texts.papers.papersCount}
+              </p>
+              <Link
+                href="/"
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-xs font-black shadow-xs hover:bg-[#F3E8FF] transition-all flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>{texts.tests.back || 'Back'}</span>
+              </Link>
+            </div>
+          )
         ) : (
           <div className="space-y-3">
             {visiblePapers.map((paper) => {

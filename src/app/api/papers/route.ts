@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { SAMPLE_PAPERS } from '@/data/sampleData';
+import { allPapers, isLanguageSubject } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +13,23 @@ export const normClass = (v: unknown) => {
 };
 
 export const normMedium = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'english' | 'tamil'
-export const normCategory = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'pyq' | 'model' | 'important' | 'book'
+export const normCategory = (v: unknown) => {
+  const s = String(v ?? '').trim().toLowerCase();
+  return s || 'pyq';
+};
 export const normPlan = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   return s === 'pro' || s === 'live' ? s : 'free';
 };
+
+function extractDriveId(p: any): string {
+  if (p.driveFileId && p.driveFileId !== 'REPLACE_DRIVE_ID') return p.driveFileId;
+  if (p.pdfUrl) {
+    const m = String(p.pdfUrl).match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (m) return m[1];
+  }
+  return p.driveFileId || '';
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -40,13 +52,36 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.papers)) {
-          const normalizedPapers = data.papers.map((p: any) => ({
-            ...p,
-            classLevel: normClass(p.classLevel),
-            medium: normMedium(p.medium),
-            category: normCategory(p.category),
-            plan: normPlan(p.plan),
-          }));
+          let normalizedPapers = data.papers
+            .filter((p: any) => {
+              const cat = String(p.category || 'pyq').toLowerCase();
+              if (cat === 'provisional') return false;
+              const yr = Number(p.year);
+              if (yr && (yr < 2022 || yr > 2025)) return false;
+              return true;
+            })
+            .map((p: any) => ({
+              ...p,
+              classLevel: normClass(p.classLevel),
+              medium: normMedium(p.medium),
+              category: normCategory(p.category),
+              plan: normPlan(p.plan),
+              driveFileId: extractDriveId(p),
+            }));
+
+          if (classLevel) {
+            const targetDigit = classLevel.replace(/\D/g, '');
+            normalizedPapers = normalizedPapers.filter(
+              (p: any) => String(p.classLevel || '').replace(/\D/g, '') === targetDigit
+            );
+          }
+          if (medium && medium.toLowerCase() !== 'all') {
+            normalizedPapers = normalizedPapers.filter((p: any) => {
+              const isLang = isLanguageSubject(p.subject);
+              return isLang || String(p.medium || '').toLowerCase() === medium.toLowerCase();
+            });
+          }
+
           return NextResponse.json(
             {
               ...data,
@@ -100,36 +135,40 @@ export async function GET(request: Request) {
     }
   }
 
-  // Fallback to bundled sample data ONLY when env vars are missing entirely (dev only)
-  let papers = SAMPLE_PAPERS.map((p) => ({
+  // Fallback to committed catalog in papers.json when env vars are missing or upstream is unreachable
+  let papers = (allPapers as any[]).map((p) => ({
     ...p,
     classLevel: normClass(p.classLevel),
     medium: normMedium(p.medium),
     category: normCategory(p.category),
     plan: normPlan(p.plan),
+    driveFileId: extractDriveId(p),
   }));
 
   if (classLevel) {
+    const targetDigit = classLevel.replace(/\D/g, '');
     papers = papers.filter(
-      (p) => String(p.classLevel || '').toLowerCase() === classLevel.toLowerCase()
+      (p) => String(p.classLevel || '').replace(/\D/g, '') === targetDigit
     );
   }
-  if (medium) {
-    papers = papers.filter(
-      (p) => String(p.medium || '').toLowerCase() === medium.toLowerCase()
-    );
+  if (medium && medium.toLowerCase() !== 'all') {
+    // Bug #11: Tamil & English language papers are common to both mediums
+    papers = papers.filter((p) => {
+      const isLang = isLanguageSubject(p.subject);
+      return isLang || String(p.medium || '').toLowerCase() === medium.toLowerCase();
+    });
   }
 
   return NextResponse.json(
     {
       ok: true,
       papers,
-      source: 'mock-fallback',
+      source: 'catalog',
     },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
-        'x-data-source': 'mock',
+        'x-data-source': 'catalog',
         'x-cache-version': 'cdn-v1',
       },
     }

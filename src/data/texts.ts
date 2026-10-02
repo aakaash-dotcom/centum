@@ -163,6 +163,10 @@ export const rawTexts = {
       en: 'Choose a paper type above to see papers 👆',
       ta: 'தாள்களைப் பார்க்க மேலே உள்ள வகையைத் தேர்ந்தெடுக்கவும் 👆',
     },
+    notAvailableInMedium: {
+      en: 'Paper not available in this medium yet',
+      ta: 'இந்த பயிற்றுமொழியில் வினாத்தாள் இன்னும் கிடைக்கவில்லை',
+    },
   },
   tests: {
     headline: { en: 'Chapter Tests', ta: 'பாட வாரியான தேர்வுகள்' },

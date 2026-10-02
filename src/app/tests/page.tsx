@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
@@ -64,6 +65,22 @@ function TestsContent() {
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   // 3. Slide-up confirmation modal state
   const [confirmModal, setConfirmModal] = useState<ConfirmationModalState | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // F5: Lock body scroll while confirmation modal is open, restore on close
+  useEffect(() => {
+    if (confirmModal) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [confirmModal]);
 
   // Fetch questions from API
   const fetchQuestions = () => {
@@ -466,17 +483,17 @@ function TestsContent() {
       </div>
       )}
 
-      {/* START FLOW: Slide-up confirmation card */}
-      {confirmModal && (
+      {/* F5: START FLOW: Dialog centered in visible VIEWPORT via createPortal to document.body */}
+      {confirmModal && mounted && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Confirm Test Start"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs transition-opacity"
           onClick={() => setConfirmModal(null)}
         >
           <div
-            className="w-full max-w-md bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 shadow-2xl border border-[#EDE9FE] dark:border-[#3B2063] max-h-[85vh] overflow-y-auto animate-zoom-in flex flex-col gap-4 text-[#2E1065] dark:text-[#F5F0FF] transition-colors"
+            className="w-full max-w-md bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 shadow-2xl border border-[#EDE9FE] dark:border-[#3B2063] max-h-[90dvh] overflow-y-auto flex flex-col gap-4 text-[#2E1065] dark:text-[#F5F0FF] transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Close */}
@@ -491,7 +508,7 @@ function TestsContent() {
               <button
                 type="button"
                 onClick={() => setConfirmModal(null)}
-                className="w-8 h-8 rounded-full bg-[#FAF5FF] dark:bg-[#2A1247] text-[#6D28D9] dark:text-[#B9A6D9] flex items-center justify-center hover:bg-[#EDE9FE] transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#FAF5FF] dark:bg-[#2A1247] text-[#6D28D9] dark:text-[#B9A6D9] flex items-center justify-center hover:bg-[#EDE9FE] dark:hover:bg-[#3B2063] transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <X className="w-4 h-4" />
@@ -529,7 +546,8 @@ function TestsContent() {
               <ArrowRight className="w-4 h-4 stroke-[3]" />
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

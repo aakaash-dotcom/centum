@@ -8,11 +8,31 @@ import { Paper, PaperCategory } from '@/types';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { FileText, ArrowRight, ArrowLeft, Sparkles, Lock, ChevronDown } from 'lucide-react';
 
-const CATEGORIES: { id: PaperCategory; label: string }[] = [
-  { id: 'pyq', label: texts.categories.pyq },
-  { id: 'model', label: texts.categories.model },
-  { id: 'important', label: texts.categories.important },
-  { id: 'book', label: texts.categories.book },
+const CATEGORIES: { id: PaperCategory; label: string; icon: string; description: string }[] = [
+  {
+    id: 'pyq',
+    label: texts.categories.pyq,
+    icon: '📄',
+    description: 'Previous year board & term exam question papers',
+  },
+  {
+    id: 'model',
+    label: texts.categories.model,
+    icon: '📝',
+    description: 'Official model exam papers & PTA question sets',
+  },
+  {
+    id: 'important',
+    label: texts.categories.important,
+    icon: '⭐',
+    description: 'High-yield study materials & key revision questions',
+  },
+  {
+    id: 'book',
+    label: texts.categories.book,
+    icon: '📚',
+    description: 'Samacheer Kalvi textbooks & guide materials',
+  },
 ];
 
 // Subject normalization: normalize "Social" and "Social Science" to "Social Science", "கணிதம்" to "Maths", etc.
@@ -37,8 +57,15 @@ export function normalizeSubject(subj: string): string {
 
 export function isLanguageSubject(subj: string): boolean {
   if (!subj) return false;
-  const s = normalizeSubject(subj).toLowerCase();
-  return s === 'tamil' || s === 'english';
+  const s = String(subj).trim().toLowerCase();
+  return (
+    s === 'tamil' ||
+    s === 'english' ||
+    s === 'தமிழ்' ||
+    s === 'ஆங்கிலம்' ||
+    s.startsWith('tamil') ||
+    s.startsWith('english')
+  );
 }
 
 // Canonical key for exam values in sheet
@@ -70,6 +97,7 @@ function MaterialsContent() {
   const searchParams = useSearchParams();
   const {
     medium,
+    setMedium,
     student,
     isRegistered,
     openGate,
@@ -96,7 +124,7 @@ function MaterialsContent() {
   });
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [selectedExam, setSelectedExam] = useState<string>('all');
-  const [showBothMediums, setShowBothMediums] = useState<boolean>(false);
+  const [selectedYear, setSelectedYear] = useState<string>('all');
   const [papers, setPapers] = useState<Paper[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -104,42 +132,59 @@ function MaterialsContent() {
 
   const scrollRestoreRef = React.useRef<number | null>(null);
 
-  // Bug #12: Restore filters and scroll position if returning from viewer
+  // Bug #12: Restore filters from localStorage on mount (URL params win!)
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
-      const isReturning = sessionStorage.getItem('centum_materials_from_viewer') === 'true';
-      if (!isReturning) return;
-      sessionStorage.removeItem('centum_materials_from_viewer');
+      const storageKey = `centum:filters:${effectiveStandard}`;
+      const savedStr = localStorage.getItem(storageKey);
+      const saved = savedStr ? JSON.parse(savedStr) : {};
 
-      const savedStr = sessionStorage.getItem('centum_materials_filter_state');
-      if (savedStr) {
-        const saved = JSON.parse(savedStr);
-        if (saved.category) {
-          setSelectedCategory(saved.category as PaperCategory);
-        }
-        if (saved.subject) {
-          setSelectedSubject(saved.subject);
-        }
-        if (saved.exam) {
-          setSelectedExam(saved.exam);
-        }
-        if (typeof saved.showBothMediums === 'boolean') {
-          setShowBothMediums(saved.showBothMediums);
-        }
-        if (typeof saved.visibleCount === 'number') {
-          setVisibleCount(saved.visibleCount);
-        }
-        if (saved.guestStandard && !isRegistered) {
-          setGuestStandard(saved.guestStandard);
-        }
-        if (typeof saved.scrollY === 'number' && saved.scrollY > 0) {
-          scrollRestoreRef.current = saved.scrollY;
+      const urlSubject = searchParams.get('subject');
+      const urlExam = searchParams.get('exam');
+      const urlYear = searchParams.get('year');
+      const urlMedium = searchParams.get('medium');
+
+      const resolvedSubject = urlSubject || saved.subject || 'All';
+      const resolvedExam = urlExam || saved.exam || 'all';
+      const resolvedYear = urlYear || saved.year || 'all';
+      const resolvedMedium = urlMedium || saved.medium;
+
+      if (resolvedSubject && resolvedSubject !== selectedSubject) {
+        setSelectedSubject(resolvedSubject);
+      }
+      if (resolvedExam && resolvedExam !== selectedExam) {
+        setSelectedExam(resolvedExam);
+      }
+      if (resolvedYear && resolvedYear !== selectedYear) {
+        setSelectedYear(resolvedYear);
+      }
+      if (resolvedMedium && (resolvedMedium === 'english' || resolvedMedium === 'tamil')) {
+        if (resolvedMedium !== medium) {
+          setMedium(resolvedMedium);
         }
       }
-    } catch (e) {
-      console.error('Failed to restore materials filter state', e);
+    } catch (err) {
+      console.error('Failed to restore materials filter state', err);
     }
-  }, [isRegistered, setGuestStandard]);
+  }, [effectiveStandard]);
+
+  // Bug #12: Persist filters to localStorage on change
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const storageKey = `centum:filters:${effectiveStandard}`;
+      const payload = {
+        subject: selectedSubject,
+        exam: selectedExam,
+        year: selectedYear,
+        medium,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch (err) {
+      console.error('Failed to save materials filter state', err);
+    }
+  }, [effectiveStandard, selectedSubject, selectedExam, selectedYear, medium]);
 
   // Restore scroll position after papers load
   useEffect(() => {
@@ -263,13 +308,21 @@ function MaterialsContent() {
     return ['all', ...sortedKeys];
   }, [standardPapers]);
 
-  // Instant filtering
+  // Instant filtering (Bug #11: Language subjects are common to both mediums)
   const filteredPapers = useMemo(() => {
+    if (!selectedCategory) return [];
+
     return standardPapers.filter((p) => {
-      const matchCategory = String(p.category || '').toLowerCase() === String(selectedCategory || '').toLowerCase();
-      const matchMedium = showBothMediums
-        ? true
-        : String(p.medium || '').toLowerCase() === String(medium || '').toLowerCase();
+      const matchCategory =
+        String(p.category || 'pyq').toLowerCase() ===
+        String(selectedCategory || '').toLowerCase();
+
+      // Bug #11 / F1: Tamil & English language papers are common to both mediums
+      const isLang = isLanguageSubject(p.subject);
+      const targetMed = String(medium || '').trim().toLowerCase();
+      const paperMed = String(p.medium || '').trim().toLowerCase();
+      const matchMedium = isLang || paperMed === targetMed || paperMed.startsWith(targetMed.slice(0, 1));
+
       const matchSubject =
         selectedSubject === 'All' ||
         normalizeSubject(p.subject).toLowerCase() === selectedSubject.toLowerCase();
@@ -282,16 +335,65 @@ function MaterialsContent() {
         matchExam = getExamCanonicalKey(p.exam) === selectedExam;
       }
 
-      return matchCategory && matchMedium && matchSubject && matchExam;
+      let matchYear = true;
+      if (selectedYear && selectedYear !== 'all') {
+        matchYear = String(p.year) === String(selectedYear);
+      }
+
+      return matchCategory && matchMedium && matchSubject && matchExam && matchYear;
     });
   }, [
     standardPapers,
     selectedCategory,
-    showBothMediums,
     medium,
     selectedSubject,
     selectedExam,
+    selectedYear,
   ]);
+
+  // Check if papers exist across ANY medium for current category, subject, exam, year filters
+  const papersInAnyMedium = useMemo(() => {
+    if (!selectedCategory) return [];
+
+    return standardPapers.filter((p) => {
+      const matchCategory =
+        String(p.category || 'pyq').toLowerCase() ===
+        String(selectedCategory || '').toLowerCase();
+
+      const matchSubject =
+        selectedSubject === 'All' ||
+        normalizeSubject(p.subject).toLowerCase() === selectedSubject.toLowerCase();
+
+      let matchExam = true;
+      if (
+        (selectedCategory === 'pyq' || selectedCategory === 'model') &&
+        selectedExam !== 'all'
+      ) {
+        matchExam = getExamCanonicalKey(p.exam) === selectedExam;
+      }
+
+      let matchYear = true;
+      if (selectedYear && selectedYear !== 'all') {
+        matchYear = String(p.year) === String(selectedYear);
+      }
+
+      return matchCategory && matchSubject && matchExam && matchYear;
+    });
+  }, [
+    standardPapers,
+    selectedCategory,
+    selectedSubject,
+    selectedExam,
+    selectedYear,
+  ]);
+
+  // Bug #8: Selected medium has zero papers, but other medium has papers for this filter
+  const isMediumUnavailable =
+    !isLoading &&
+    !isError &&
+    selectedCategory !== null &&
+    filteredPapers.length === 0 &&
+    papersInAnyMedium.length > 0;
 
   // Reset pagination window when filters change
   useEffect(() => {
@@ -300,7 +402,7 @@ function MaterialsContent() {
     selectedCategory,
     selectedSubject,
     selectedExam,
-    showBothMediums,
+    selectedYear,
     medium,
     effectiveStandard,
   ]);
@@ -317,10 +419,10 @@ function MaterialsContent() {
     const navigateToViewer = () => {
       const query = new URLSearchParams({
         id: paper.id,
-        fileId: paper.driveFileId,
+        fileId: paper.pdfUrl || paper.driveFileId || '',
         title: paper.title,
         subject: normalizeSubject(paper.subject),
-        year: paper.year,
+        year: String(paper.year),
       });
       router.push(`/viewer?${query.toString()}`);
     };
@@ -390,144 +492,223 @@ function MaterialsContent() {
         )}
       </div>
 
-      {/* 4 Category Boxes (2x2 Grid) */}
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
-        {CATEGORIES.map((cat) => {
-          const isSelected = selectedCategory === cat.id;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => {
-                setSelectedCategory(cat.id);
-                setSelectedSubject('All');
-                setSelectedExam('all');
-              }}
-              className={`min-h-[58px] p-3 rounded-2xl text-left font-bold text-xs tracking-tight transition-all cursor-pointer flex items-center justify-between border ${
-                isSelected
-                  ? 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white shadow-md shadow-[#7C3AED]/20 border-[#7C3AED] scale-[1.01]'
-                  : 'bg-white dark:bg-[#3B0F6E] text-[#2E1065] dark:text-[#FAF5FF] hover:border-[#7C3AED]/40 border-[#DDD6FE] dark:border-[#DDD6FE]/20 shadow-xs'
-              }`}
-            >
-              <span>{cat.label}</span>
-              {isSelected && <Sparkles className="w-3.5 h-3.5 text-[#A3E635] shrink-0" />}
-            </button>
-          );
-        })}
-      </div>
+      {/* BEFORE SELECTION: Half-screen large cards + Pre-selection prompt (F3 & F4) */}
+      {!selectedCategory ? (
+        <div className="flex-1 flex flex-col justify-center py-2 animate-fade-in transition-all duration-200">
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight mb-1">
+              {String(medium).toLowerCase() === 'english' ? 'Select your material' : 'பாடப் பொருளைத் தேர்ந்தெடுக்கவும்'}
+            </h2>
+            <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 max-w-xs mx-auto leading-relaxed">
+              {String(medium).toLowerCase() === 'english'
+                ? 'Choose a material type from above to see its contents'
+                : 'உள்ளடக்கங்களைப் பார்க்க மேலே உள்ள வகைகளில் ஒன்றைத் தேர்ந்தெடுக்கவும்'}
+            </p>
+          </div>
 
-      {/* TWO compact native-style dropdowns (purple styling, 44px, chevron icon) */}
-      <div className={isPyqOrModel ? 'grid grid-cols-2 gap-2.5 mb-3' : 'mb-3'}>
-        {/* Dropdown 1: [ subject ▾ ] */}
-        <div className="relative">
-          <label htmlFor="materials-subject-select" className="sr-only">
-            Subject
-          </label>
-          <select
-            id="materials-subject-select"
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
-            className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-3.5 pr-8 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
-          >
-            {availableSubjects.map((subj) => (
-              <option
-                key={subj}
-                value={subj}
-                className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
+          {/* LARGE Category Cards: commanded attention (~50vh height) */}
+          <div className="grid grid-cols-2 gap-3 min-h-[46vh]">
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setSelectedCategory(cat.id);
+                  setSelectedSubject('All');
+                  setSelectedExam('all');
+                }}
+                className="p-4 rounded-3xl bg-gradient-to-br from-white via-[#FAF5FF] to-[#F3E8FF] dark:from-[#230542] dark:via-[#2A1247] dark:to-[#1B0B2E] border-2 border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] dark:hover:border-[#A3E635] shadow-md hover:shadow-xl active:scale-[0.97] transition-all duration-200 flex flex-col justify-between text-left group cursor-pointer"
               >
-                {subj === 'All' ? texts.papers.allSubjects : subj}
-              </option>
+                <div className="flex items-center justify-between">
+                  <span className="text-4xl drop-shadow-sm">{cat.icon}</span>
+                  <div className="w-8 h-8 rounded-full bg-[#FAF5FF] dark:bg-[#3B0F6E] flex items-center justify-center text-[#7C3AED] dark:text-[#A3E635] group-hover:bg-[#7C3AED] group-hover:text-white transition-colors">
+                    <ArrowRight className="w-4 h-4 stroke-[2.5]" />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <h3 className="font-black text-sm text-[#2E1065] dark:text-[#FAF5FF] leading-snug group-hover:text-[#7C3AED] dark:group-hover:text-[#A3E635] transition-colors">
+                    {cat.label}
+                  </h3>
+                  <p className="text-[10px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 line-clamp-2">
+                    {cat.description}
+                  </p>
+                  <span className="inline-block text-[10px] font-black text-[#7C3AED] dark:text-[#A3E635] uppercase tracking-wider pt-0.5">
+                    tap to view →
+                  </span>
+                </div>
+              </button>
             ))}
-          </select>
-          <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+          </div>
         </div>
+      ) : (
+        <>
+          {/* AFTER SELECTION: Collapsed compact chips with smooth ~200ms transition (F4) */}
+          <div className="mb-3 animate-fade-in transition-all duration-200">
+            <div className="flex items-center justify-between mb-1.5 px-1">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635]">
+                {texts.nav.materials} Type
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                className="text-[11px] font-bold text-[#7C3AED] dark:text-[#DDD6FE] hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <span>change</span>
+                <span className="text-xs">▾</span>
+              </button>
+            </div>
 
-        {/* Dropdown 2: [ exam type ▾ ] (Applies to PYQ + Model Question Papers) */}
-        {isPyqOrModel && (
-          <div className="relative">
-            <label htmlFor="materials-exam-select" className="sr-only">
-              Exam Type
-            </label>
-            <select
-              id="materials-exam-select"
-              value={selectedExam}
-              onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-3.5 pr-8 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
-            >
-              {availableExams.map((ex) => (
-                <option
-                  key={ex}
-                  value={ex}
-                  className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
+            <div className="grid grid-cols-2 gap-2">
+              {CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setSelectedSubject('All');
+                      setSelectedExam('all');
+                    }}
+                    className={`min-h-[44px] px-3 py-2 rounded-2xl text-left font-black text-xs tracking-tight transition-all duration-200 cursor-pointer flex items-center justify-between border ${
+                      isSelected
+                        ? 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white shadow-md shadow-[#7C3AED]/20 border-[#7C3AED] scale-[1.01]'
+                        : 'bg-white dark:bg-[#3B0F6E] text-[#2E1065] dark:text-[#FAF5FF] hover:border-[#7C3AED]/40 border-[#DDD6FE] dark:border-[#DDD6FE]/20 shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-base shrink-0">{cat.icon}</span>
+                      <span className="truncate">{cat.label}</span>
+                    </div>
+                    {isSelected && <Sparkles className="w-3.5 h-3.5 text-[#A3E635] shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* TWO compact native-style dropdowns + Count Line */}
+          <div className={isPyqOrModel ? 'grid grid-cols-2 gap-2.5 mb-3' : 'mb-3'}>
+            {/* Dropdown 1: [ subject ▾ ] */}
+            <div className="relative">
+              <label htmlFor="materials-subject-select" className="sr-only">
+                Subject
+              </label>
+              <select
+                id="materials-subject-select"
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-3.5 pr-8 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
+              >
+                {availableSubjects.map((subj) => (
+                  <option
+                    key={subj}
+                    value={subj}
+                    className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
+                  >
+                    {subj === 'All' ? texts.papers.allSubjects : subj}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+            </div>
+
+            {/* Dropdown 2: [ exam type ▾ ] (Applies to PYQ + Model Question Papers) */}
+            {isPyqOrModel && (
+              <div className="relative">
+                <label htmlFor="materials-exam-select" className="sr-only">
+                  Exam Type
+                </label>
+                <select
+                  id="materials-exam-select"
+                  value={selectedExam}
+                  onChange={(e) => setSelectedExam(e.target.value)}
+                  className="w-full min-h-[44px] appearance-none bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED] focus:border-[#7C3AED] focus:outline-none rounded-2xl px-3.5 pr-8 text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] shadow-xs cursor-pointer transition-all"
                 >
-                  {getExamFriendlyLabel(ex)}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+                  {availableExams.map((ex) => (
+                    <option
+                      key={ex}
+                      value={ex}
+                      className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] font-bold"
+                    >
+                      {getExamFriendlyLabel(ex)}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635] pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 stroke-[2.5]" />
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* Count Line ("12 papers 📄") + Minimal "Both Mediums" Switch */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <span className="text-xs font-black text-[#6D28D9] dark:text-[#A3E635]">
-          {filteredPapers.length} {texts.papers.papersCount}
-        </span>
-
-        {/* Small "both mediums" switch in header row */}
-        <button
-          type="button"
-          onClick={() => setShowBothMediums(!showBothMediums)}
-          className={`min-h-[32px] px-2.5 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 border ${
-            showBothMediums
-              ? 'bg-[#7C3AED] text-white border-[#7C3AED] shadow-xs'
-              : 'bg-white dark:bg-[#3B0F6E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#EDE9FE] dark:border-[#DDD6FE]/20 hover:border-[#7C3AED]/40'
-          }`}
-          title="Toggle both mediums"
-        >
-          <span>{texts.papers.bothMediums}</span>
-        </button>
-      </div>
-
-      {/* Papers List (Windowed / Virtualized to 40 max initially for high performance) */}
-      <div className="flex-1 flex flex-col">
-        {isLoading ? (
-          <SkeletonCard count={3} />
-        ) : isError ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-            <span className="text-4xl mb-3">👻</span>
-            <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
-              {texts.states.signalGhost}
-            </p>
-            <button
-              type="button"
-              onClick={fetchPapers}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
-            >
-              retry 🔄
-            </button>
+          {/* Count Line ("12 papers 📄") without Both Mediums button (F2) */}
+          <div className="flex items-center justify-between mb-3 px-1">
+            <span className="text-xs font-black text-[#6D28D9] dark:text-[#A3E635]">
+              {filteredPapers.length} {texts.papers.papersCount}
+            </span>
           </div>
-        ) : filteredPapers.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12 text-center animate-fade-in">
-            <span className="text-4xl mb-3">🌱</span>
-            <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
-              {texts.tests.lessonsArrivingSoon}
-            </p>
-            <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-5">
-              {effectiveStandard} {texts.papers.papersCount}
-            </p>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635] text-xs font-black shadow-xs hover:bg-[#F3E8FF] transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>{texts.tests.back || 'Back'}</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
+
+          {/* Papers List */}
+          <div className="flex-1 flex flex-col">
+            {isLoading ? (
+              <SkeletonCard count={3} />
+            ) : isError ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
+                <span className="text-4xl mb-3">👻</span>
+                <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+                  {texts.states.signalGhost}
+                </p>
+                <button
+                  type="button"
+                  onClick={fetchPapers}
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
+                >
+                  retry 🔄
+                </button>
+              </div>
+            ) : filteredPapers.length === 0 ? (
+              isMediumUnavailable ? (
+                <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in bg-white dark:bg-[#3B0F6E] rounded-3xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs my-2">
+                  <div className="w-14 h-14 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] flex items-center justify-center text-2xl mb-3 shadow-xs">
+                    🌐
+                  </div>
+                  <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
+                    {texts.papers.notAvailableInMedium || 'Paper not available in this medium yet'}
+                  </p>
+                  <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-4 max-w-xs">
+                    {String(medium).toLowerCase() === 'english'
+                      ? 'This paper is available in Tamil medium. Switch medium to access it.'
+                      : 'இந்த வினாத்தாள் ஆங்கில வழியில் கிடைக்கிறது. பயிற்றுமொழியை மாற்றவும்.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMedium = String(medium).toLowerCase() === 'english' ? 'tamil' : 'english';
+                      setMedium(nextMedium);
+                    }}
+                    className="min-h-[44px] px-4 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
+                  >
+                    {String(medium).toLowerCase() === 'english' ? 'Switch to Tamil (தமிழ்)' : 'Switch to English'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center py-12 px-4 text-center animate-fade-in bg-white dark:bg-[#3B0F6E] rounded-3xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs my-2">
+                  <span className="text-4xl mb-3">🌱</span>
+                  <p className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] mb-1">
+                    {texts.tests.lessonsArrivingSoon}
+                  </p>
+                  <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 mb-1">
+                    {effectiveStandard} {texts.papers.papersCount}
+                  </p>
+                  <p className="text-xs text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
+                    {String(medium).toLowerCase() === 'english'
+                      ? 'More study materials and model papers are arriving soon.'
+                      : 'கூடுதல் வினாத்தாள்கள் மற்றும் குறிப்புகள் விரைவில் வரும்.'}
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="space-y-3">
             {visiblePapers.map((paper) => {
               const isLockedForUser = String(paper.plan || '').toLowerCase() === 'pro' && !isUserPro && isRegistered;
 
@@ -614,8 +795,10 @@ function MaterialsContent() {
           </div>
         )}
       </div>
-    </div>
-  );
+      </>
+    )}
+  </div>
+);
 }
 
 export default function MaterialsPage() {

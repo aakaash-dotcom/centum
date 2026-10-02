@@ -348,20 +348,28 @@ export const GateSheet: React.FC = () => {
                 {texts.gate.standardLabel}
               </label>
               <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 p-1 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
-                {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((cls) => {
-                  const isSelected = standard === cls;
+                {[
+                  { id: '6th', label: texts.classes.c6 },
+                  { id: '7th', label: texts.classes.c7 },
+                  { id: '8th', label: texts.classes.c8 },
+                  { id: '9th', label: texts.classes.c9 },
+                  { id: '10th', label: texts.classes.c10 },
+                  { id: '11th', label: texts.classes.c11 },
+                  { id: '12th', label: texts.classes.c12 },
+                ].map(({ id, label }) => {
+                  const isSelected = standard === id;
                   return (
                     <button
-                      key={cls}
+                      key={id}
                       type="button"
-                      onClick={() => setStandard(cls)}
+                      onClick={() => setStandard(id)}
                       className={`min-h-[42px] rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center ${
                         isSelected
                           ? 'bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25 scale-[1.02]'
                           : 'text-[#6D28D9] dark:text-[#FAF5FF] hover:bg-white/60 dark:hover:bg-white/10'
                       }`}
                     >
-                      {cls}
+                      {label}
                     </button>
                   );
                 })}

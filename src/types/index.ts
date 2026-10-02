@@ -23,7 +23,10 @@ export interface Paper {
   year: string;
   medium: Medium;
   title: string;
-  driveFileId: string;
+  driveFileId?: string;
+  pdfUrl?: string;
+  sourceName?: string;
+  sourceUrl?: string;
   featured?: boolean;
   plan?: 'free' | 'pro';
 }
