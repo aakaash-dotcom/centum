@@ -179,9 +179,19 @@ function ClassPageContent() {
   // Subject options
   const availableSubjects = useMemo(() => {
     const set = new Set<string>();
+    const targetMed = String(medium || '').trim().toLowerCase();
     standardPapers.forEach((p) => {
-      const norm = normalizeSubject(p.subject);
-      if (norm) set.add(norm);
+      const isLang = isLanguageSubject(p.subject);
+      const paperMed = String(p.medium || '').trim().toLowerCase();
+      const matchMedium =
+        showBothMediums ||
+        isLang ||
+        paperMed === targetMed ||
+        (targetMed.length > 0 && paperMed.startsWith(targetMed.slice(0, 1)));
+      if (matchMedium) {
+        const norm = normalizeSubject(p.subject);
+        if (norm) set.add(norm);
+      }
     });
 
     if (set.size === 0) {
@@ -215,7 +225,7 @@ function ClassPageContent() {
     });
 
     return ['All', ...sortedList];
-  }, [standardPapers, effectiveStandard]);
+  }, [standardPapers, effectiveStandard, medium, showBothMediums]);
 
   // Exam type options
   const availableExams = useMemo(() => {

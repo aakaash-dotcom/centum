@@ -240,13 +240,22 @@ function MaterialsContent() {
     });
   }, [papers, effectiveStandard]);
 
-  // Subject dropdown options = subjects present in the current data for that standard
+  // Subject dropdown options = subjects present in the current data for that standard & medium
   // Social and Social Science merge into one option "Social Science"
   const availableSubjects = useMemo(() => {
     const set = new Set<string>();
+    const targetMed = String(medium || '').trim().toLowerCase();
     standardPapers.forEach((p) => {
-      const norm = normalizeSubject(p.subject);
-      if (norm) set.add(norm);
+      const isLang = isLanguageSubject(p.subject);
+      const paperMed = String(p.medium || '').trim().toLowerCase();
+      const matchMedium =
+        isLang ||
+        paperMed === targetMed ||
+        (targetMed.length > 0 && paperMed.startsWith(targetMed.slice(0, 1)));
+      if (matchMedium) {
+        const norm = normalizeSubject(p.subject);
+        if (norm) set.add(norm);
+      }
     });
 
     if (set.size === 0) {
@@ -280,7 +289,7 @@ function MaterialsContent() {
     });
 
     return ['All', ...sortedList];
-  }, [standardPapers, effectiveStandard]);
+  }, [standardPapers, effectiveStandard, medium]);
 
   // Exam type dropdown options = exam values present in the data (annual, quarterly, halfyearly…)
   // Applies to BOTH previous year questions and model question papers tabs

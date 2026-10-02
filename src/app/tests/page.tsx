@@ -19,6 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import { normalizeSubject } from '@/app/materials/page';
+import { isLanguageSubject } from '@/lib/data';
 
 // Extract number from chapter name for sorting (Chapter 1 first, etc.)
 const getChapterSortKey = (name: string): number => {
@@ -115,14 +116,28 @@ function TestsContent() {
     fetchQuestions();
   }, [medium]);
 
-  // Questions filtered strictly by user's standard (6th..12th)
+  // Reset selected subject when medium switches
+  useEffect(() => {
+    setSelectedSubject('');
+  }, [medium]);
+
+  // Questions filtered strictly by user's standard (6th..12th) & active medium:
+  // Tamil & English language subjects are common to both mediums.
+  // Other subjects strictly match user's current medium (English or Tamil).
   const standardQuestions = useMemo(() => {
+    const userMed = String(medium || '').trim().toLowerCase();
     return questions.filter((q) => {
       const qStd = String(q.classLevel || (q as unknown as { standard?: string }).standard || '').replace(/\D/g, '');
       const targetStd = effectiveStandard.replace(/\D/g, '');
-      return qStd === targetStd;
+      if (qStd !== targetStd) return false;
+
+      const isLang = isLanguageSubject(q.subject || '');
+      if (isLang) return true;
+
+      const qMed = String(q.medium || '').trim().toLowerCase();
+      return qMed === userMed || (userMed.length > 0 && qMed.startsWith(userMed.slice(0, 1)));
     });
-  }, [questions, effectiveStandard]);
+  }, [questions, effectiveStandard, medium]);
 
   // Extract unique subjects for this standard
   const availableSubjects = useMemo(() => {

@@ -8,6 +8,7 @@ import { texts } from '@/data/texts';
 import { Question, QuizResult, UserAnswerRecord, TestType } from '@/types';
 import { ScoreRing } from '@/components/ScoreRing';
 import { normalizeSubject } from '@/app/materials/page';
+import { isLanguageSubject } from '@/lib/data';
 import {
   ArrowLeft,
   Clock,
@@ -85,6 +86,7 @@ function TestRunnerContent() {
 
         const normSubjParam = subjectParam.toLowerCase();
         const normStdParam = standardParam.replace(/th/gi, '').trim().toLowerCase();
+        const userMed = String(medium || '').trim().toLowerCase();
 
         const matched = pool.filter((q) => {
           // 1. Subject mapper
@@ -107,7 +109,12 @@ function TestRunnerContent() {
           const qType = String(q.type || '').trim().toLowerCase();
           const matchType = !typeParam || qType === typeParam.toLowerCase();
 
-          return matchSubj && matchChap && matchStd && matchType;
+          // 5. Medium match: Tamil & English subjects common to both; others strict medium match
+          const isLang = isLanguageSubject(q.subject || '');
+          const qMed = String(q.medium || '').trim().toLowerCase();
+          const matchMedium = isLang || qMed === userMed || (userMed.length > 0 && qMed.startsWith(userMed.slice(0, 1)));
+
+          return matchSubj && matchChap && matchStd && matchType && matchMedium;
         });
 
         const shuffled = shuffle ? [...matched].sort(() => Math.random() - 0.5) : matched;

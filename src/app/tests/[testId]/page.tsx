@@ -7,6 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Question, QuizResult, UserAnswerRecord } from '@/types';
 import { ScoreRing } from '@/components/ScoreRing';
+import { isLanguageSubject } from '@/lib/data';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, RotateCcw, Award, ChevronRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -58,13 +59,16 @@ export default function ChapterTestRunnerPage() {
               const qChapter = String(q.chapter || '').trim().toLowerCase();
               const qType = String(q.type || '').trim().toLowerCase();
               const qMedium = String(q.medium || '').trim().toLowerCase();
+              const isLang = isLanguageSubject(q.subject || '');
+              const userMed = String(medium || '').trim().toLowerCase();
+              const matchMedium = isLang || qMedium === userMed || (userMed.length > 0 && qMedium.startsWith(userMed.slice(0, 1)));
 
               return (
                 matchClass &&
                 qSubj === subj.toLowerCase() &&
                 (ch.toLowerCase() === 'all' || qChapter === ch.toLowerCase()) &&
                 (tp.toLowerCase() === 'pro' || qType === tp.toLowerCase()) &&
-                qMedium === String(medium || '').trim().toLowerCase()
+                matchMedium
               );
             }
           );
@@ -72,9 +76,12 @@ export default function ChapterTestRunnerPage() {
 
         // Fallback: match by medium and class
         if (matched.length === 0) {
-          matched = pool.filter(
-            (q) => String(q.medium || '').trim().toLowerCase() === String(medium || '').trim().toLowerCase()
-          );
+          const userMed = String(medium || '').trim().toLowerCase();
+          matched = pool.filter((q) => {
+            const isLang = isLanguageSubject(q.subject || '');
+            const qMed = String(q.medium || '').trim().toLowerCase();
+            return isLang || qMed === userMed || (userMed.length > 0 && qMed.startsWith(userMed.slice(0, 1)));
+          });
         }
 
         if (shuffle) {

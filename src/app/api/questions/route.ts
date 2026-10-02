@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { SAMPLE_QUESTIONS } from '@/data/sampleData';
+import { isLanguageSubject } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,13 +41,34 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.questions)) {
-          const normalizedQuestions = data.questions.map((q: any) => ({
+          let normalizedQuestions = data.questions.map((q: any) => ({
             ...q,
             classLevel: normClass(q.classLevel),
             medium: normMedium(q.medium),
             type: String(q.type ?? '').trim().toLowerCase(),
             plan: normPlan(q.plan),
           }));
+
+          if (classLevel) {
+            normalizedQuestions = normalizedQuestions.filter(
+              (q: any) => String(q.classLevel || '').toLowerCase() === classLevel.toLowerCase()
+            );
+          }
+          if (subject) {
+            normalizedQuestions = normalizedQuestions.filter(
+              (q: any) => String(q.subject || '').toLowerCase() === subject.toLowerCase()
+            );
+          }
+          if (medium) {
+            const targetMed = normMedium(medium);
+            normalizedQuestions = normalizedQuestions.filter((q: any) => {
+              const isLang = isLanguageSubject(q.subject);
+              if (isLang) return true;
+              const qMed = normMedium(q.medium);
+              return qMed === targetMed || (targetMed.length > 0 && qMed.startsWith(targetMed.slice(0, 1)));
+            });
+          }
+
           return NextResponse.json(
             {
               ...data,
@@ -119,9 +141,13 @@ export async function GET(request: Request) {
     );
   }
   if (medium) {
-    questions = questions.filter(
-      (q) => String(q.medium || '').toLowerCase() === medium.toLowerCase()
-    );
+    const targetMed = normMedium(medium);
+    questions = questions.filter((q) => {
+      const isLang = isLanguageSubject(q.subject);
+      if (isLang) return true;
+      const qMed = normMedium(q.medium);
+      return qMed === targetMed || (targetMed.length > 0 && qMed.startsWith(targetMed.slice(0, 1)));
+    });
   }
 
   return NextResponse.json(
