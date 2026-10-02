@@ -159,6 +159,10 @@ export const rawTexts = {
     subjectFilter: { en: 'subject ▾', ta: 'பாடம் ▾' },
     examFilter: { en: 'exam type ▾', ta: 'தேர்வு வகை ▾' },
     allSubjects: { en: 'all subjects 📚', ta: 'அனைத்து பாடங்கள் 📚' },
+    choosePaperTypeHint: {
+      en: 'Choose a paper type above to see papers 👆',
+      ta: 'தாள்களைப் பார்க்க மேலே உள்ள வகையைத் தேர்ந்தெடுக்கவும் 👆',
+    },
   },
   tests: {
     headline: { en: 'Chapter Tests', ta: 'பாட வாரியான தேர்வுகள்' },

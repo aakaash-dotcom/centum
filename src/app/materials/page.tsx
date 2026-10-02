@@ -15,7 +15,7 @@ const CATEGORIES: { id: PaperCategory; label: string }[] = [
   { id: 'book', label: texts.categories.book },
 ];
 
-// Subject normalization: normalize "Social" and "Social Science" to "Social Science"
+// Subject normalization: normalize "Social" and "Social Science" to "Social Science", "கணிதம்" to "Maths", etc.
 export function normalizeSubject(subj: string): string {
   if (!subj) return '';
   const trimmed = subj.trim();
@@ -23,10 +23,22 @@ export function normalizeSubject(subj: string): string {
   if (lower === 'social' || lower === 'social science') {
     return 'Social Science';
   }
-  if (lower === 'maths' || lower === 'mathematics') {
+  if (lower === 'maths' || lower === 'mathematics' || lower === 'கணிதம்') {
     return 'Maths';
   }
+  if (lower === 'tamil' || lower === 'தமிழ்') {
+    return 'Tamil';
+  }
+  if (lower === 'english' || lower === 'ஆங்கிலம்') {
+    return 'English';
+  }
   return trimmed;
+}
+
+export function isLanguageSubject(subj: string): boolean {
+  if (!subj) return false;
+  const s = normalizeSubject(subj).toLowerCase();
+  return s === 'tamil' || s === 'english';
 }
 
 // Canonical key for exam values in sheet
@@ -73,9 +85,15 @@ function MaterialsContent() {
     ? student?.standard || '10th'
     : guestStandard || '10th';
 
-  const [selectedCategory, setSelectedCategory] = useState<PaperCategory>(
-    (searchParams.get('category') as PaperCategory) || 'pyq'
-  );
+  // Bug #13: On fresh Materials entry, selectedCategory is null.
+  // Only query param or returning from viewer can pre-select.
+  const [selectedCategory, setSelectedCategory] = useState<PaperCategory | null>(() => {
+    const paramCat = searchParams.get('category');
+    if (paramCat && ['pyq', 'model', 'important', 'book'].includes(paramCat.toLowerCase())) {
+      return paramCat.toLowerCase() as PaperCategory;
+    }
+    return null;
+  });
   const [selectedSubject, setSelectedSubject] = useState<string>('All');
   const [selectedExam, setSelectedExam] = useState<string>('all');
   const [showBothMediums, setShowBothMediums] = useState<boolean>(false);
@@ -83,6 +101,57 @@ function MaterialsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [visibleCount, setVisibleCount] = useState<number>(40);
+
+  const scrollRestoreRef = React.useRef<number | null>(null);
+
+  // Bug #12: Restore filters and scroll position if returning from viewer
+  useEffect(() => {
+    try {
+      const isReturning = sessionStorage.getItem('centum_materials_from_viewer') === 'true';
+      if (!isReturning) return;
+      sessionStorage.removeItem('centum_materials_from_viewer');
+
+      const savedStr = sessionStorage.getItem('centum_materials_filter_state');
+      if (savedStr) {
+        const saved = JSON.parse(savedStr);
+        if (saved.category) {
+          setSelectedCategory(saved.category as PaperCategory);
+        }
+        if (saved.subject) {
+          setSelectedSubject(saved.subject);
+        }
+        if (saved.exam) {
+          setSelectedExam(saved.exam);
+        }
+        if (typeof saved.showBothMediums === 'boolean') {
+          setShowBothMediums(saved.showBothMediums);
+        }
+        if (typeof saved.visibleCount === 'number') {
+          setVisibleCount(saved.visibleCount);
+        }
+        if (saved.guestStandard && !isRegistered) {
+          setGuestStandard(saved.guestStandard);
+        }
+        if (typeof saved.scrollY === 'number' && saved.scrollY > 0) {
+          scrollRestoreRef.current = saved.scrollY;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to restore materials filter state', e);
+    }
+  }, [isRegistered, setGuestStandard]);
+
+  // Restore scroll position after papers load
+  useEffect(() => {
+    if (isLoading || scrollRestoreRef.current === null) return;
+    const targetY = scrollRestoreRef.current;
+    scrollRestoreRef.current = null;
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        window.scrollTo({ top: targetY, behavior: 'instant' });
+      }, 50);
+    });
+  }, [isLoading, papers]);
 
   // Fetch papers for the locked standard (retrieves both mediums for instant client toggle)
   const fetchPapers = () => {

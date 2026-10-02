@@ -17,7 +17,7 @@ const STREAMS = [
 ] as const;
 
 export const GateSheet: React.FC = () => {
-  const { isGateOpen, gateMode, closeGate, registerStudent, login, setupPassword, showToast } = useApp();
+  const { isGateOpen, gateMode, closeGate, registerStudent, login, setupPassword, showToast, guestStandard } = useApp();
 
   const [mode, setMode] = useState<'register' | 'login' | 'set-password'>('register');
   const [name, setName] = useState('');
@@ -26,7 +26,7 @@ export const GateSheet: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [standard, setStandard] = useState('10th');
+  const [standard, setStandard] = useState(guestStandard || '10th');
   const [stream, setStream] = useState<string>('Science — Maths');
   const [district, setDistrict] = useState('Chennai');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,8 +41,11 @@ export const GateSheet: React.FC = () => {
       setPassword('');
       setConfirmPassword('');
       setWrongAttempts(0);
+      if (guestStandard) {
+        setStandard(guestStandard);
+      }
     }
-  }, [isGateOpen, gateMode]);
+  }, [isGateOpen, gateMode, guestStandard]);
 
   if (!isGateOpen) return null;
 
@@ -339,48 +342,52 @@ export const GateSheet: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                  {texts.gate.standardLabel}
-                </label>
-                <select
-                  value={standard}
-                  onChange={(e) => setStandard(e.target.value)}
-                  className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
-                >
-                  {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((cls) => (
-                    <option
+            {/* Class Selector: All 6th–12th prominently displayed & tappable */}
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-2">
+                {texts.gate.standardLabel}
+              </label>
+              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5 p-1 bg-[#FAF5FF] dark:bg-[#230542] rounded-2xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
+                {['6th', '7th', '8th', '9th', '10th', '11th', '12th'].map((cls) => {
+                  const isSelected = standard === cls;
+                  return (
+                    <button
                       key={cls}
-                      value={cls}
-                      className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]"
+                      type="button"
+                      onClick={() => setStandard(cls)}
+                      className={`min-h-[42px] rounded-xl font-black text-xs transition-all cursor-pointer flex items-center justify-center ${
+                        isSelected
+                          ? 'bg-[#7C3AED] text-white shadow-md shadow-[#7C3AED]/25 scale-[1.02]'
+                          : 'text-[#6D28D9] dark:text-[#FAF5FF] hover:bg-white/60 dark:hover:bg-white/10'
+                      }`}
                     >
                       {cls}
-                    </option>
-                  ))}
-                </select>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
 
-              <div>
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                  {texts.gate.districtLabel}
-                </label>
-                <select
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
-                >
-                  {TN_DISTRICTS.map((dist) => (
-                    <option
-                      key={dist}
-                      value={dist}
-                      className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]"
-                    >
-                      {dist}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* District Dropdown */}
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
+                {texts.gate.districtLabel}
+              </label>
+              <select
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+                className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
+              >
+                {TN_DISTRICTS.map((dist) => (
+                  <option
+                    key={dist}
+                    value={dist}
+                    className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]"
+                  >
+                    {dist}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Conditional Stream Dropdown for 12th only */}
