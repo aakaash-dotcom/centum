@@ -36,15 +36,19 @@ export const AppTopBar: React.FC = () => {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#FAF5FF]/95 dark:bg-[#0F0618]/95 backdrop-blur-md border-b border-[#EDE9FE] dark:border-[#3B2063] px-4 py-2.5 transition-colors">
       <div className="max-w-md mx-auto flex items-center justify-between">
-        {/* Left: "Centum 💯" pill */}
+        {/* Left: App Logo & Brand name pill */}
         <Link
           href="/"
-          className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED] transition-all group"
+          className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED] transition-all group"
         >
+          <img
+            src="/icon.png"
+            alt="Centum"
+            className="w-5 h-5 rounded-sm object-cover shadow-xs group-hover:scale-105 transition-transform"
+          />
           <span className="text-sm font-black tracking-tight text-[#7C3AED] dark:text-[#A78BFA] group-hover:text-[#6D28D9]">
             {texts.app.name}
           </span>
-          <span className="text-xs">💯</span>
         </Link>
 
         {/* Right Section: Coins Chip + Profile Avatar */}

@@ -12,8 +12,11 @@ export const metadata: Metadata = {
   description: 'Tamil Nadu State Board 10th and 12th question papers, model papers, books, and chapter tests.',
   manifest: '/manifest.json',
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: '/icon.png',
   },
 };
 
