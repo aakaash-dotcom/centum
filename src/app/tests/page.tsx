@@ -21,9 +21,8 @@ import {
 import { normalizeSubject } from '@/app/materials/page';
 import { isLanguageSubject } from '@/lib/data';
 
-// Extract number from chapter name for sorting (Chapter 1 first, etc.)
 const getChapterSortKey = (name: string): number => {
-  const match = name.match(/^(?:chapter|unit|ch)?\s*(\d+)/i) || name.match(/(\d+)/);
+  const match = name.match(/^(?:chapter|unit|ch|அலகு|பாடம்)?\s*(\d+)/i) || name.match(/(\d+)/);
   return match ? parseInt(match[1], 10) : 999;
 };
 

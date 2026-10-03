@@ -28,6 +28,7 @@ export interface Paper {
   sourceName?: string;
   sourceUrl?: string;
   featured?: boolean;
+  isBilingual?: boolean;
   plan?: 'free' | 'pro';
 }
 

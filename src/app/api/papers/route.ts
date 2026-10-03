@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { allPapers, isLanguageSubject } from '@/lib/data';
+import { allPapers, isLanguageSubject, detectBilingualPapers, deduplicateBilingualPapers } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,22 +52,24 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.papers)) {
-          let normalizedPapers = data.papers
-            .filter((p: any) => {
-              const cat = String(p.category || 'pyq').toLowerCase();
-              if (cat === 'provisional') return false;
-              const yr = Number(p.year);
-              if (yr && (yr < 2022 || yr > 2025)) return false;
-              return true;
-            })
-            .map((p: any) => ({
-              ...p,
-              classLevel: normClass(p.classLevel),
-              medium: normMedium(p.medium),
-              category: normCategory(p.category),
-              plan: normPlan(p.plan),
-              driveFileId: extractDriveId(p),
-            }));
+          let normalizedPapers = detectBilingualPapers(
+            data.papers
+              .filter((p: any) => {
+                const cat = String(p.category || 'pyq').toLowerCase();
+                if (cat === 'provisional') return false;
+                const yr = Number(p.year);
+                if (yr && (yr < 2022 || yr > 2025)) return false;
+                return true;
+              })
+              .map((p: any) => ({
+                ...p,
+                classLevel: normClass(p.classLevel),
+                medium: normMedium(p.medium),
+                category: normCategory(p.category),
+                plan: normPlan(p.plan),
+                driveFileId: extractDriveId(p),
+              }))
+          );
 
           if (classLevel) {
             const targetDigit = classLevel.replace(/\D/g, '');
@@ -78,9 +80,11 @@ export async function GET(request: Request) {
           if (medium && medium.toLowerCase() !== 'all') {
             normalizedPapers = normalizedPapers.filter((p: any) => {
               const isLang = isLanguageSubject(p.subject);
-              return isLang || String(p.medium || '').toLowerCase() === medium.toLowerCase();
+              return isLang || p.isBilingual || String(p.medium || '').toLowerCase() === medium.toLowerCase();
             });
           }
+
+          normalizedPapers = deduplicateBilingualPapers(normalizedPapers);
 
           return NextResponse.json(
             {
@@ -136,14 +140,16 @@ export async function GET(request: Request) {
   }
 
   // Fallback to committed catalog in papers.json when env vars are missing or upstream is unreachable
-  let papers = (allPapers as any[]).map((p) => ({
-    ...p,
-    classLevel: normClass(p.classLevel),
-    medium: normMedium(p.medium),
-    category: normCategory(p.category),
-    plan: normPlan(p.plan),
-    driveFileId: extractDriveId(p),
-  }));
+  let papers = detectBilingualPapers(
+    (allPapers as any[]).map((p) => ({
+      ...p,
+      classLevel: normClass(p.classLevel),
+      medium: normMedium(p.medium),
+      category: normCategory(p.category),
+      plan: normPlan(p.plan),
+      driveFileId: extractDriveId(p),
+    }))
+  );
 
   if (classLevel) {
     const targetDigit = classLevel.replace(/\D/g, '');
@@ -152,12 +158,14 @@ export async function GET(request: Request) {
     );
   }
   if (medium && medium.toLowerCase() !== 'all') {
-    // Bug #11: Tamil & English language papers are common to both mediums
+    // Bug #11 & Bilingual: Tamil & English language papers and bilingual papers are common to both mediums
     papers = papers.filter((p) => {
       const isLang = isLanguageSubject(p.subject);
-      return isLang || String(p.medium || '').toLowerCase() === medium.toLowerCase();
+      return isLang || p.isBilingual || String(p.medium || '').toLowerCase() === medium.toLowerCase();
     });
   }
+
+  papers = deduplicateBilingualPapers(papers);
 
   return NextResponse.json(
     {

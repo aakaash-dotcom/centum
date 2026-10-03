@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
@@ -60,6 +60,10 @@ function TestRunnerContent() {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showExplanations, setShowExplanations] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Record<number, boolean>>({});
+
+  const hasAnyExplanation = useMemo(() => {
+    return questions.some((q) => Boolean(q.explanation && String(q.explanation).trim()));
+  }, [questions]);
 
   const questionStartTimeRef = useRef<number>(Date.now());
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -431,16 +435,20 @@ function TestRunnerContent() {
           </Link>
         </div>
 
-        {/* Primary Button: See Explanations 📖 */}
+        {/* Primary Button: See Explanations (when available) or Review Questions */}
         <button
           type="button"
           onClick={() => setShowExplanations((prev) => !prev)}
           className="w-full min-h-[50px] mb-6 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#9333EA] hover:from-[#6D28D9] hover:to-[#7E22CE] text-white font-black text-sm shadow-lg shadow-[#7C3AED]/25 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98]"
         >
           <span>
-            {showExplanations
-              ? texts.tests.hideExplanations || 'Hide Explanations 📖'
-              : texts.tests.seeExplanations || 'See Explanations 📖'}
+            {hasAnyExplanation
+              ? showExplanations
+                ? texts.tests.hideExplanations || 'Hide Explanations 📖'
+                : texts.tests.seeExplanations || 'See Explanations 📖'
+              : showExplanations
+              ? 'Hide Questions Review 📝'
+              : 'Review Questions & Answers 📝'}
           </span>
           {showExplanations ? (
             <ChevronUp className="w-4 h-4 stroke-[3]" />

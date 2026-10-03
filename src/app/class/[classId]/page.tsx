@@ -20,7 +20,11 @@ import {
   getExamCanonicalKey,
   getExamFriendlyLabel,
 } from '@/app/materials/page';
-import { isLanguageSubject } from '@/lib/data';
+import {
+  isLanguageSubject,
+  detectBilingualPapers,
+  deduplicateBilingualPapers,
+} from '@/lib/data';
 import { PYQ_BETA_GATE } from '@/data/config';
 
 const CATEGORIES: { id: PaperCategory; label: string }[] = [
@@ -150,7 +154,7 @@ function ClassPageContent() {
         }
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.papers)) {
-          setPapers(data.papers);
+          setPapers(detectBilingualPapers(data.papers));
         } else {
           setIsError(true);
           setPapers([]);
@@ -186,6 +190,7 @@ function ClassPageContent() {
       const matchMedium =
         showBothMediums ||
         isLang ||
+        p.isBilingual ||
         paperMed === targetMed ||
         (targetMed.length > 0 && paperMed.startsWith(targetMed.slice(0, 1)));
       if (matchMedium) {
@@ -195,20 +200,22 @@ function ClassPageContent() {
     });
 
     if (set.size === 0) {
-      return effectiveStandard === '12th'
-        ? ['All', 'Maths', 'Physics', 'Chemistry', 'Biology', 'Computer Science']
-        : ['All', 'Tamil', 'English', 'Maths', 'Science', 'Social Science'];
+      return ['All'];
     }
 
     const priority = [
       'Tamil',
       'English',
       'Maths',
+      'Mathematics',
       'Science',
       'Social Science',
       'Physics',
       'Chemistry',
       'Biology',
+      'Botany',
+      'Zoology',
+      'Business Maths',
       'Computer Science',
       'Commerce',
       'Accountancy',
@@ -259,13 +266,14 @@ function ClassPageContent() {
         String(p.category || 'pyq').toLowerCase() ===
         String(selectedCategory || '').toLowerCase();
 
-      // Bug #11: Tamil and English language papers are medium-neutral
+      // Bug #11 & Bilingual: Tamil, English, and bilingual papers are medium-neutral
       const isLang = isLanguageSubject(p.subject);
       const paperMed = String(p.medium || '').toLowerCase();
       const targetMed = String(medium || '').toLowerCase();
       const matchMedium =
         showBothMediums ||
         isLang ||
+        p.isBilingual ||
         paperMed === targetMed ||
         (targetMed.length > 0 && paperMed.startsWith(targetMed.slice(0, 1)));
 
@@ -352,8 +360,12 @@ function ClassPageContent() {
     effectiveStandard,
   ]);
 
-  const visiblePapers = filteredPapers.slice(0, visibleCount);
-  const hasMorePapers = filteredPapers.length > visibleCount;
+  const deduplicatedFilteredPapers = useMemo(() => {
+    return deduplicateBilingualPapers(filteredPapers);
+  }, [filteredPapers]);
+
+  const visiblePapers = deduplicatedFilteredPapers.slice(0, visibleCount);
+  const hasMorePapers = deduplicatedFilteredPapers.length > visibleCount;
 
   const isUserPro = String(plan || '').toLowerCase() === 'pro' || String(plan || '').toLowerCase() === 'live';
   const isPyqOrModel = String(selectedCategory || '').toLowerCase() === 'pyq' || String(selectedCategory || '').toLowerCase() === 'model';
@@ -501,7 +513,7 @@ function ClassPageContent() {
       {/* Count Line ("12 papers 📄") + Minimal "Both Mediums" Switch */}
       <div className="flex items-center justify-between mb-3 px-1">
         <span className="text-xs font-black text-[#6D28D9] dark:text-[#A3E635]">
-          {filteredPapers.length} {texts.papers.papersCount}
+          {deduplicatedFilteredPapers.length} {texts.papers.papersCount}
         </span>
 
         <button
@@ -641,11 +653,15 @@ function ClassPageContent() {
                           <span className="text-[11px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
                             {normalizeSubject(paper.subject)}
                           </span>
-                          {paper.medium && (
+                          {paper.isBilingual ? (
+                            <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800/60 px-1.5 py-0.5 rounded-md inline-flex items-center gap-1">
+                              போதும் மொழி · Bilingual (TM & EN)
+                            </span>
+                          ) : paper.medium ? (
                             <span className="text-[10px] font-semibold text-[#6D28D9]/50 dark:text-[#DDD6FE]/50">
                               · {String(paper.medium).toLowerCase() === 'english' ? 'English' : 'தமிழ்'}
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
