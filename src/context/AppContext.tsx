@@ -33,6 +33,7 @@ interface AppContextType {
     stream?: string;
     district: string;
     password?: string;
+    waOptIn?: boolean;
   }) => Promise<void>;
   login: (
     phone: string,
@@ -459,6 +460,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     stream?: string;
     district: string;
     password?: string;
+    waOptIn?: boolean;
   }) => {
     try {
       const cleanPhone = normalizePhone(data.phone) || data.phone;

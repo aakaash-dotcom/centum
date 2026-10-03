@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { registerMockUser } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
+import { recordOptIn } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,9 +20,13 @@ export async function POST(request: Request) {
       plan,
       refCode,
       source,
+      waOptIn,
     } = body;
 
     const phone = normalizePhone(rawPhone) || rawPhone;
+    if (waOptIn !== false && phone) {
+      recordOptIn(phone);
+    }
     const cleanPassword = typeof password === 'string' ? password.trim() : password;
     const referralSource = refCode ? `ref:${refCode}` : (source || 'app');
 

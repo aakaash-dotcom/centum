@@ -29,6 +29,7 @@ export const GateSheet: React.FC = () => {
   const [standard, setStandard] = useState(guestStandard || '10th');
   const [stream, setStream] = useState<string>('Science — Maths');
   const [district, setDistrict] = useState('Chennai');
+  const [waOptIn, setWaOptIn] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [wrongAttempts, setWrongAttempts] = useState(0);
@@ -84,6 +85,7 @@ export const GateSheet: React.FC = () => {
         stream: hasStream ? stream : undefined,
         district,
         password: cleanPassword,
+        waOptIn,
       });
 
       try {
@@ -421,6 +423,31 @@ export const GateSheet: React.FC = () => {
                 </select>
               </div>
             )}
+
+            {/* WhatsApp Opt-in Checkbox (Default ON, bilingual copy) */}
+            <div
+              onClick={() => setWaOptIn(!waOptIn)}
+              className="flex items-start gap-3 p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 cursor-pointer hover:border-[#7C3AED]/40 transition-colors select-none"
+            >
+              <div className="pt-0.5">
+                <input
+                  type="checkbox"
+                  id="waOptInCheckbox"
+                  checked={waOptIn}
+                  onChange={(e) => setWaOptIn(e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded text-[#16A34A] focus:ring-[#16A34A] border-gray-300 dark:border-gray-600 cursor-pointer accent-[#16A34A]"
+                />
+              </div>
+              <label htmlFor="waOptInCheckbox" className="text-xs leading-snug cursor-pointer select-none">
+                <span className="block font-bold text-[#2E1065] dark:text-[#FAF5FF]">
+                  வாட்ஸ்அப்பில் தேர்வு அறிவிப்புகள் & வினாத்தாள்களைப் பெறுங்கள்
+                </span>
+                <span className="block text-[11px] font-medium text-[#7C3AED] dark:text-[#A3E635] mt-0.5">
+                  Get exam updates, question papers & test alerts on WhatsApp
+                </span>
+              </label>
+            </div>
 
             {/* Big Lime Accent Button with Dark Text */}
             <button
