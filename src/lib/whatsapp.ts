@@ -4,7 +4,7 @@ import crypto from 'crypto';
 const DEROPO_API_TOKEN = process.env.DEROPO_API_TOKEN || '';
 const DEROPO_DEVICE_ID = process.env.DEROPO_DEVICE_ID || '3079';
 const DEROPO_BASE_URL = process.env.DEROPO_BASE_URL || 'https://api.deropo.com';
-const DEROPO_WEBHOOK_SECRET = process.env.DEROPO_WEBHOOK_SECRET || process.env.DEROPO_API_TOKEN || '';
+const DEROPO_WEBHOOK_SECRET = process.env.DEROPO_WEBHOOK_SECRET || '';
 
 export const FOUNDER_TRIAL_PHONE = '918610653352';
 
@@ -275,36 +275,170 @@ export function verify6DigitOtp(
 
 // ================= WEBHOOK & HMAC UTILITIES =================
 
+interface WebhookDiagnosticsState {
+  last401Headers: string[];
+  okTimestamps: number[];
+  fail401Timestamps: number[];
+  lastOkAt: string | null;
+}
+
+const webhookDiagnostics: WebhookDiagnosticsState = {
+  last401Headers: [],
+  okTimestamps: [],
+  fail401Timestamps: [],
+  lastOkAt: null,
+};
+
+function pruneDiagnostics(now: number): void {
+  const oneDayAgo = now - 24 * 60 * 60 * 1000;
+  webhookDiagnostics.okTimestamps = webhookDiagnostics.okTimestamps.filter(t => t >= oneDayAgo);
+  webhookDiagnostics.fail401Timestamps = webhookDiagnostics.fail401Timestamps.filter(t => t >= oneDayAgo);
+}
+
+export function recordWebhookSuccess(): void {
+  const now = Date.now();
+  webhookDiagnostics.okTimestamps.push(now);
+  webhookDiagnostics.lastOkAt = new Date(now).toISOString();
+  pruneDiagnostics(now);
+}
+
+export function recordWebhook401Failure(headerNames: string[]): void {
+  const now = Date.now();
+  webhookDiagnostics.fail401Timestamps.push(now);
+  // Store header NAMES ONLY (no values), lowercase and deduplicated
+  webhookDiagnostics.last401Headers = Array.from(
+    new Set(headerNames.map(h => String(h).toLowerCase().trim()))
+  );
+  pruneDiagnostics(now);
+}
+
+export function getWebhookDiagnostics(): {
+  envSecretConfigured: boolean;
+  last401Headers: string[];
+  okCount24h: number;
+  fail401Count24h: number;
+  lastOkAt: string | null;
+} {
+  const now = Date.now();
+  pruneDiagnostics(now);
+  const envSecret = (process.env.DEROPO_WEBHOOK_SECRET || '').trim();
+  return {
+    envSecretConfigured: envSecret.length > 0,
+    last401Headers: [...webhookDiagnostics.last401Headers],
+    okCount24h: webhookDiagnostics.okTimestamps.length,
+    fail401Count24h: webhookDiagnostics.fail401Timestamps.length,
+    lastOkAt: webhookDiagnostics.lastOkAt,
+  };
+}
+
+function timingSafeEqualStr(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
+function verifyHmacSignature(rawBody: string, signatureHeader: string, secret: string): boolean {
+  if (!signatureHeader || !secret) return false;
+  try {
+    const computedHmac = crypto
+      .createHmac('sha256', secret)
+      .update(rawBody)
+      .digest('hex')
+      .toLowerCase();
+
+    const cleanSig = signatureHeader.replace(/^sha256=/i, '').trim().toLowerCase();
+    return timingSafeEqualStr(cleanSig, computedHmac);
+  } catch (e) {
+    return false;
+  }
+}
+
+function extractHeader(headers: any, name: string): string | null {
+  if (!headers) return null;
+  if (typeof headers.get === 'function') {
+    return headers.get(name) || headers.get(name.toLowerCase());
+  }
+  const lower = name.toLowerCase();
+  for (const key of Object.keys(headers)) {
+    if (key.toLowerCase() === lower) {
+      const val = headers[key];
+      return Array.isArray(val) ? val[0] : (val || null);
+    }
+  }
+  return null;
+}
+
 /**
- * Verify HMAC signature of incoming Deropo webhook payload.
+ * Verify incoming Deropo webhook using raw body bytes.
+ * Accepts all three auth patterns (any one passing = authorized):
+ * a) header x-webhook-secret === env secret
+ * b) header x-webhook-signature === hex(HMAC-SHA256(env, raw))
+ * c) header x-deropo-signature === hex(HMAC-SHA256(env, raw))
+ * If env secret is UNSET: require pattern (a) via WA_TRIAL_SECRET instead — never accept unsigned.
+ */
+export function verifyDeropoWebhook(
+  rawBody: string,
+  headers: Headers | Record<string, any>
+): boolean {
+  const envSecret = (process.env.DEROPO_WEBHOOK_SECRET || '').trim();
+  const trialSecret = (process.env.WA_TRIAL_SECRET || 'centum_wa_trial_2026').trim();
+
+  const secretHeader = extractHeader(headers, 'x-webhook-secret');
+  const sigWebhookHeader = extractHeader(headers, 'x-webhook-signature');
+  const sigDeropoHeader = extractHeader(headers, 'x-deropo-signature');
+
+  if (envSecret) {
+    // a) header x-webhook-secret === env secret
+    if (secretHeader && timingSafeEqualStr(secretHeader.trim(), envSecret)) {
+      return true;
+    }
+
+    // b) header x-webhook-signature === hex(HMAC-SHA256(env, raw))
+    if (sigWebhookHeader && verifyHmacSignature(rawBody, sigWebhookHeader, envSecret)) {
+      return true;
+    }
+
+    // c) header x-deropo-signature === hex(HMAC-SHA256(env, raw))
+    if (sigDeropoHeader && verifyHmacSignature(rawBody, sigDeropoHeader, envSecret)) {
+      return true;
+    }
+
+    // Also accept trial secret if configured
+    if (trialSecret && secretHeader && timingSafeEqualStr(secretHeader.trim(), trialSecret)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // If env secret is UNSET: require pattern (a) via WA_TRIAL_SECRET instead — never accept unsigned.
+  if (trialSecret) {
+    if (secretHeader && timingSafeEqualStr(secretHeader.trim(), trialSecret)) {
+      return true;
+    }
+    if (sigWebhookHeader && verifyHmacSignature(rawBody, sigWebhookHeader, trialSecret)) {
+      return true;
+    }
+    if (sigDeropoHeader && verifyHmacSignature(rawBody, sigDeropoHeader, trialSecret)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Backward compatibility alias for single-signature calls
  */
 export function verifyDeropoWebhookHmac(
   rawBody: string,
   signatureHeader?: string | null
 ): boolean {
-  if (!DEROPO_WEBHOOK_SECRET) {
-    // If no secret configured in test/dev, allow verification
-    return true;
-  }
-
-  if (!signatureHeader) {
-    return false;
-  }
-
-  try {
-    const computedHmac = crypto
-      .createHmac('sha256', DEROPO_WEBHOOK_SECRET)
-      .update(rawBody)
-      .digest('hex');
-
-    const cleanSig = signatureHeader.replace(/^sha256=/, '').trim();
-    if (cleanSig.length !== computedHmac.length) {
-      return false;
-    }
-    return crypto.timingSafeEqual(Buffer.from(cleanSig), Buffer.from(computedHmac));
-  } catch (e) {
-    return false;
-  }
+  if (!signatureHeader) return false;
+  const envSecret = (process.env.DEROPO_WEBHOOK_SECRET || process.env.WA_TRIAL_SECRET || 'centum_wa_trial_2026').trim();
+  return verifyHmacSignature(rawBody, signatureHeader, envSecret);
 }
 
 /**
