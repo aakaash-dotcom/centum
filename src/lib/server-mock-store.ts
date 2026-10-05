@@ -834,3 +834,142 @@ export function listMockProMaterials(classLevel?: string, subject?: string) {
     return true;
   });
 }
+
+export interface ProVideoItem {
+  id: string;
+  classLevel: string;
+  subject: string;
+  chapterNo: number;
+  topic: string;
+  videoType: 'concept-explainer' | 'question-solution' | 'formula-recap';
+  targetSec: number;
+  order: number;
+  lang: 'ta' | 'en' | 'bilingual';
+  driveFileId?: string;
+  ytUrl?: string;
+  status: 'live' | 'draft';
+  aspectRatio?: '16:9' | 'portrait' | '9:16' | string;
+}
+
+const mockProVideos: ProVideoItem[] = [
+  {
+    id: 'pv-10-m-1-1',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 1,
+    topic: 'Cartesian Product & Ordered Pairs Concept',
+    videoType: 'concept-explainer',
+    targetSec: 510,
+    order: 1,
+    lang: 'ta',
+    driveFileId: '1invalid_drive_file_id_to_trigger_fallback', // Triggers 404 error to test YouTube fallback!
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-m-1-2',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 1,
+    topic: 'Exercise 1.1 — Complete Step-by-Step Solutions',
+    videoType: 'question-solution',
+    targetSec: 780,
+    order: 2,
+    lang: 'ta',
+    driveFileId: '',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-m-1-3',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 1,
+    topic: 'Relations & Functions Fast Formula Recap',
+    videoType: 'formula-recap',
+    targetSec: 360,
+    order: 3,
+    lang: 'bilingual',
+    driveFileId: 'sample_native_stream_file',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-m-1-4',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 1,
+    topic: 'Quick Reel: Domain & Range Visual Shortcut (Vertical Test)',
+    videoType: 'concept-explainer',
+    targetSec: 65,
+    order: 4,
+    lang: 'ta',
+    driveFileId: 'portrait_reel_test',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: 'portrait', // Test portrait format pending placeholder!
+  },
+  {
+    id: 'pv-10-m-2-1',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 2,
+    topic: "Euclid's Division Lemma & Fundamental Theorem of Arithmetic",
+    videoType: 'concept-explainer',
+    targetSec: 620,
+    order: 1,
+    lang: 'ta',
+    driveFileId: '1invalid_drive_id_chapter2',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-m-2-2',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 2,
+    topic: 'AP & GP nth Term and Sum Formula Secrets',
+    videoType: 'formula-recap',
+    targetSec: 420,
+    order: 2,
+    lang: 'ta',
+    driveFileId: '',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-m-3-1',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 3,
+    topic: 'Quadratic Equations & Nature of Roots Masterclass',
+    videoType: 'concept-explainer',
+    targetSec: 840,
+    order: 1,
+    lang: 'ta',
+    driveFileId: '1invalid_drive_id_chapter3',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+];
+
+export function listMockProVideos(classLevel?: string, subject?: string, chapterNo?: number | string): ProVideoItem[] {
+  const normClass = classLevel ? String(classLevel).replace(/\D/g, '') : '';
+  const normSub = subject ? String(subject).trim().toLowerCase() : '';
+  const numChapter = chapterNo ? Number(String(chapterNo).replace(/\D/g, '')) : 0;
+
+  return mockProVideos.filter((v) => {
+    if (v.status !== 'live') return false;
+    if (normClass && v.classLevel !== normClass) return false;
+    if (normSub && !v.subject.toLowerCase().includes(normSub) && !normSub.includes(v.subject.toLowerCase())) return false;
+    if (numChapter && v.chapterNo !== numChapter) return false;
+    return true;
+  });
+}
+

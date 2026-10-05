@@ -19,6 +19,8 @@ import {
   ExternalLink,
   MessageCircle,
 } from 'lucide-react';
+import { ProVideoPlayer } from '@/components/ProVideoPlayer';
+import { ProVideoItem } from '@/lib/server-mock-store';
 
 interface ProMaterialItem {
   id: string;
@@ -51,6 +53,8 @@ function ProMaterialsContent() {
   const [selectedClass, setSelectedClass] = useState<string>(initialClass);
   const [selectedSubject, setSelectedSubject] = useState<string>(initialSubject);
   const [materials, setMaterials] = useState<ProMaterialItem[]>([]);
+  const [videos, setVideos] = useState<ProVideoItem[]>([]);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedChapter, setExpandedChapter] = useState<string | null>(null);
   const [activeVideoModal, setActiveVideoModal] = useState<string | null>(null);
@@ -62,11 +66,17 @@ function ProMaterialsContent() {
     async function loadMaterials() {
       setIsLoading(true);
       try {
-        const res = await fetch(
-          `/api/pro-materials?classLevel=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(selectedSubject)}`
-        );
-        if (res.ok) {
-          const data = await res.json();
+        const [matRes, vidRes] = await Promise.all([
+          fetch(
+            `/api/pro-materials?classLevel=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(selectedSubject)}`
+          ),
+          fetch(
+            `/api/pro-videos?classLevel=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(selectedSubject)}`
+          ),
+        ]);
+
+        if (matRes.ok) {
+          const data = await matRes.json();
           if (data.ok && Array.isArray(data.materials)) {
             setMaterials(data.materials);
             if (data.materials.length > 0) {
@@ -76,9 +86,19 @@ function ProMaterialsContent() {
             setMaterials([]);
           }
         }
+
+        if (vidRes.ok) {
+          const vData = await vidRes.json();
+          if (vData.ok && Array.isArray(vData.videos)) {
+            setVideos(vData.videos);
+          } else {
+            setVideos([]);
+          }
+        }
       } catch (e) {
-        console.warn('Failed to load pro materials', e);
+        console.warn('Failed to load pro materials or videos', e);
         setMaterials([]);
+        setVideos([]);
       } finally {
         setIsLoading(false);
       }
@@ -278,39 +298,120 @@ function ProMaterialsContent() {
 
                     {/* 5 ASSET SLOTS */}
                     <div className="space-y-2.5 relative">
-                      {/* Slot 1: Video Embed (Iframe or Modal) */}
-                      <div className="p-3.5 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE]/40 dark:border-[#DDD6FE]/10">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center text-xs">
-                              <Play className="w-3 h-3 fill-current" />
-                            </span>
-                            <span>1. Video Masterclass (Tamil Explanation)</span>
-                          </span>
-                          <span className="text-[10px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/60">
-                            1080p HD
-                          </span>
-                        </div>
+                      {/* Slot 1: Video Masterclasses (16:9 Landscape Only) */}
+                      {(() => {
+                        const chNum = parseInt(m.chapter.replace(/\D/g, ''), 10) || 1;
+                        const chapterVideos = videos.filter((v) => v.chapterNo === chNum);
+                        const vList = chapterVideos.length > 0 ? chapterVideos : videos;
 
-                        {m.videoEmbedUrl && isPro ? (
-                          <div className="relative aspect-video rounded-xl overflow-hidden border border-[#DDD6FE] shadow-inner mt-2">
-                            <iframe
-                              src={m.videoEmbedUrl}
-                              title={m.title}
-                              className="w-full h-full"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                            />
+                        return (
+                          <div className="p-3.5 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE]/40 dark:border-[#DDD6FE]/10 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-2">
+                                <span className="w-6 h-6 rounded-lg bg-[#7C3AED] text-white flex items-center justify-center text-xs">
+                                  <Play className="w-3 h-3 fill-current" />
+                                </span>
+                                <span>1. In-App Video Masterclasses (16:9 Landscape)</span>
+                              </span>
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#7C3AED]/15 text-[#7C3AED] dark:text-[#DDD6FE]">
+                                {vList.length} Lessons
+                              </span>
+                            </div>
+
+                            {/* Chapter Videos Accordion List */}
+                            <div className="space-y-2 pt-1">
+                              {vList.map((vid) => {
+                                const isOpen = activeVideoId === vid.id;
+                                const isPortrait =
+                                  vid.aspectRatio === 'portrait' ||
+                                  vid.aspectRatio === '9:16' ||
+                                  vid.aspectRatio === 'vertical';
+
+                                return (
+                                  <div
+                                    key={vid.id}
+                                    className={`rounded-2xl border transition-all overflow-hidden ${
+                                      isOpen
+                                        ? 'bg-white dark:bg-[#200538] border-[#7C3AED] dark:border-[#A3E635] shadow-md'
+                                        : 'bg-white/70 dark:bg-[#2A104E]/50 border-[#EDE9FE] dark:border-[#DDD6FE]/15 hover:border-[#7C3AED]/40'
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (!isPro) {
+                                          openPaywall('pro-materials');
+                                          return;
+                                        }
+                                        setActiveVideoId(isOpen ? null : vid.id);
+                                      }}
+                                      className="w-full p-3 flex items-start justify-between gap-2 text-left cursor-pointer"
+                                    >
+                                      <div className="flex items-start gap-2.5">
+                                        <div
+                                          className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                                            isOpen
+                                              ? 'bg-[#7C3AED] text-white'
+                                              : 'bg-[#EDE9FE] dark:bg-[#3B0F6E] text-[#6D28D9] dark:text-[#DDD6FE]'
+                                          }`}
+                                        >
+                                          <Play className={`w-3.5 h-3.5 ${isOpen ? 'fill-current' : ''}`} />
+                                        </div>
+                                        <div>
+                                          <h4 className="text-xs sm:text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] leading-snug line-clamp-2">
+                                            {vid.topic}
+                                          </h4>
+                                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                            {/* Type chip: concept-explainer / question-solution / formula-recap */}
+                                            <span
+                                              className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                                                vid.videoType === 'concept-explainer'
+                                                  ? 'bg-[#F3E8FF] dark:bg-[#581C87] text-[#6B21A8] dark:text-[#E9D5FF]'
+                                                  : vid.videoType === 'question-solution'
+                                                  ? 'bg-[#E0F2FE] dark:bg-[#075985] text-[#0369A1] dark:text-[#BAE6FD]'
+                                                  : 'bg-[#DCFCE7] dark:bg-[#14532D] text-[#15803D] dark:text-[#86EFAC]'
+                                              }`}
+                                            >
+                                              {vid.videoType === 'concept-explainer'
+                                                ? '🧠 Concept Explainer'
+                                                : vid.videoType === 'question-solution'
+                                                ? '✍️ Question Solution'
+                                                : '⚡ Formula Recap'}
+                                            </span>
+
+                                            {/* Target Duration chip */}
+                                            <span className="text-[10px] font-extrabold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
+                                              ⏱ {Math.floor(vid.targetSec / 60)}m {vid.targetSec % 60 ? `${vid.targetSec % 60}s` : ''}
+                                            </span>
+
+                                            {/* Format pending badge if portrait */}
+                                            {isPortrait && (
+                                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-400/20 text-amber-800 dark:text-amber-300">
+                                                🎬 Format Pending
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="shrink-0 pt-1 text-[#7C3AED] dark:text-[#A3E635]">
+                                        {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                      </div>
+                                    </button>
+
+                                    {/* Inline Accordion Player */}
+                                    {isOpen && isPro && (
+                                      <div className="px-3 pb-3 pt-1 border-t border-[#EDE9FE] dark:border-[#DDD6FE]/15 animate-fade-in">
+                                        <ProVideoPlayer video={vid} subjectName={selectedSubject} />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        ) : (
-                          <div className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 flex items-center justify-between pt-1">
-                            <span>Comprehensive chapter walkthrough with board exam tricks</span>
-                            <span className="text-xs font-black text-[#7C3AED] dark:text-[#A3E635]">
-                              {isPro ? 'Watch Now →' : '🔒 Pro Only'}
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                        );
+                      })()}
 
                       {/* Slot 2: Notes PDF */}
                       <div className="p-3.5 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE]/40 dark:border-[#DDD6FE]/10 flex items-center justify-between">
