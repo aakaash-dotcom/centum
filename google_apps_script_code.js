@@ -249,6 +249,8 @@ function doGet(e) {
       return json_(importQuestionsValidated_(e.parameter.tab, arr));
     }
 
+    if ((e.parameter.action||"").indexOf("classroom")===0 || (e.parameter.action||"").indexOf("seat-")===0 || (e.parameter.action||"").indexOf("tuition-")===0 || (e.parameter.action||"")==="ops-classroom-add" || (e.parameter.action||"")==="ops-classrooms-list") { const _out = typeof classroomRouteGet === 'function' ? classroomRouteGet(e.parameter) : null; if (_out) return json_(_out); }
+
     return json_({ ok: false, error: "unknown action" });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
 }
@@ -320,6 +322,10 @@ function doPost(e) {
     } else if (body.type === "coin-spend") {
       // v5 — balance-checked spend (avatar store etc.)
       return json_(spendCoins_(String(body.phone || ""), Number(body.amount) || 0, String(body.reason || "spend"), String(body.ref || "")));
+    } else if ((body.action || body.type || "").indexOf("classroom") === 0 || (body.action || body.type || "").indexOf("seat-") === 0 || (body.action || body.type || "").indexOf("tuition-") === 0 || (body.action || body.type || "") === "ops-classroom-add" || (body.action || body.type || "") === "ops-seat-generate") {
+      const _out = typeof classroomRoutePost === 'function' ? classroomRoutePost(body) : null;
+      if (_out) return json_(_out);
+      return json_({ ok: false, error: "unknown type" });
     } else {
       return json_({ ok: false, error: "unknown type" });
     }
