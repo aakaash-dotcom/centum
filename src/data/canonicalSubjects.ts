@@ -35,9 +35,14 @@ export const SUBJECT_ALIASES: Record<string, string> = {
   உயிரியல்: 'Biology',
   botany: 'Botany',
   தாவரவியல்: 'Botany',
+  'bio-botany': 'Botany',
+  'bio botany': 'Botany',
   zoology: 'Zoology',
   விலங்கியல்: 'Zoology',
+  'bio-zoology': 'Zoology',
+  'bio zoology': 'Zoology',
   'computer science': 'Computer Science',
+  'computer-science': 'Computer Science',
   'கணினி அறிவியல்': 'Computer Science',
 
   // 11th & 12th Commerce subjects
@@ -48,9 +53,12 @@ export const SUBJECT_ALIASES: Record<string, string> = {
   economics: 'Economics',
   பொருளியல்: 'Economics',
   'business maths': 'Business Maths',
+  'business-maths': 'Business Maths',
   'business mathematics': 'Business Maths',
+  'business-mathematics': 'Business Maths',
   'வணிகக் கணிதம்': 'Business Maths',
   'computer applications': 'Computer Applications',
+  'computer-applications': 'Computer Applications',
   'கணினி பயன்பாடுகள்': 'Computer Applications',
 };
 

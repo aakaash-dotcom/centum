@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -25,10 +25,113 @@ import {
 } from '@/data/canonicalSubjects';
 import { isLanguageSubject } from '@/lib/data';
 
-const getChapterSortKey = (name: string): number => {
-  const match = name.match(/^(?:chapter|unit|ch|அலகு|பாடம்)?\s*(\d+)/i) || name.match(/(\d+)/);
-  return match ? parseInt(match[1], 10) : 999;
-};
+export interface ChapterItem {
+  rawName: string;
+  discipline: string;
+  number: number;
+  displayName: string;
+  cleanTitle: string;
+  sortKey: number;
+  count: number;
+}
+
+export function parseChapterDetails(rawName: string, count: number): ChapterItem {
+  const str = (rawName || '').trim();
+
+  // Social Science sub-chapter discipline matching
+  // 1. History / வரலாறு
+  const histMatch = str.match(/^(?:history|வரலாறு)\s*(\d+)\s*[-–:.]?\s*(.*)/i);
+  if (histMatch) {
+    const num = parseInt(histMatch[1], 10);
+    const isTa = str.includes('வரலாறு');
+    return {
+      rawName: str,
+      discipline: 'History',
+      number: num,
+      displayName: isTa ? `வரலாறு ${num}` : `History ${num}`,
+      cleanTitle: histMatch[2]?.trim() || str,
+      sortKey: 1000 + num,
+      count,
+    };
+  }
+
+  // 2. Geography / புவியியல்
+  const geoMatch = str.match(/^(?:geography|புவியியல்)\s*(\d+)\s*[-–:.]?\s*(.*)/i);
+  if (geoMatch) {
+    const num = parseInt(geoMatch[1], 10);
+    const isTa = str.includes('புவியியல்');
+    return {
+      rawName: str,
+      discipline: 'Geography',
+      number: num,
+      displayName: isTa ? `புவியியல் ${num}` : `Geography ${num}`,
+      cleanTitle: geoMatch[2]?.trim() || str,
+      sortKey: 2000 + num,
+      count,
+    };
+  }
+
+  // 3. Civics / குடிமையியல்
+  const civMatch = str.match(/^(?:civics|குடிமையியல்)\s*(\d+)\s*[-–:.]?\s*(.*)/i);
+  if (civMatch) {
+    const num = parseInt(civMatch[1], 10);
+    const isTa = str.includes('குடிமையியல்');
+    return {
+      rawName: str,
+      discipline: 'Civics',
+      number: num,
+      displayName: isTa ? `குடிமையியல் ${num}` : `Civics ${num}`,
+      cleanTitle: civMatch[2]?.trim() || str,
+      sortKey: 3000 + num,
+      count,
+    };
+  }
+
+  // 4. Economics / பொருளியல்
+  const ecoMatch = str.match(/^(?:economics|பொருளியல்)\s*(\d+)\s*[-–:.]?\s*(.*)/i);
+  if (ecoMatch) {
+    const num = parseInt(ecoMatch[1], 10);
+    const isTa = str.includes('பொருளியல்');
+    return {
+      rawName: str,
+      discipline: 'Economics',
+      number: num,
+      displayName: isTa ? `பொருளியல் ${num}` : `Economics ${num}`,
+      cleanTitle: ecoMatch[2]?.trim() || str,
+      sortKey: 4000 + num,
+      count,
+    };
+  }
+
+  // 5. Standard Chapter / Unit / அலகு / பாடம்
+  const stdMatch = str.match(/^(?:chapter|unit|ch|அலகு|பாடம்)\s*(\d+)\s*[-–:.]?\s*(.*)/i);
+  if (stdMatch) {
+    const num = parseInt(stdMatch[1], 10);
+    const isTa = str.includes('அலகு') || str.includes('பாடம்');
+    return {
+      rawName: str,
+      discipline: '',
+      number: num,
+      displayName: isTa ? `அலகு ${num}` : `Chapter ${num}`,
+      cleanTitle: stdMatch[2]?.trim() || str,
+      sortKey: num,
+      count,
+    };
+  }
+
+  // Fallback: any number in string
+  const numMatch = str.match(/(\d+)/);
+  const num = numMatch ? parseInt(numMatch[1], 10) : 999;
+  return {
+    rawName: str,
+    discipline: '',
+    number: num,
+    displayName: num !== 999 ? `Chapter ${num}` : str,
+    cleanTitle: str.replace(/^(?:chapter|unit|ch|அலகு|பாடம்)?\s*\d+\s*[-–:.]?\s*/i, '').trim() || str,
+    sortKey: num,
+    count,
+  };
+}
 
 interface ConfirmationModalState {
   chapterName: string;
@@ -59,7 +162,7 @@ function TestsContent() {
   const isUserPro = String(plan || '').toLowerCase() === 'pro' || String(plan || '').toLowerCase() === 'live';
 
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
 
   // 1. Quiz Type selection ('oneword' | 'concept')
@@ -86,13 +189,22 @@ function TestsContent() {
     }
   }, [confirmModal]);
 
-  // Fetch questions from API with student's class and medium
-  const fetchQuestions = () => {
+  // Fetch questions from API with student's class, subject, type, and medium
+  const fetchQuestions = (subjectToFetch?: string) => {
+    const subj = subjectToFetch !== undefined ? subjectToFetch : selectedSubject;
+    if (!subj) {
+      setIsLoading(false);
+      setQuestions([]);
+      return;
+    }
+
     setIsLoading(true);
     setIsError(false);
 
     const streamParam = student?.stream ? `&stream=${encodeURIComponent(student.stream)}` : '';
-    fetch(`/api/questions?classLevel=${encodeURIComponent(effectiveStandard)}&medium=${encodeURIComponent(medium || 'english')}${streamParam}`)
+    const url = `/api/questions?classLevel=${encodeURIComponent(effectiveStandard)}&subject=${encodeURIComponent(subj)}&type=${encodeURIComponent(selectedType)}&medium=${encodeURIComponent(medium || 'english')}&count=all${streamParam}`;
+
+    fetch(url)
       .then(async (res) => {
         if (!res.ok) {
           setIsError(true);
@@ -117,80 +229,70 @@ function TestsContent() {
   };
 
   useEffect(() => {
-    fetchQuestions();
-  }, [medium, effectiveStandard, student?.stream]);
+    if (selectedSubject) {
+      fetchQuestions(selectedSubject);
+    } else {
+      setIsLoading(false);
+      setQuestions([]);
+    }
+  }, [medium, effectiveStandard, student?.stream, selectedSubject, selectedType]);
 
-  // Reset selected subject when medium switches
+  // Track previous standard/medium to only reset when they actually change
+  const prevStandardRef = useRef(effectiveStandard);
+  const prevMediumRef = useRef(medium);
+
   useEffect(() => {
-    setSelectedSubject('');
-  }, [medium]);
-
-  // Questions filtered strictly by user's standard (6th..12th) & active medium & canonical subjects:
-  // Tamil & English language subjects are common to both mediums.
-  // Other subjects strictly match user's current medium (English or Tamil).
-  const standardQuestions = useMemo(() => {
-    const userMed = String(medium || '').trim().toLowerCase();
-    return questions.filter((q) => {
-      const qStd = String(q.classLevel || (q as unknown as { standard?: string }).standard || '').replace(/\D/g, '');
-      const targetStd = effectiveStandard.replace(/\D/g, '');
-      if (qStd !== targetStd) return false;
-
-      // Server/canonical subject allowed check
-      if (!isSubjectAllowedForClassStream(effectiveStandard, q.subject, student?.stream)) {
-        return false;
-      }
-
-      const isLang = isLanguageSubject(q.subject || '');
-      if (isLang) return true;
-
-      const qMed = String(q.medium || '').trim().toLowerCase();
-      return qMed === userMed || (userMed.length > 0 && qMed.startsWith(userMed.slice(0, 1)));
-    });
-  }, [questions, effectiveStandard, medium, student?.stream]);
+    if (prevStandardRef.current !== effectiveStandard || prevMediumRef.current !== medium) {
+      prevStandardRef.current = effectiveStandard;
+      prevMediumRef.current = medium;
+      setSelectedSubject('');
+    }
+  }, [medium, effectiveStandard]);
 
   // Canonical subject chips for this standard & stream (TASK B: built strictly from canonical map)
   const availableSubjects = useMemo(() => {
     return getCanonicalSubjects(effectiveStandard, student?.stream);
   }, [effectiveStandard, student?.stream]);
 
-  // When standardQuestions change, if selectedSubject is not in availableSubjects, reset it
+  // When standard changes, if selectedSubject is not in availableSubjects, reset it
   useEffect(() => {
-    if (selectedSubject && !availableSubjects.includes(selectedSubject)) {
+    if (
+      selectedSubject &&
+      !availableSubjects.some((s) => s.toLowerCase() === selectedSubject.toLowerCase())
+    ) {
       setSelectedSubject('');
     }
   }, [availableSubjects, selectedSubject]);
 
-  // Once a subject is selected, get chapters for this standard + subject + selected quiz type
-  const subjectChapters = useMemo(() => {
-    if (!selectedSubject) return [];
+  // Once a subject is selected, build chapter list from actually-present questions
+  const subjectChapters = useMemo<ChapterItem[]>(() => {
+    if (!selectedSubject || questions.length === 0) return [];
 
-    const map = new Map<string, { name: string; count: number }>();
+    const map = new Map<string, number>();
 
-    standardQuestions
+    questions
       .filter((q) => {
-        const matchesSubject = normalizeSubject(q.subject) === selectedSubject;
-        const matchesType = (q.type || 'oneword') === selectedType;
+        const matchesSubject = normalizeSubject(q.subject) === normalizeSubject(selectedSubject);
+        const matchesType = (q.type || 'oneword').toLowerCase() === selectedType.toLowerCase();
         return matchesSubject && matchesType;
       })
       .forEach((q) => {
         const chName = (q.chapter || 'Chapter 1').trim();
-        const existing = map.get(chName);
-        if (existing) {
-          existing.count += 1;
-        } else {
-          map.set(chName, { name: chName, count: 1 });
-        }
+        map.set(chName, (map.get(chName) || 0) + 1);
       });
 
-    return Array.from(map.values()).sort(
-      (a, b) => getChapterSortKey(a.name) - getChapterSortKey(b.name)
-    );
-  }, [standardQuestions, selectedSubject, selectedType]);
+    const items: ChapterItem[] = [];
+    map.forEach((count, rawName) => {
+      items.push(parseChapterDetails(rawName, count));
+    });
+
+    return items.sort((a, b) => a.sortKey - b.sortKey);
+  }, [questions, selectedSubject, selectedType]);
 
   // Tap on a chapter row
-  const handleChapterTap = (chapterName: string, index: number) => {
-    const sortKey = getChapterSortKey(chapterName);
-    const isChapter1 = index === 0 || sortKey === 1;
+  const handleChapterTap = (rawName: string, index: number) => {
+    const chData = subjectChapters.find((c) => c.rawName === rawName);
+    const isChapter1 = index === 0 || chData?.sortKey === 1 || chData?.sortKey === 1001;
 
     // Gate rule: Concept quiz chapters 2+ require Pro
     if (selectedType === 'concept' && !isChapter1 && !isUserPro) {
@@ -201,21 +303,21 @@ function TestsContent() {
     // Guest registration gate check
     if (!isRegistered) {
       openGate(() => {
-        showConfirmation(chapterName);
+        showConfirmation(rawName);
       });
       return;
     }
 
-    showConfirmation(chapterName);
+    showConfirmation(rawName);
   };
 
-  const showConfirmation = (chapterName: string) => {
-    const chData = subjectChapters.find((c) => c.name === chapterName);
+  const showConfirmation = (rawName: string) => {
+    const chData = subjectChapters.find((c) => c.rawName === rawName);
     const count = chData?.count || 10;
-    const testKey = `${effectiveStandard}_${selectedSubject}_${chapterName}_${selectedType}`;
+    const testKey = `${effectiveStandard}_${selectedSubject}_${rawName}_${selectedType}`;
 
     setConfirmModal({
-      chapterName,
+      chapterName: rawName,
       type: selectedType,
       count,
       testKey,
@@ -281,8 +383,8 @@ function TestsContent() {
         )}
       </div>
 
-      {/* If standard has zero questions: Honest Friendly Empty State */}
-      {!isLoading && !isError && standardQuestions.length === 0 ? (
+      {/* If standard has no canonical subjects: Honest Friendly Empty State */}
+      {availableSubjects.length === 0 ? (
         <div className="w-full bg-white dark:bg-[#1B0B2E] rounded-3xl p-8 text-center border border-[#EDE9FE] dark:border-[#3B2063] shadow-md flex flex-col items-center justify-center my-6 animate-fade-in">
           <span className="text-5xl mb-3">🌱</span>
           <h2 className="text-lg font-black text-[#2E1065] dark:text-[#F5F0FF] mb-1">
@@ -441,7 +543,7 @@ function TestsContent() {
             </p>
             <button
               type="button"
-              onClick={fetchQuestions}
+              onClick={() => fetchQuestions()}
               className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
             >
               retry 🔄
@@ -458,37 +560,44 @@ function TestsContent() {
             ) : (
               <div className="space-y-2">
                 {subjectChapters.map((ch, index) => {
-                  const sortKey = getChapterSortKey(ch.name);
-                  const isChapter1 = index === 0 || sortKey === 1;
+                  const isChapter1 = index === 0 || ch.sortKey === 1 || ch.sortKey === 1001;
 
                   // Concept shows 🔒 on chapters 2+ for free users, one-words all free
                   const isLocked =
                     selectedType === 'concept' && !isChapter1 && !isUserPro;
 
-                  // Format: 1 · {chapter name}
-                  const cleanName =
-                    ch.name
-                      .replace(/^(?:chapter|unit|ch)?\s*\d+\s*[:.-]?\s*/i, '')
-                      .trim() || ch.name;
-                  const displayRow = `${sortKey !== 999 ? sortKey : index + 1} · ${cleanName}`;
-
                   return (
                     <div
-                      key={ch.name}
-                      onClick={() => handleChapterTap(ch.name, index)}
-                      className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 text-left group"
+                      key={ch.rawName}
+                      onClick={() => handleChapterTap(ch.rawName, index)}
+                      className="w-full min-h-[58px] p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 text-left group"
                     >
-                      <span className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF] truncate">
-                        {displayRow}
-                      </span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center font-black text-xs shrink-0 border border-[#EDE9FE] dark:border-[#3B2063]">
+                          {ch.number !== 999 ? ch.number : index + 1}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-black text-[#7C3AED] dark:text-[#A78BFA]">
+                              {normalizeSubject(selectedSubject)} · {ch.displayName}
+                            </span>
+                            <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-md bg-[#FAF5FF] dark:bg-[#2A1247] text-[#6D28D9] dark:text-[#C4B5FD] border border-[#DDD6FE] dark:border-[#3B2063]">
+                              {ch.count} Q
+                            </span>
+                          </div>
+                          <h4 className="text-xs font-bold text-[#2E1065] dark:text-[#F5F0FF] truncate mt-0.5">
+                            {ch.cleanTitle}
+                          </h4>
+                        </div>
+                      </div>
 
                       {isLocked ? (
-                        <span className="p-1.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-400/30 shrink-0">
+                        <span className="p-2 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-400/30 shrink-0">
                           <Lock className="w-3.5 h-3.5" />
                         </span>
                       ) : (
-                        <span className="w-7 h-7 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center shrink-0 group-hover:bg-[#7C3AED] group-hover:text-white transition-colors">
-                          <Play className="w-3 h-3 fill-current ml-0.5" />
+                        <span className="w-8 h-8 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center shrink-0 group-hover:bg-[#7C3AED] group-hover:text-white transition-all shadow-2xs">
+                          <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
                         </span>
                       )}
                     </div>

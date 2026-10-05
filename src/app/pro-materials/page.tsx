@@ -23,7 +23,10 @@ import {
 } from 'lucide-react';
 import { ProVideoPlayer } from '@/components/ProVideoPlayer';
 import { ProVideoItem } from '@/lib/server-mock-store';
-import { getCanonicalSubjects } from '@/data/canonicalSubjects';
+import { getCanonicalSubjects, normalizeSubject } from '@/data/canonicalSubjects';
+import { isLanguageSubject } from '@/lib/data';
+import rawPapers from '@/data/papers.json';
+import { Paper } from '@/types';
 
 interface ProMaterialItem {
   id: string;
@@ -176,6 +179,27 @@ function ProMaterialsContent() {
     return Array.from(map.values()).sort((a, b) => a.chapterNo - b.chapterNo);
   }, [materials, videos]);
 
+  // TASK V: Filter PYQ papers strictly for this class, subject, and medium
+  const classPapers = useMemo(() => {
+    const userMed = String(medium || 'english').trim().toLowerCase();
+    const targetSubj = normalizeSubject(selectedSubject).toLowerCase();
+
+    return (rawPapers as unknown as Paper[]).filter((p) => {
+      const pStd = String(p.classLevel || (p as any).standard || '').replace(/\D/g, '');
+      if (pStd !== effectiveClass) return false;
+
+      // Subject filter
+      if (normalizeSubject(p.subject || '').toLowerCase() !== targetSubj) return false;
+
+      // Medium filter (Tamil and English languages apply to all; others strict)
+      const isLang = isLanguageSubject(p.subject || '');
+      if (isLang) return true;
+
+      const pMed = String(p.medium || '').trim().toLowerCase();
+      return pMed === userMed || (userMed.length > 0 && pMed.startsWith(userMed.slice(0, 1)));
+    });
+  }, [effectiveClass, selectedSubject, medium]);
+
   const handleProGate = (action: () => void) => {
     if (!isPro) {
       openPaywall('Unlock Pro Chapter Masterclasses, Video Walkthroughs & Concept Quizzes');
@@ -307,6 +331,72 @@ function ProMaterialsContent() {
         <div className="py-16 text-center text-xs font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 animate-pulse">
           Loading chapter masterclasses... ⚡
         </div>
+      ) : selectedType === 'paper' ? (
+        /* TASK V: Compact, dense PYQ Papers list matching Pro Quiz small card pattern */
+        classPapers.length === 0 ? (
+          <div className="my-6 p-6 rounded-3xl bg-white dark:bg-[#3B0F6E] border-2 border-dashed border-[#DDD6FE] dark:border-[#DDD6FE]/30 text-center space-y-3 shadow-xs">
+            <div className="w-12 h-12 rounded-2xl bg-[#F3E8FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] flex items-center justify-center mx-auto text-2xl">
+              📄
+            </div>
+            <div>
+              <h3 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF]">
+                No PYQ Papers Found
+              </h3>
+              <p className="text-xs font-semibold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mt-1 max-w-xs mx-auto">
+                No past year question papers found for Class {effectiveClass}th {selectedSubject} in {medium || 'English'} medium yet.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635]">
+                {normalizeSubject(selectedSubject)} Past Exam Papers ({classPapers.length})
+              </span>
+              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                {medium === 'tamil' ? 'தமிழ் வழி' : 'English Medium'}
+              </span>
+            </div>
+            {classPapers.map((paper) => (
+              <div
+                key={paper.id}
+                className="w-full min-h-[50px] p-3 rounded-2xl bg-white dark:bg-[#200538] border border-[#DDD6FE] dark:border-[#DDD6FE]/15 hover:border-[#7C3AED]/40 shadow-xs hover:shadow-md transition-all flex items-center justify-between gap-3 text-left group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs text-sm">
+                    📄
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-sm font-extrabold text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
+                      {paper.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-[#EDE9FE] dark:bg-[#3B0F6E] text-[#6D28D9] dark:text-[#DDD6FE]">
+                        {normalizeSubject(paper.subject)}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-sky-100 dark:bg-sky-950 text-sky-900 dark:text-sky-200">
+                        {paper.exam}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        {paper.year} · {paper.medium}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <a
+                  href={paper.pdfUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shrink-0 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Open</span>
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+            ))}
+          </div>
+        )
       ) : chapterGroups.length === 0 ? (
         /* Empty State */
         <div className="my-6 p-6 rounded-3xl bg-white dark:bg-[#3B0F6E] border-2 border-dashed border-[#DDD6FE] dark:border-[#DDD6FE]/30 text-center space-y-3 shadow-xs">
@@ -341,7 +431,7 @@ function ProMaterialsContent() {
             const hasVideos = (selectedType === 'all' || selectedType === 'video') && chapterVids.length > 0;
             const hasQuizzes = (selectedType === 'all' || selectedType === 'quiz') && chapterMats.some((m) => Boolean(m.conceptQuizUrl));
             const hasNotes = (selectedType === 'all' || selectedType === 'notes') && chapterMats.some((m) => Boolean(m.notesPdfUrl || m.interactiveNotes));
-            const hasPapers = (selectedType === 'all' || selectedType === 'paper') && chapterMats.some((m) => m.title.toLowerCase().includes('paper') || m.id.includes('paper'));
+            const hasPapers = selectedType === 'all' && chapterMats.some((m) => m.title.toLowerCase().includes('paper') || m.id.includes('paper'));
 
             const isGroupEmpty = !hasVideos && !hasQuizzes && !hasNotes && !hasPapers;
             if (isGroupEmpty) return null;

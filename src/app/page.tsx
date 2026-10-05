@@ -95,33 +95,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 2. Membership Button: Special Highlighted with Gold Gradient Ring/Badge -> /pricing */}
-        <Link
-          href="/pricing"
-          className="w-full p-4 rounded-2xl bg-gradient-to-r from-amber-400/20 via-yellow-400/25 to-amber-500/20 dark:from-amber-500/25 dark:via-yellow-500/20 dark:to-amber-400/30 border-2 border-amber-400 dark:border-amber-400/80 shadow-md shadow-amber-400/10 flex items-center justify-between text-left group transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-amber-950 font-black text-lg shadow-xs shrink-0">
-              👑
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black text-amber-950 dark:text-amber-200">
-                  {texts.membership.cardTitle}
-                </span>
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 shadow-2xs">
-                  Pro
-                </span>
-              </div>
-              <p className="text-[11px] font-bold text-amber-900/80 dark:text-amber-300/80 leading-snug">
-                {texts.membership.cardSubtitle}
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="w-4 h-4 text-amber-700 dark:text-amber-300 group-hover:translate-x-1 transition-transform shrink-0" />
-        </Link>
-
-        {/* 3. Hero-Level Lime Streak Card */}
+        {/* 2. Hero-Level Lime Streak Card */}
         <StreakChip />
 
         {/* 4. Quiz of the Day (Gradient-Bordered, Invisible if null) */}

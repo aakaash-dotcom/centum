@@ -26,7 +26,7 @@ import confetti from 'canvas-confetti';
 function normalizeChapter(ch: string): string {
   return String(ch || '')
     .trim()
-    .replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, '')
+    .replace(/^(chapter|unit|ch|history|geography|civics|economics|அலகு|பாடம்|வரலாறு|புவியியல்|குடிமையியல்|பொருளியல்)\s*\d+\s*[-–:.]?\s*/i, '')
     .trim()
     .toLowerCase();
 }

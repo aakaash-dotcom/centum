@@ -142,8 +142,13 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     });
   }
 
+  const isCountAll = String(count || '').toLowerCase() === 'all';
   const parsedCount = parseInt(count || '40', 10);
-  const maxCount = isNaN(parsedCount) || parsedCount <= 0 ? 40 : Math.min(parsedCount, 50);
+  const maxCount = isCountAll
+    ? validQuestions.length
+    : isNaN(parsedCount) || parsedCount <= 0
+    ? 40
+    : Math.min(parsedCount, 1000);
   const sliced = validQuestions.slice(0, maxCount);
 
   return {
@@ -221,6 +226,42 @@ export async function GET(request: Request) {
       console.warn('Live Apps Script questions failed or returned non-ok, falling back to mock');
     } catch (e) {
       console.warn('Apps Script questions fetch failed', e);
+    }
+  }
+
+  // If in local development without direct GAS credentials, bridge to deployed live production API
+  if (!scriptUrl || !secretKey) {
+    try {
+      const prodUrl = new URL('https://centum-omega.vercel.app/api/questions');
+      if (classLevel) prodUrl.searchParams.set('classLevel', classLevel);
+      if (subject) prodUrl.searchParams.set('subject', subject);
+      if (chapter) prodUrl.searchParams.set('chapter', chapter);
+      if (type) prodUrl.searchParams.set('type', type);
+      if (medium) prodUrl.searchParams.set('medium', medium);
+      if (stream) prodUrl.searchParams.set('stream', stream);
+      if (count) prodUrl.searchParams.set('count', count);
+
+      const prodRes = await fetch(prodUrl.toString(), { cache: 'no-store' });
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        if (prodData && prodData.ok && Array.isArray(prodData.questions)) {
+          return NextResponse.json(
+            {
+              ...prodData,
+              source: 'live-bridge',
+            },
+            {
+              headers: {
+                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
+                'x-data-source': 'live-bridge',
+                'x-cache-version': 'cdn-v1',
+              },
+            }
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('Local dev bridge to live questions failed', e);
     }
   }
 

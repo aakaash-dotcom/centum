@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Lock,
   ExternalLink,
+  X,
 } from 'lucide-react';
 
 interface DiaryEntry {
@@ -68,23 +69,40 @@ export default function ClassroomPage() {
   const router = useRouter();
   const { student, medium } = useApp();
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ClassroomResponse | null>(null);
+  // TASK VI: Initialize data from cache if present for instant rendering
+  const [data, setData] = useState<ClassroomResponse | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('centum_last_classroom');
+        if (cached) return JSON.parse(cached);
+      } catch (e) {
+        // ignore
+      }
+    }
+    return null;
+  });
+  const [loading, setLoading] = useState(false);
   const [seatInput, setSeatInput] = useState('');
+  const [isDemoOpen, setIsDemoOpen] = useState(false);
 
+  // TASK VI: Fetch student classroom data in parallel and swap seamlessly without blocking
   const fetchClassroom = async () => {
-    setLoading(true);
     try {
       const phoneParam = student?.phone ? encodeURIComponent(student.phone) : '';
       const res = await fetch(`/api/classroom?phone=${phoneParam}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);
+        if (typeof window !== 'undefined') {
+          if (json.joined && json.tuition) {
+            localStorage.setItem('centum_last_classroom', JSON.stringify(json));
+          } else {
+            localStorage.removeItem('centum_last_classroom');
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to load classroom data', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -475,13 +493,23 @@ export default function ClassroomPage() {
                   ? 'உங்கள் ஆசிரியர் வழங்கும் இருக்கை குறியீட்டைப் பெற்று இணைக்கவும்.'
                   : 'Claim your seat code provided by your tuition to unlock real-time diary notes & attendance.'}
               </p>
-              <Link
-                href="/join"
-                className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-lg transition-colors flex items-center gap-1.5"
-              >
-                <span>{isTamil ? 'இருக்கை குறியீட்டை உள்ளிடவும்' : 'Enter Seat Code'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+              <div className="flex flex-wrap items-center justify-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsDemoOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-black shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{isTamil ? 'மாதிரி வகுப்பறையைக் காண்க' : 'View Demo Classroom'}</span>
+                </button>
+                <Link
+                  href="/join"
+                  className="px-4 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 shadow-md transition-all flex items-center gap-1.5"
+                >
+                  <span>{isTamil ? 'இருக்கை குறியீட்டை உள்ளிடவும்' : 'Enter Seat Code'}</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
 
@@ -513,6 +541,179 @@ export default function ClassroomPage() {
               <span>{isTamil ? 'வாட்ஸ்அப்பில் தொடர்புகொள்ள' : 'Chat with Founder'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+          </div>
+        </div>
+      )}
+
+      {/* TASK VII: Full Read-Only Demo Classroom View (No Seat Code / OTP required) */}
+      {isDemoOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Demo Classroom Preview"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-fade-in"
+          onClick={() => setIsDemoOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl bg-slate-50 dark:bg-slate-950 rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-auto text-slate-900 dark:text-white space-y-5 max-h-[92dvh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 1. Top Header Banner: DEMO - sample data */}
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-yellow-500/15 to-amber-500/15 border border-amber-500/30 text-amber-950 dark:text-amber-200">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xl">🧪</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-amber-500 text-slate-950">
+                      DEMO
+                    </span>
+                    <span className="text-xs font-black text-amber-900 dark:text-amber-200">
+                      {isTamil ? 'மாதிரி தரவு மட்டுமே (முழுமையான பார்வை)' : 'Sample Data Only — Read-Only Preview'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-bold text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                    {isTamil
+                      ? 'இருக்கை குறியீடு தேவையில்லை. ஒரு மாணவர் பார்க்கும் நேரடி காட்சி.'
+                      : 'No seat code or login needed. Exactly what enrolled students experience.'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsDemoOpen(false)}
+                className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 2. Sample Tuition Card */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white p-5 shadow-xl border border-emerald-500/30">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 mb-2">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Demo Tuition Academy</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-white">
+                    {data?.preview?.sampleTuition?.name || 'Apex Centum Academy'}
+                  </h3>
+                  <p className="text-xs text-emerald-200/90 mt-1 flex items-center gap-1.5">
+                    <span>👨‍🏫</span>
+                    <span>Teacher: <strong className="text-white">{data?.preview?.sampleTuition?.teacher || 'Ramesh Kumar Sir'}</strong></span>
+                  </p>
+                </div>
+
+                <div className="bg-slate-800/80 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-700/60 text-center self-start sm:self-auto">
+                  <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                    Tuition Code
+                  </span>
+                  <span className="text-sm font-black tracking-widest text-emerald-400 font-mono">
+                    {data?.preview?.sampleTuition?.code || 'DEMO10'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Sample Attendance Summary Card */}
+            <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
+                  <Calendar className="w-4 h-4 text-emerald-500" />
+                  <span>{isTamil ? 'மாதிரி வருகைப்பதிவு' : 'Sample Attendance Summary'}</span>
+                </div>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  Last 30 Days
+                </span>
+              </div>
+
+              <div className="flex items-baseline gap-3 my-2">
+                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                  {data?.preview?.sampleAttendance?.pct30 ?? 93}%
+                </span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  🌟 Excellent
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Last marked date: <strong className="text-slate-700 dark:text-slate-300">{data?.preview?.sampleAttendance?.lastDate || 'Today'}</strong>
+              </p>
+            </div>
+
+            {/* 4. Complete Sample Diary Feed (📝📢🧪) */}
+            <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-blue-500" />
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    {isTamil ? 'மாதிரி நாள்குறிப்பு விவரம்' : 'Sample Classroom Diary Feed'}
+                  </h4>
+                </div>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                  {(data?.preview?.sampleDiary?.length || 3)} entries
+                </span>
+              </div>
+
+              <div className="space-y-2.5">
+                {(data?.preview?.sampleDiary || [
+                  {
+                    id: 'preview-1',
+                    tag: 'homework',
+                    text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
+                    date: 'Today',
+                  },
+                  {
+                    id: 'preview-2',
+                    tag: 'notice',
+                    text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
+                    date: 'Yesterday',
+                  },
+                  {
+                    id: 'preview-3',
+                    tag: 'exam',
+                    text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
+                    date: '2 days ago',
+                  },
+                ]).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      {renderTagChip(item.tag)}
+                      <span className="text-[11px] text-slate-400">{item.date}</span>
+                    </div>
+                    <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                      {item.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. TWO CTAs */}
+            <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link
+                href="/join"
+                onClick={() => setIsDemoOpen(false)}
+                className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <span>{isTamil ? 'உண்மையான குறியீட்டுடன் இணையவும் 🚀' : 'Join with Real Seat Code 🚀'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+              <a
+                href="https://wa.me/918610653352?text=Hi%20Centum,%20I%20saw%20the%20demo%20classroom%20and%20want%20to%20get%20my%20own%20tuition%20classroom"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                <span>{isTamil ? 'டியூஷன் நடத்துகிறீர்களா? உங்கள் சொந்தத்தைப் பெறுங்கள்' : 'Running a tuition? get yours 💬'}</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
