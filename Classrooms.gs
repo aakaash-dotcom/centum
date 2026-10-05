@@ -290,6 +290,7 @@ function classroomRoutePost(body) {
     const sCodeIdx = seatH.indexOf("seatCode");
     const tCodeIdx = seatH.indexOf("tuitionCode");
     const sPhoneIdx = seatH.indexOf("phone");
+    const sStatusIdx = seatH.indexOf("status");
     const sClaimedIdx = seatH.indexOf("claimedAt");
     const sExpiryIdx = seatH.indexOf("expiresAt");
 
@@ -303,7 +304,7 @@ function classroomRoutePost(body) {
         foundSeatRow = r + 1;
         seatTuitionCode = String(seatData[r][tCodeIdx] || "").trim().toUpperCase();
         existingSeatPhone = String(seatData[r][sPhoneIdx] || "").replace(/\D/g, "");
-        seatExpiry = seatData[r][sExpiryIdx];
+        seatExpiry = sExpiryIdx !== -1 ? seatData[r][sExpiryIdx] : "";
         break;
       }
     }
@@ -349,9 +350,10 @@ function classroomRoutePost(body) {
     const finalExpiry = seatExpiry || oneYearLater;
 
     // Mark seat claimed in Seats tab
-    seatSh.getRange(foundSeatRow, sPhoneIdx + 1).setValue(rawPhone);
-    seatSh.getRange(foundSeatRow, sClaimedIdx + 1).setValue(new Date());
-    if (!seatExpiry) {
+    if (sPhoneIdx !== -1) seatSh.getRange(foundSeatRow, sPhoneIdx + 1).setValue(rawPhone);
+    if (sStatusIdx !== -1) seatSh.getRange(foundSeatRow, sStatusIdx + 1).setValue("claimed");
+    if (sClaimedIdx !== -1) seatSh.getRange(foundSeatRow, sClaimedIdx + 1).setValue(new Date());
+    if (sExpiryIdx !== -1 && !seatExpiry) {
       seatSh.getRange(foundSeatRow, sExpiryIdx + 1).setValue(finalExpiry);
     }
 
@@ -423,10 +425,24 @@ function classroomRoutePost(body) {
       }
     }
 
-    const rowValues = [
-      code, ownerName, ownerPhone, ownerUpi, tuitionName, district, mode,
-      discountPercent, commissionPercent, seatsTotal, active, now
-    ];
+    const rowObj = {
+      code: code,
+      tuitionName: tuitionName,
+      ownerName: ownerName,
+      ownerPhone: ownerPhone,
+      ownerUpi: ownerUpi,
+      district: district,
+      mode: mode,
+      discountPercent: discountPercent,
+      commissionPercent: commissionPercent,
+      seatsTotal: seatsTotal,
+      active: active,
+      createdAt: now
+    };
+
+    const rowValues = tH.map(function(h) {
+      return rowObj.hasOwnProperty(h) ? rowObj[h] : "";
+    });
 
     if (existingRow !== -1) {
       tuitionSh.getRange(existingRow, 1, 1, rowValues.length).setValues([rowValues]);
@@ -530,10 +546,23 @@ function classroomsSelfTest() {
     });
 
     if (addRes && addRes.error === "admin-denied") {
-      // If admin password was changed in production, test direct insertion
-      Logger.log("ℹ️ Admin credentials rotated; exercising direct insertion for self-test.");
       const tSh = ss.getSheetByName("Tuitions");
-      tSh.appendRow([testCode, "Tutor Test", testPhone, "test@upi", "Centum SelfTest Academy", "Madurai", "hybrid", 15, 20, 3, "TRUE", new Date()]);
+      const tH = tSh.getRange(1, 1, 1, Math.max(tSh.getLastColumn(), 1)).getValues()[0].map(String);
+      const testObj = {
+        code: testCode,
+        tuitionName: "Centum SelfTest Academy",
+        ownerName: "Tutor Test",
+        ownerPhone: testPhone,
+        ownerUpi: "test@upi",
+        district: "Madurai",
+        mode: "hybrid",
+        discountPercent: 15,
+        commissionPercent: 20,
+        seatsTotal: 3,
+        active: "TRUE",
+        createdAt: new Date()
+      };
+      tSh.appendRow(tH.map(function(h) { return testObj.hasOwnProperty(h) ? testObj[h] : ""; }));
       crGenerateSeatsForTuition_(ss, testCode, 3);
     } else {
       assert(addRes && addRes.ok === true, "ops-classroom-add executed successfully");
@@ -622,8 +651,8 @@ function crGetSpreadsheet_() {
 }
 
 const CR_SCHEMA = {
-  Tuitions: ["code","ownerName","ownerPhone","ownerUpi","tuitionName","district","mode","discountPercent","commissionPercent","seatsTotal","active","createdAt"],
-  Seats: ["seatCode","tuitionCode","phone","claimedAt","expiresAt"]
+  Tuitions: ["code", "tuitionName", "ownerName", "ownerPhone", "district", "createdAt"],
+  Seats: ["seatCode", "tuitionCode", "phone", "status", "claimedAt"]
 };
 
 function crEnsureTab_(ss, name) {
@@ -727,6 +756,7 @@ function crGenerateSeatsForTuition_(ss, tuitionCode, count) {
   });
 
   const startIndex = existingSeats.length + 1;
+  const seatH = seatSh.getRange(1, 1, 1, Math.max(seatSh.getLastColumn(), 1)).getValues()[0].map(String);
   const rowsToAppend = [];
   const oneYearLater = new Date();
   oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
@@ -735,7 +765,20 @@ function crGenerateSeatsForTuition_(ss, tuitionCode, count) {
     const seatNumber = startIndex + i;
     const pad = seatNumber < 10 ? "0" + seatNumber : String(seatNumber);
     const seatCode = tuitionCode + "-S" + pad;
-    rowsToAppend.push([seatCode, tuitionCode, "", "", oneYearLater]);
+
+    const rowObj = {
+      seatCode: seatCode,
+      tuitionCode: tuitionCode,
+      phone: "",
+      status: "available",
+      claimedAt: "",
+      expiresAt: oneYearLater
+    };
+
+    const rowValues = seatH.map(function(h) {
+      return rowObj.hasOwnProperty(h) ? rowObj[h] : "";
+    });
+    rowsToAppend.push(rowValues);
   }
 
   if (rowsToAppend.length > 0) {
