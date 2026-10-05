@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getMockTuition, joinMockTuition } from '@/lib/server-mock-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
 
     if (scriptUrl && appsSecret) {
       try {
+        const cleanCoupon = coupon ? String(coupon).trim().toUpperCase() : '';
+        const tuition = cleanCoupon ? getMockTuition(cleanCoupon) : undefined;
+
         const payload = {
           type: 'payment',
           key: appsSecret,
@@ -66,7 +70,8 @@ export async function POST(request: Request) {
           amount: amount || 799,
           paymentId,
           orderId,
-          couponCode: coupon || '',
+          couponCode: cleanCoupon,
+          tuitionCode: tuition ? tuition.code : (cleanCoupon || ''),
           timestamp: new Date().toISOString(),
         };
 
@@ -97,6 +102,13 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         console.warn('Apps script payment logging failed, returning verified', err);
+      }
+    }
+
+    if (coupon && phone) {
+      const clean = String(coupon).trim().toUpperCase();
+      if (getMockTuition(clean)) {
+        joinMockTuition(phone, clean);
       }
     }
 

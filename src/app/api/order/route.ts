@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMockTuition } from '@/lib/server-mock-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,15 @@ export async function POST(request: Request) {
         }
       }
 
+      // Check getMockTuition for tuition centre discount codes
+      if (!couponFound) {
+        const tuition = getMockTuition(cleanCoupon);
+        if (tuition && tuition.active && tuition.discountPercent > 0) {
+          discountPercent = tuition.discountPercent;
+          couponFound = true;
+        }
+      }
+
       // Built-in standard test coupons fallback
       if (!couponFound) {
         if (cleanCoupon === 'FRIEND20') {
@@ -88,6 +98,8 @@ export async function POST(request: Request) {
               plan: 'pro',
               phone: phone || '',
               coupon: coupon || '',
+              tuitionCode: coupon ? (coupon.trim().toUpperCase()) : '',
+              ownerCommission: coupon && getMockTuition(coupon) ? `${getMockTuition(coupon)?.commissionPercent}%` : '',
             },
           }),
           cache: 'no-store',

@@ -34,6 +34,7 @@ interface AppContextType {
     district: string;
     password?: string;
     waOptIn?: boolean;
+    tuitionCode?: string;
   }) => Promise<void>;
   login: (
     phone: string,
@@ -461,10 +462,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     district: string;
     password?: string;
     waOptIn?: boolean;
+    tuitionCode?: string;
   }) => {
     try {
       const cleanPhone = normalizePhone(data.phone) || data.phone;
       const cleanPassword = data.password ? data.password.trim() : '';
+      const cleanTuitionCode = data.tuitionCode ? data.tuitionCode.trim().toUpperCase() : undefined;
 
       // Check URL for referral code if any
       let refCode: string | null = null;
@@ -483,6 +486,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         plan: 'free',
         registeredAt: new Date().toISOString(),
         avatarFrame: equippedAvatar,
+        tuitionCode: cleanTuitionCode,
       };
 
       setStudent(newProfile);
@@ -502,6 +506,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...data,
           phone: cleanPhone,
           password: cleanPassword,
+          tuitionCode: cleanTuitionCode,
           medium,
           type: 'student',
           refCode,

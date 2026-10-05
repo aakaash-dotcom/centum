@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getMockTuition } from '@/lib/server-mock-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,6 +115,28 @@ export async function GET(request: Request) {
         valid: true,
         discountPercent: 10,
         source: 'mock-fallback',
+      },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
+          'x-data-source': 'mock',
+          'x-cache-version': 'cdn-v1',
+        },
+      }
+    );
+  }
+
+  // Check tuition centre code (Model A)
+  const tuition = getMockTuition(code);
+  if (tuition && tuition.active && tuition.discountPercent > 0) {
+    return NextResponse.json(
+      {
+        ok: true,
+        valid: true,
+        discountPercent: tuition.discountPercent,
+        isTuitionCode: true,
+        tuitionName: tuition.tuitionName,
+        source: 'mock-tuition',
       },
       {
         headers: {

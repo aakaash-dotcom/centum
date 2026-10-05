@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { texts } from '@/data/texts';
 import { normalizePhone } from '@/lib/phone';
 import { AdminStats, AdminStudentRow } from '@/types';
+import { TN_DISTRICTS } from '@/data/districts';
 import {
   ShieldAlert,
   BarChart3,
@@ -20,6 +21,10 @@ import {
   RefreshCw,
   Crown,
   FileText,
+  Building2,
+  Ticket,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -32,11 +37,51 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Screen 2 State
-  const [activeTab, setActiveTab] = useState<'stats' | 'students' | 'content'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'students' | 'classrooms' | 'content'>('stats');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [students, setStudents] = useState<AdminStudentRow[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // Classrooms Tab State
+  interface AdminTuitionRow {
+    code: string;
+    tuitionName: string;
+    ownerName: string;
+    ownerPhone: string;
+    ownerUpi?: string;
+    district?: string;
+    mode: string;
+    discountPercent: number;
+    commissionPercent: number;
+    seatsTotal: number;
+    seatsClaimed: number;
+    studentsCount: number;
+    active: boolean;
+    createdAt: string;
+  }
+  const [classrooms, setClassrooms] = useState<AdminTuitionRow[]>([]);
+  const [isLoadingClassrooms, setIsLoadingClassrooms] = useState(false);
+  const [showAddClassroomModal, setShowAddClassroomModal] = useState(false);
+  const [classroomFormError, setClassroomFormError] = useState('');
+  const [newTuitionCode, setNewTuitionCode] = useState('');
+  const [newTuitionName, setNewTuitionName] = useState('');
+  const [newOwnerName, setNewOwnerName] = useState('');
+  const [newOwnerPhone, setNewOwnerPhone] = useState('');
+  const [newOwnerUpi, setNewOwnerUpi] = useState('');
+  const [newDistrict, setNewDistrict] = useState('Chennai');
+  const [newMode, setNewMode] = useState<'coupon' | 'seats'>('coupon');
+  const [newDiscountPercent, setNewDiscountPercent] = useState('10');
+  const [newCommissionPercent, setNewCommissionPercent] = useState('15');
+  const [newInitialSeats, setNewInitialSeats] = useState('20');
+  const [isSubmittingClassroom, setIsSubmittingClassroom] = useState(false);
+
+  // Generate seats state
+  const [selectedTuitionForSeats, setSelectedTuitionForSeats] = useState('');
+  const [seatCountToGenerate, setSeatCountToGenerate] = useState(20);
+  const [isGeneratingSeats, setIsGeneratingSeats] = useState(false);
+  const [generatedSeatCodes, setGeneratedSeatCodes] = useState<string[]>([]);
+  const [copiedCodes, setCopiedCodes] = useState(false);
 
   // Students Tab Filter
   const [planFilter, setPlanFilter] = useState<'all' | 'free' | 'pro' | 'live'>('all');
@@ -156,6 +201,7 @@ export default function AdminPage() {
           // Load initial dashboard data using in-memory credentials in request body
           fetchStats(cleanPhone, cleanPassword);
           fetchStudents(cleanPhone, cleanPassword);
+          fetchClassrooms(cleanPhone, cleanPassword);
           fetchDiagnostics();
         } else {
           // Founder rejection rule: "this way is for the founder 🦉"
@@ -230,6 +276,114 @@ export default function AdminPage() {
       }
     } catch (e) {
       console.warn('Failed to fetch admin students');
+    }
+  };
+
+  // Data Call: Classrooms
+  const fetchClassrooms = async (phone = normalizePhone(adminPhone), pass = adminPassword) => {
+    try {
+      setIsLoadingClassrooms(true);
+      const res = await fetch('/api/admin/classroom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'list',
+          adminPhone: phone,
+          adminPassword: pass,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok && Array.isArray(data.tuitions)) {
+          setClassrooms(data.tuitions);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch classrooms');
+    } finally {
+      setIsLoadingClassrooms(false);
+    }
+  };
+
+  const handleAddClassroom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setClassroomFormError('');
+    if (!newTuitionName.trim() || !newOwnerName.trim() || !newOwnerPhone.trim()) {
+      setClassroomFormError('Tuition Name, Owner Name, and Owner Phone are required');
+      return;
+    }
+
+    setIsSubmittingClassroom(true);
+    try {
+      const res = await fetch('/api/admin/classroom', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'add',
+          adminPhone: normalizePhone(adminPhone) || adminPhone,
+          adminPassword,
+          code: newTuitionCode.trim().toUpperCase() || undefined,
+          tuitionName: newTuitionName.trim(),
+          ownerName: newOwnerName.trim(),
+          ownerPhone: newOwnerPhone.trim(),
+          ownerUpi: newOwnerUpi.trim(),
+          district: newDistrict,
+          mode: newMode,
+          discountPercent: Number(newDiscountPercent) || 10,
+          commissionPercent: Number(newCommissionPercent) || 15,
+          seatsTotal: Number(newInitialSeats) || 20,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        triggerToast('Tuition centre added! 🎓');
+        setShowAddClassroomModal(false);
+        setNewTuitionCode('');
+        setNewTuitionName('');
+        setNewOwnerName('');
+        setNewOwnerPhone('');
+        setNewOwnerUpi('');
+        fetchClassrooms();
+      } else {
+        setClassroomFormError(data.error || 'Failed to add tuition');
+      }
+    } catch (e) {
+      setClassroomFormError('Network error adding tuition');
+    } finally {
+      setIsSubmittingClassroom(false);
+    }
+  };
+
+  const handleGenerateSeats = async (tuitionCode: string, count: number) => {
+    setIsGeneratingSeats(true);
+    try {
+      const res = await fetch('/api/admin/classroom/seats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminPhone: normalizePhone(adminPhone) || adminPhone,
+          adminPassword,
+          tuitionCode,
+          count,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        triggerToast(`Generated ${count} seats for ${tuitionCode}! 🎫`);
+        const codes = (data.seats || []).map((s: any) => s.seatCode);
+        setGeneratedSeatCodes(codes);
+        setSelectedTuitionForSeats(tuitionCode);
+        fetchClassrooms();
+      } else {
+        triggerToast(data.error || 'Failed to generate seats');
+      }
+    } catch (e) {
+      triggerToast('Network error generating seats');
+    } finally {
+      setIsGeneratingSeats(false);
     }
   };
 
@@ -518,8 +672,8 @@ export default function AdminPage() {
             </button>
           </div>
 
-          {/* 3 Dashboard Tabs */}
-          <div className="grid grid-cols-3 gap-2 p-1 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
+          {/* 4 Dashboard Tabs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
             <button
               type="button"
               onClick={() => setActiveTab('stats')}
@@ -544,6 +698,22 @@ export default function AdminPage() {
             >
               <Users className="w-3.5 h-3.5" />
               <span>{texts.admin.tabStudents}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('classrooms');
+                fetchClassrooms();
+              }}
+              className={`min-h-[44px] rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === 'classrooms'
+                  ? 'bg-[#7C3AED] text-white shadow-xs'
+                  : 'text-[#6D28D9] dark:text-[#DDD6FE] hover:bg-[#FAF5FF] dark:hover:bg-[#230542]'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              <span>Classrooms</span>
             </button>
 
             <button
@@ -732,6 +902,295 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* TAB: CLASSROOMS */}
+          {activeTab === 'classrooms' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635]">
+                  Tuition Classrooms ({classrooms.length})
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddClassroomModal(!showAddClassroomModal)}
+                    className="min-h-[34px] px-2.5 rounded-lg text-xs font-black text-white bg-[#7C3AED] hover:bg-[#6D28D9] flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>{showAddClassroomModal ? 'Cancel' : 'Add Centre'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fetchClassrooms()}
+                    disabled={isLoadingClassrooms}
+                    className="min-h-[34px] px-2 rounded-lg text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center gap-1 hover:bg-[#FAF5FF] cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isLoadingClassrooms ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Add Tuition Centre Form */}
+              {showAddClassroomModal && (
+                <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border-2 border-[#7C3AED]/30 shadow-md animate-slide-down space-y-3">
+                  <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-[#7C3AED] dark:text-[#A3E635]" />
+                    <span>Register New Tuition Centre</span>
+                  </h3>
+
+                  {classroomFormError && (
+                    <div className="p-2.5 bg-[#FEE2E2] dark:bg-[#991B1B]/40 border border-[#FCA5A5] dark:border-[#F87171]/40 text-[#991B1B] dark:text-[#FCA5A5] text-xs font-bold rounded-xl text-center">
+                      {classroomFormError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleAddClassroom} className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Centre Code *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newTuitionCode}
+                          onChange={(e) => setNewTuitionCode(e.target.value.toUpperCase())}
+                          placeholder="e.g. APEX20"
+                          className="w-full min-h-[40px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-black uppercase"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          District
+                        </label>
+                        <select
+                          value={newDistrict}
+                          onChange={(e) => setNewDistrict(e.target.value)}
+                          className="w-full min-h-[40px] px-2 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                        >
+                          {TN_DISTRICTS.map((d) => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                        Tuition Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newTuitionName}
+                        onChange={(e) => setNewTuitionName(e.target.value)}
+                        placeholder="e.g. Apex Centum Academy"
+                        className="w-full min-h-[40px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Owner Name *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={newOwnerName}
+                          onChange={(e) => setNewOwnerName(e.target.value)}
+                          placeholder="e.g. Ramesh Kumar"
+                          className="w-full min-h-[40px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Owner Mobile *
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          maxLength={10}
+                          value={newOwnerPhone}
+                          onChange={(e) => setNewOwnerPhone(e.target.value)}
+                          placeholder="9840123456"
+                          className="w-full min-h-[40px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                        Owner UPI ID (for Model A payouts)
+                      </label>
+                      <input
+                        type="text"
+                        value={newOwnerUpi}
+                        onChange={(e) => setNewOwnerUpi(e.target.value)}
+                        placeholder="ramesh@oksbi"
+                        className="w-full min-h-[40px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Mode
+                        </label>
+                        <select
+                          value={newMode}
+                          onChange={(e) => setNewMode(e.target.value as any)}
+                          className="w-full min-h-[38px] px-1 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[11px] font-bold"
+                        >
+                          <option value="coupon">Coupon</option>
+                          <option value="seats">Seats</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Discount %
+                        </label>
+                        <input
+                          type="number"
+                          value={newDiscountPercent}
+                          onChange={(e) => setNewDiscountPercent(e.target.value)}
+                          className="w-full min-h-[38px] px-2 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Comm %
+                        </label>
+                        <input
+                          type="number"
+                          value={newCommissionPercent}
+                          onChange={(e) => setNewCommissionPercent(e.target.value)}
+                          className="w-full min-h-[38px] px-2 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-[#6D28D9] dark:text-[#A3E635] mb-1">
+                          Seats
+                        </label>
+                        <input
+                          type="number"
+                          value={newInitialSeats}
+                          onChange={(e) => setNewInitialSeats(e.target.value)}
+                          className="w-full min-h-[38px] px-2 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-xs font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingClassroom}
+                      className="w-full min-h-[46px] rounded-xl bg-[#A3E635] hover:bg-[#92D928] text-[#18181B] font-black text-xs transition-all cursor-pointer shadow-xs"
+                    >
+                      {isSubmittingClassroom ? 'Saving Centre...' : 'Save Tuition Centre ✨'}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Generated Seat Codes Banner if any */}
+              {generatedSeatCodes.length > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-2xl p-4 animate-fade-in space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-950 dark:text-amber-200">
+                      Generated {generatedSeatCodes.length} Seat Codes for {selectedTuitionForSeats}:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedSeatCodes.join('\n'));
+                        setCopiedCodes(true);
+                        setTimeout(() => setCopiedCodes(false), 2000);
+                      }}
+                      className="px-2 py-1 rounded-lg bg-amber-400 text-amber-950 font-black text-[11px] flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedCodes ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedCodes ? 'Copied!' : 'Copy All'}</span>
+                    </button>
+                  </div>
+                  <div className="max-h-28 overflow-y-auto bg-white/80 dark:bg-black/40 rounded-xl p-2 font-mono text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-1">
+                    {generatedSeatCodes.map((code) => (
+                      <span key={code} className="text-amber-900 dark:text-amber-200 select-all">{code}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Classrooms Rollup Table / Cards */}
+              {classrooms.length > 0 ? (
+                <div className="space-y-3">
+                  {classrooms.map((t) => (
+                    <div
+                      key={t.code}
+                      className="bg-white dark:bg-[#3B0F6E] rounded-2xl p-4 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs space-y-3"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF]">{t.tuitionName}</h4>
+                            <span className="px-2 py-0.5 rounded-md bg-[#7C3AED]/10 text-[#7C3AED] dark:text-[#A3E635] font-black text-[10px] uppercase">
+                              {t.code}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                            {t.ownerName} • {t.ownerPhone} • {t.district}
+                          </p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-extrabold text-[10px] uppercase border border-emerald-300">
+                          {t.mode}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#230542] text-xs">
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-400 block">Seats</span>
+                          <span className="font-black text-[#2E1065] dark:text-[#FAF5FF]">
+                            {t.seatsClaimed} / {t.seatsTotal}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-400 block">Students</span>
+                          <span className="font-black text-[#7C3AED] dark:text-[#A3E635]">{t.studentsCount}</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] font-bold text-gray-400 block">Economics</span>
+                          <span className="font-black text-emerald-600 dark:text-emerald-400">
+                            {t.discountPercent}% off / {t.commissionPercent}% com
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Generate Seat Codes (10 / 20 / 50) */}
+                      <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-gray-800 text-xs">
+                        <span className="text-[11px] font-bold text-gray-400">Quick Generate:</span>
+                        <div className="flex items-center gap-1.5">
+                          {[10, 20, 50].map((cnt) => (
+                            <button
+                              key={cnt}
+                              type="button"
+                              disabled={isGeneratingSeats}
+                              onClick={() => handleGenerateSeats(t.code, cnt)}
+                              className="px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-[#2A1247] hover:bg-[#7C3AED] hover:text-white text-xs font-black transition-colors cursor-pointer"
+                            >
+                              +{cnt} seats
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-[#3B0F6E] rounded-3xl p-8 text-center text-xs text-gray-400 border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
+                  {isLoadingClassrooms ? 'Loading tuition centres...' : 'No tuition centres registered yet. Click "Add Centre" above!'}
+                </div>
+              )}
             </div>
           )}
 

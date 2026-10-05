@@ -7,12 +7,177 @@ import { texts } from '@/data/texts';
 import { PLAN_FEATURES, PlanFeature } from '@/data/planFeatures';
 import { COMING_SOON } from '@/data/config';
 import { ArrowLeft, Check, X as XIcon, Crown, Video, Sparkles, CheckCircle2 } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { loadRazorpayScript } from '@/utils/razorpay';
 
 export default function PricingPage() {
   const router = useRouter();
-  const { plan, student, medium, showToast } = useApp();
+  const { plan, setPlan, student, medium, showToast, openGate } = useApp();
   const [waitlistJoined, setWaitlistJoined] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [couponInput, setCouponInput] = useState(student?.tuitionCode || '');
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [tuitionName, setTuitionName] = useState<string | null>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
+  const [codeError, setCodeError] = useState('');
+  const [isPurchased, setIsPurchased] = useState(false);
+
+  const basePrice = 799;
+  const finalPrice = Math.round(basePrice * (1 - discountPercent / 100));
+
+  const handleApplyCode = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setIsValidatingCode(true);
+    setCodeError('');
+    try {
+      // 1. Check coupon endpoint
+      const res = await fetch(`/api/coupon?code=${encodeURIComponent(code)}`);
+      const data = await res.json();
+      if (res.ok && data.ok && data.valid) {
+        setAppliedCode(code);
+        setDiscountPercent(data.discountPercent || 0);
+        setTuitionName(data.tuitionName || null);
+        showToast(`Code ${code} applied! 🎉`);
+        return;
+      }
+
+      // 2. Check classroom-info endpoint
+      const crRes = await fetch(`/api/classroom-info?code=${encodeURIComponent(code)}`);
+      const crData = await crRes.json();
+      if (crRes.ok && crData.ok && crData.tuition) {
+        setAppliedCode(code);
+        setDiscountPercent(Number(crData.tuition.discountPercent) || 0);
+        setTuitionName(crData.tuition.tuitionName || null);
+        showToast(`Tuition code ${code} applied! 🎓`);
+        return;
+      }
+
+      setCodeError('Invalid coupon or tuition code');
+    } catch (e) {
+      setCodeError('Failed to verify code');
+    } finally {
+      setIsValidatingCode(false);
+    }
+  };
+
+  const handleRemoveCode = () => {
+    setAppliedCode(null);
+    setDiscountPercent(0);
+    setTuitionName(null);
+    setCouponInput('');
+    setCodeError('');
+  };
+
+  const handleCheckout = async () => {
+    if (!student) {
+      openGate(() => handleCheckout());
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          plan: 'pro',
+          coupon: appliedCode || undefined,
+          phone: student.phone,
+        }),
+      });
+
+      const orderData = await res.json();
+      if (!res.ok || !orderData.ok) {
+        showToast(orderData.error || 'Payment initiation failed');
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (orderData.isSimulated) {
+        // Direct simulation path
+        const verifyRes = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: orderData.orderId,
+            paymentId: `pay_sim_${Date.now()}`,
+            plan: 'pro',
+            coupon: appliedCode || undefined,
+            phone: student.phone,
+            amount: finalPrice,
+          }),
+        });
+
+        if (verifyRes.ok) {
+          setPlan('pro');
+          setIsPurchased(true);
+          try {
+            confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+          } catch (e) {}
+          showToast('Welcome to Centum Pro! 👑');
+        } else {
+          showToast('Payment verification failed');
+        }
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Real Razorpay modal flow
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        showToast('Payment gateway unavailable');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: 'INR',
+        name: 'Centum',
+        description: 'Centum Pro 1-Year Membership',
+        order_id: orderData.orderId,
+        prefill: {
+          name: student.name,
+          contact: student.phone,
+        },
+        theme: { color: '#7C3AED' },
+        handler: async (response: any) => {
+          const verifyRes = await fetch('/api/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              plan: 'pro',
+              coupon: appliedCode || undefined,
+              phone: student.phone,
+              amount: finalPrice,
+            }),
+          });
+          if (verifyRes.ok) {
+            setPlan('pro');
+            setIsPurchased(true);
+            try {
+              confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 } });
+            } catch (e) {}
+            showToast('Welcome to Centum Pro! 👑');
+          }
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (e) {
+      showToast('Checkout failed, try again');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleJoinWaitlist = async (targetPlan: string) => {
     setIsSubmitting(true);
@@ -175,22 +340,101 @@ export default function PricingPage() {
             </ul>
           </div>
 
-          {waitlistJoined ? (
-            <div className="w-full min-h-[50px] rounded-2xl bg-amber-500/20 text-amber-950 dark:text-amber-200 font-black text-xs flex items-center justify-center gap-2 border border-amber-400">
-              <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>{texts.pricing.waitlistSuccess || "you're on the early-bird waitlist! 🐣"}</span>
+          {/* Pricing & Checkout with Coupon / Tuition Code */}
+          <div className="pt-2 border-t border-amber-300/40 dark:border-amber-400/20 space-y-3">
+            {/* Price display with discount */}
+            <div className="flex items-baseline justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl font-black text-amber-950 dark:text-amber-100">
+                    ₹{finalPrice}
+                  </span>
+                  {discountPercent > 0 && (
+                    <span className="text-sm font-bold line-through text-amber-900/50 dark:text-amber-300/50">
+                      ₹799
+                    </span>
+                  )}
+                  <span className="text-xs font-bold text-amber-900/70 dark:text-amber-300/70">
+                    / 1-year access
+                  </span>
+                </div>
+              </div>
+
+              {discountPercent > 0 && (
+                <span className="px-2.5 py-0.5 rounded-full bg-[#A3E635] text-[#18181B] font-black text-xs shadow-xs">
+                  {discountPercent}% OFF
+                </span>
+              )}
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleJoinWaitlist('pro')}
-              disabled={isSubmitting}
-              className="w-full min-h-[52px] rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 active:scale-[0.98] text-amber-950 font-black text-sm shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer border border-amber-300"
-            >
-              <Sparkles className="w-4 h-4" />
-              <span>{texts.pricing.joinWaitlistBtn}</span>
-            </button>
-          )}
+
+            {/* Discount Banner (Model A path) */}
+            {appliedCode && (
+              <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-xs font-bold text-amber-950 dark:text-amber-200 animate-fade-in flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span>{tuitionName ? '🎓' : '🏷️'}</span>
+                  <span>
+                    {appliedCode} applied: {discountPercent}% discount {tuitionName ? `(${tuitionName})` : ''}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemoveCode}
+                  className="text-xs text-amber-900/80 dark:text-amber-300 underline font-bold"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+
+            {/* Code input form */}
+            {!appliedCode && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  placeholder="Tuition / Coupon code"
+                  className="flex-1 min-h-[42px] px-3 rounded-xl border border-amber-400/50 bg-white/80 dark:bg-[#1B0B2E]/80 text-[#2E1065] dark:text-[#FAF5FF] text-xs font-black uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCode}
+                  disabled={isValidatingCode || !couponInput.trim()}
+                  className="px-4 min-h-[42px] rounded-xl bg-amber-950 dark:bg-amber-400 text-white dark:text-amber-950 font-black text-xs hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+                >
+                  {isValidatingCode ? 'Checking...' : 'Apply'}
+                </button>
+              </div>
+            )}
+
+            {codeError && (
+              <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                {codeError}
+              </p>
+            )}
+
+            {isPurchased ? (
+              <div className="w-full min-h-[50px] rounded-2xl bg-emerald-500/20 text-emerald-950 dark:text-emerald-200 font-black text-xs flex items-center justify-center gap-2 border border-emerald-400">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <span>You are on Centum Pro! 👑</span>
+              </div>
+            ) : plan === 'pro' ? (
+              <div className="w-full min-h-[48px] rounded-2xl bg-amber-400/20 text-amber-950 dark:text-amber-200 font-black text-xs flex items-center justify-center gap-2 border border-amber-400">
+                <Check className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>Current Plan: Pro 👑</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={isSubmitting}
+                className="w-full min-h-[52px] rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 active:scale-[0.98] text-amber-950 font-black text-sm shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 transition-all cursor-pointer border border-amber-300"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>{isSubmitting ? 'Processing...' : `Get Centum Pro — ₹${finalPrice} ⚡`}</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 3. LIVE CARD - "pro + a real teacher" */}

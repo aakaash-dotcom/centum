@@ -16,6 +16,29 @@ export interface MockUser {
   joined: string;
 }
 
+export interface MockTuition {
+  code: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerUpi?: string;
+  tuitionName: string;
+  district?: string;
+  mode: 'coupon' | 'seats';
+  discountPercent: number;
+  commissionPercent: number;
+  seatsTotal: number;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface MockSeat {
+  seatCode: string;
+  tuitionCode: string;
+  phone: string | null;
+  claimedAt: string | null;
+  expiresAt: string | null;
+}
+
 interface MockStore {
   users: Map<string, MockUser>;
   adminPhones: Set<string>;
@@ -23,6 +46,9 @@ interface MockStore {
   materials: Array<{ tab: string; row: Record<string, unknown>; addedAt: string }>;
   coins: Map<string, { balance: number; recent: Array<{ reason: string; amount: number; timestamp: string; ref: string }> }>;
   referralCodes: Map<string, string>;
+  tuitions: Map<string, MockTuition>;
+  seats: Map<string, MockSeat>;
+  studentTuitions: Map<string, string>; // phone -> tuitionCode
 }
 
 declare global {
@@ -116,6 +142,70 @@ function initMockStore(): MockStore {
     joined: '2026-09-18',
   });
 
+  const tuitions = new Map<string, MockTuition>();
+  const seats = new Map<string, MockSeat>();
+  const studentTuitions = new Map<string, string>();
+
+  // Seed Tuitions
+  tuitions.set('DEMO10', {
+    code: 'DEMO10',
+    ownerName: 'Ramesh Kumar',
+    ownerPhone: '9840123456',
+    ownerUpi: 'ramesh@oksbi',
+    tuitionName: 'Apex Centum Academy',
+    district: 'Chennai',
+    mode: 'coupon',
+    discountPercent: 10,
+    commissionPercent: 15,
+    seatsTotal: 20,
+    active: true,
+    createdAt: '2026-09-01T10:00:00.000Z',
+  });
+
+  tuitions.set('APEX20', {
+    code: 'APEX20',
+    ownerName: 'Senthil Nathan',
+    ownerPhone: '9443123456',
+    ownerUpi: 'senthil@okhdfc',
+    tuitionName: 'Bright Stars Tuition Centre',
+    district: 'Coimbatore',
+    mode: 'seats',
+    discountPercent: 15,
+    commissionPercent: 20,
+    seatsTotal: 10,
+    active: true,
+    createdAt: '2026-09-15T12:00:00.000Z',
+  });
+
+  // Seed sample seats for DEMO10
+  for (let i = 1; i <= 20; i++) {
+    const num = String(i).padStart(2, '0');
+    const seatCode = `DEMO10-S${num}`;
+    const isClaimed = i === 1;
+    seats.set(seatCode, {
+      seatCode,
+      tuitionCode: 'DEMO10',
+      phone: isClaimed ? '9123456780' : null,
+      claimedAt: isClaimed ? '2026-09-20T10:00:00.000Z' : null,
+      expiresAt: isClaimed ? '2027-09-20T10:00:00.000Z' : null,
+    });
+  }
+
+  // Seed sample seats for APEX20
+  for (let i = 1; i <= 10; i++) {
+    const num = String(i).padStart(2, '0');
+    const seatCode = `APEX20-S${num}`;
+    seats.set(seatCode, {
+      seatCode,
+      tuitionCode: 'APEX20',
+      phone: null,
+      claimedAt: null,
+      expiresAt: null,
+    });
+  }
+
+  studentTuitions.set('9123456780', 'DEMO10');
+
   return {
     users,
     adminPhones,
@@ -123,6 +213,9 @@ function initMockStore(): MockStore {
     materials: [],
     coins: new Map(),
     referralCodes: new Map(),
+    tuitions,
+    seats,
+    studentTuitions,
   };
 }
 
@@ -333,4 +426,285 @@ export function getOrCreateMockReferralCode(phone: string, name?: string) {
   }
 
   return { ok: true, code };
+}
+
+export function getMockTuition(code: string): MockTuition | undefined {
+  if (!code) return undefined;
+  return store.tuitions.get(code.trim().toUpperCase());
+}
+
+export function joinMockTuition(phone: string, code: string) {
+  const clean = normalizePhone(phone) || phone;
+  const upperCode = (code || '').trim().toUpperCase();
+
+  if (!clean || clean.length < 10) return { ok: false, error: 'valid-phone-required' };
+  if (!upperCode) return { ok: false, error: 'code-required' };
+
+  const tuition = store.tuitions.get(upperCode);
+  if (!tuition) return { ok: false, error: 'tuition-not-found' };
+  if (!tuition.active) return { ok: false, error: 'tuition-inactive' };
+
+  // GUARD RAIL: One tuition per phone
+  const existingCode = store.studentTuitions.get(clean);
+  if (existingCode && existingCode !== upperCode) {
+    return {
+      ok: false,
+      error: 'already-enrolled-in-tuition',
+      existingCode,
+      message: 'This mobile number is already linked to another tuition centre.',
+    };
+  }
+
+  store.studentTuitions.set(clean, upperCode);
+  return {
+    ok: true,
+    joined: true,
+    code: upperCode,
+    tuitionName: tuition.tuitionName || upperCode,
+  };
+}
+
+export function claimMockSeat(phone: string, seatCode: string) {
+  const clean = normalizePhone(phone) || phone;
+  const upperSeat = (seatCode || '').trim().toUpperCase();
+
+  if (!clean || clean.length < 10) return { ok: false, error: 'valid-phone-required' };
+  if (!upperSeat) return { ok: false, error: 'seat-code-required' };
+
+  const seat = store.seats.get(upperSeat);
+  if (!seat) return { ok: false, error: 'seat-not-found' };
+
+  // GUARD RAIL: Single-use + phone-bound
+  if (seat.phone) {
+    const seatPhone = normalizePhone(seat.phone) || seat.phone;
+    if (seatPhone === clean) {
+      return {
+        ok: true,
+        claimed: true,
+        alreadyClaimed: true,
+        tuitionCode: seat.tuitionCode,
+        plan: 'pro',
+        expiresAt: seat.expiresAt,
+      };
+    } else {
+      return {
+        ok: false,
+        error: 'seat-already-claimed',
+        message: 'This seat code has already been claimed by another student.',
+      };
+    }
+  }
+
+  if (seat.expiresAt) {
+    const exp = new Date(seat.expiresAt).getTime();
+    if (!isNaN(exp) && exp < Date.now()) {
+      return { ok: false, error: 'seat-expired' };
+    }
+  }
+
+  const oneYearLater = new Date();
+  oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+  const finalExpiry = seat.expiresAt || oneYearLater.toISOString();
+
+  seat.phone = clean;
+  seat.claimedAt = new Date().toISOString();
+  seat.expiresAt = finalExpiry;
+
+  // Upgrade student plan to Pro in memory
+  const user = store.users.get(clean);
+  if (user) {
+    user.plan = 'pro';
+  }
+  store.studentTuitions.set(clean, seat.tuitionCode);
+
+  return {
+    ok: true,
+    claimed: true,
+    tuitionCode: seat.tuitionCode,
+    plan: 'pro',
+    expiresAt: finalExpiry,
+  };
+}
+
+export function getMockTuitionStats(code: string, ownerPhone: string, isAdmin = false) {
+  const upperCode = (code || '').trim().toUpperCase();
+  if (!upperCode) return { ok: false, error: 'code-required' };
+
+  const tuition = store.tuitions.get(upperCode);
+  if (!tuition) return { ok: false, error: 'tuition-not-found' };
+
+  const cleanOwner = normalizePhone(ownerPhone) || ownerPhone;
+  const tuitionOwner = normalizePhone(tuition.ownerPhone) || tuition.ownerPhone;
+
+  // GUARD RAIL: Enforce owner phone verification or admin credentials (NEVER cross-tuition data)
+  if (!isAdmin && (!cleanOwner || cleanOwner !== tuitionOwner)) {
+    return { ok: false, error: 'unauthorized-cross-tuition-denied' };
+  }
+
+  const seatsForTuition = Array.from(store.seats.values()).filter((s) => s.tuitionCode === upperCode);
+  const seatsClaimed = seatsForTuition.filter((s) => Boolean(s.phone)).length;
+  const seatsTotal = Math.max(tuition.seatsTotal, seatsForTuition.length);
+
+  // Enrolled students
+  const enrolledPhones = Array.from(store.studentTuitions.entries())
+    .filter(([_, tCode]) => tCode === upperCode)
+    .map(([p]) => p);
+
+  // Include any student who claimed a seat
+  seatsForTuition.forEach((s) => {
+    if (s.phone && !enrolledPhones.includes(s.phone)) {
+      enrolledPhones.push(s.phone);
+    }
+  });
+
+  const students = enrolledPhones.map((p) => {
+    const u = store.users.get(p);
+    const masked = p.length >= 10 ? 'xxxxx' + p.slice(-4) : 'xxxxx';
+    return {
+      name: u?.name || 'Student',
+      phone: masked,
+      standard: u?.standard || '10th',
+      medium: u?.medium || 'english',
+      plan: u?.plan || 'pro',
+      testsCount: 14,
+      avgScore: 86,
+      lastActive: '2026-10-04',
+    };
+  });
+
+  // Weekly activity
+  const weeklyActivity = [
+    { day: 'Mon', testsTaken: 12, avgScore: 84 },
+    { day: 'Tue', testsTaken: 19, avgScore: 88 },
+    { day: 'Wed', testsTaken: 15, avgScore: 82 },
+    { day: 'Thu', testsTaken: 22, avgScore: 90 },
+    { day: 'Fri', testsTaken: 25, avgScore: 87 },
+    { day: 'Sat', testsTaken: 31, avgScore: 89 },
+    { day: 'Sun', testsTaken: 28, avgScore: 91 },
+  ];
+
+  // Payout statement (Model A coupon commissions)
+  const rate = tuition.commissionPercent || 15;
+  const paidOrdersCount = 8;
+  const totalAmount = paidOrdersCount * 599;
+  const totalCommission = Math.round(totalAmount * (rate / 100));
+
+  const payoutStatement = {
+    code: upperCode,
+    commissionPercent: rate,
+    ownerUpi: tuition.ownerUpi || '—',
+    totalAttributedOrders: paidOrdersCount,
+    totalGrossRevenue: totalAmount,
+    totalCommissionDue: totalCommission,
+    status: 'pending_monthly_settlement',
+    cycle: '2026-10',
+  };
+
+  return {
+    ok: true,
+    stats: {
+      tuition: {
+        code: tuition.code,
+        tuitionName: tuition.tuitionName,
+        ownerName: tuition.ownerName,
+        ownerPhone: tuition.ownerPhone,
+        ownerUpi: tuition.ownerUpi || '—',
+        district: tuition.district || '—',
+        mode: tuition.mode,
+        discountPercent: tuition.discountPercent,
+        commissionPercent: tuition.commissionPercent,
+        seatsTotal: seatsTotal,
+        active: tuition.active,
+      },
+      seatsTotal,
+      seatsClaimed,
+      activeStudentsCount: students.length,
+      students,
+      weeklyActivity,
+      payoutStatement,
+    },
+  };
+}
+
+export function listMockTuitions(isAdmin = false) {
+  if (!isAdmin) return [];
+  return Array.from(store.tuitions.values()).map((t) => {
+    const seats = Array.from(store.seats.values()).filter((s) => s.tuitionCode === t.code);
+    const seatsClaimed = seats.filter((s) => Boolean(s.phone)).length;
+    const studentsCount = Array.from(store.studentTuitions.values()).filter((code) => code === t.code).length;
+
+    return {
+      code: t.code,
+      tuitionName: t.tuitionName,
+      ownerName: t.ownerName,
+      ownerPhone: t.ownerPhone,
+      ownerUpi: t.ownerUpi || '',
+      district: t.district || '',
+      mode: t.mode,
+      discountPercent: t.discountPercent,
+      commissionPercent: t.commissionPercent,
+      seatsTotal: Math.max(t.seatsTotal, seats.length),
+      seatsClaimed,
+      studentsCount: Math.max(studentsCount, seatsClaimed),
+      active: t.active,
+      createdAt: t.createdAt,
+    };
+  });
+}
+
+export function addMockTuition(data: Partial<MockTuition>) {
+  const code = (data.code || `TC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`).trim().toUpperCase();
+  const cleanPhone = normalizePhone(data.ownerPhone || '') || data.ownerPhone || '';
+
+  const tuition: MockTuition = {
+    code,
+    ownerName: data.ownerName || 'Tuition Owner',
+    ownerPhone: cleanPhone,
+    ownerUpi: data.ownerUpi || '',
+    tuitionName: data.tuitionName || 'Tuition Centre',
+    district: data.district || '',
+    mode: (data.mode as 'coupon' | 'seats') || 'coupon',
+    discountPercent: Number(data.discountPercent) || 10,
+    commissionPercent: Number(data.commissionPercent) || 15,
+    seatsTotal: Number(data.seatsTotal) || 0,
+    active: data.active !== false,
+    createdAt: new Date().toISOString(),
+  };
+
+  store.tuitions.set(code, tuition);
+
+  // If seatsTotal > 0, generate initial seats
+  if (tuition.seatsTotal > 0) {
+    generateMockSeats(code, tuition.seatsTotal);
+  }
+
+  return { ok: true, tuition };
+}
+
+export function generateMockSeats(tuitionCode: string, count: number) {
+  const upper = (tuitionCode || '').trim().toUpperCase();
+  const tuition = store.tuitions.get(upper);
+  if (!tuition) return { ok: false, error: 'tuition-not-found' };
+
+  const existingSeats = Array.from(store.seats.values()).filter((s) => s.tuitionCode === upper);
+  const startNum = existingSeats.length + 1;
+  const newSeats: MockSeat[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const num = String(startNum + i).padStart(2, '0');
+    const seatCode = `${upper}-S${num}`;
+    const seat: MockSeat = {
+      seatCode,
+      tuitionCode: upper,
+      phone: null,
+      claimedAt: null,
+      expiresAt: null,
+    };
+    store.seats.set(seatCode, seat);
+    newSeats.push(seat);
+  }
+
+  tuition.seatsTotal = existingSeats.length + count;
+
+  return { ok: true, seats: newSeats, seatsTotal: tuition.seatsTotal };
 }

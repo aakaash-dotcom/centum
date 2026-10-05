@@ -91,6 +91,7 @@ export interface StudentProfile {
   registeredAt?: string;
   isAdmin?: boolean;
   avatarFrame?: string;
+  tuitionCode?: string;
 }
 
 export interface AdminStats {

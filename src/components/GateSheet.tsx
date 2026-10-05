@@ -30,6 +30,11 @@ export const GateSheet: React.FC = () => {
   const [stream, setStream] = useState<string>('Science — Maths');
   const [district, setDistrict] = useState('Chennai');
   const [waOptIn, setWaOptIn] = useState(true);
+  const [tuitionCode, setTuitionCode] = useState('');
+  const [tuitionValid, setTuitionValid] = useState<boolean | null>(null);
+  const [tuitionInfo, setTuitionInfo] = useState<{ tuitionName: string; discountPercent: number; code: string } | null>(null);
+  const [isValidatingTuition, setIsValidatingTuition] = useState(false);
+  const [tuitionError, setTuitionError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [wrongAttempts, setWrongAttempts] = useState(0);
@@ -47,6 +52,42 @@ export const GateSheet: React.FC = () => {
       }
     }
   }, [isGateOpen, gateMode, guestStandard]);
+
+  const validateTuitionCode = async (codeToTest: string): Promise<boolean> => {
+    const clean = codeToTest.trim().toUpperCase();
+    if (!clean) {
+      setTuitionValid(null);
+      setTuitionInfo(null);
+      setTuitionError('');
+      return true;
+    }
+    setIsValidatingTuition(true);
+    setTuitionError('');
+    try {
+      const res = await fetch(`/api/classroom-info?code=${encodeURIComponent(clean)}`);
+      const data = await res.json();
+      if (res.ok && data.ok && data.tuition) {
+        setTuitionValid(true);
+        setTuitionInfo({
+          tuitionName: data.tuition.tuitionName,
+          discountPercent: Number(data.tuition.discountPercent) || 0,
+          code: clean,
+        });
+        return true;
+      } else {
+        setTuitionValid(false);
+        setTuitionInfo(null);
+        setTuitionError(data.error === 'tuition-inactive' ? 'Tuition centre is inactive' : texts.gate.tuitionInvalid);
+        return false;
+      }
+    } catch (e) {
+      setTuitionValid(false);
+      setTuitionError(texts.gate.tuitionInvalid);
+      return false;
+    } finally {
+      setIsValidatingTuition(false);
+    }
+  };
 
   if (!isGateOpen) return null;
 
@@ -76,6 +117,15 @@ export const GateSheet: React.FC = () => {
       return;
     }
 
+    const cleanTuition = tuitionCode.trim().toUpperCase();
+    if (cleanTuition) {
+      const ok = await validateTuitionCode(cleanTuition);
+      if (!ok) {
+        setErrorMsg(texts.gate.tuitionInvalid);
+        return;
+      }
+    }
+
     try {
       setIsSubmitting(true);
       await registerStudent({
@@ -86,6 +136,7 @@ export const GateSheet: React.FC = () => {
         district,
         password: cleanPassword,
         waOptIn,
+        tuitionCode: cleanTuition || undefined,
       });
 
       try {
@@ -423,6 +474,87 @@ export const GateSheet: React.FC = () => {
                 </select>
               </div>
             )}
+
+            {/* Optional Tuition Centre Code Input (Phase B: Tuition Classrooms) */}
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5 flex items-center justify-between">
+                <span>{texts.gate.tuitionLabel}</span>
+                {isValidatingTuition && (
+                  <span className="text-[10px] text-[#7C3AED] dark:text-[#A3E635] animate-pulse">
+                    {texts.gate.tuitionValidating}
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={tuitionCode}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setTuitionCode(val);
+                    if (!val) {
+                      setTuitionValid(null);
+                      setTuitionInfo(null);
+                      setTuitionError('');
+                    }
+                  }}
+                  onBlur={() => {
+                    if (tuitionCode.trim()) {
+                      validateTuitionCode(tuitionCode);
+                    }
+                  }}
+                  placeholder={texts.gate.tuitionPlaceholder}
+                  className={`w-full min-h-[48px] px-3.5 pr-20 rounded-xl border ${
+                    tuitionValid === true
+                      ? 'border-[#16A34A] focus:ring-[#16A34A]'
+                      : tuitionValid === false
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-[#DDD6FE] dark:border-[#DDD6FE]/20 focus:ring-[#7C3AED]'
+                  } bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold uppercase tracking-wider focus:outline-none focus:ring-2 transition-all`}
+                />
+                {tuitionCode.trim() && (
+                  <button
+                    type="button"
+                    disabled={isValidatingTuition}
+                    onClick={() => validateTuitionCode(tuitionCode)}
+                    className="absolute right-2 top-2 bottom-2 px-2.5 rounded-lg text-xs font-extrabold bg-[#7C3AED]/10 hover:bg-[#7C3AED]/20 text-[#7C3AED] dark:text-[#A3E635] transition-colors cursor-pointer"
+                  >
+                    Verify
+                  </button>
+                )}
+              </div>
+
+              {/* Owner Discount Chip (Model A path) */}
+              {tuitionValid === true && tuitionInfo && (
+                <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/50 flex items-center justify-between text-xs animate-fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">🎓</span>
+                    <div>
+                      <p className="font-extrabold text-emerald-900 dark:text-emerald-200">
+                        {tuitionInfo.tuitionName}
+                      </p>
+                      <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                        {tuitionInfo.discountPercent > 0
+                          ? `${tuitionInfo.discountPercent}% Student Discount Unlocked! ✨`
+                          : 'Linked to Tuition Centre'}
+                      </p>
+                    </div>
+                  </div>
+                  {tuitionInfo.discountPercent > 0 && (
+                    <span className="px-2 py-0.5 rounded-md bg-[#A3E635] text-[#18181B] font-black text-[11px] shadow-xs">
+                      SAVE {tuitionInfo.discountPercent}%
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Invalid tuition code error */}
+              {tuitionValid === false && tuitionError && (
+                <p className="mt-1 text-xs font-bold text-red-600 dark:text-red-400">
+                  {tuitionError}
+                </p>
+              )}
+            </div>
 
             {/* WhatsApp Opt-in Checkbox (Default ON, bilingual copy) */}
             <div

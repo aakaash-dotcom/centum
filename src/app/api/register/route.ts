@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { registerMockUser } from '@/lib/server-mock-store';
+import { registerMockUser, joinMockTuition } from '@/lib/server-mock-store';
 import { normalizePhone } from '@/lib/phone';
 import { recordOptIn } from '@/lib/whatsapp';
 
@@ -19,6 +19,7 @@ export async function POST(request: Request) {
       type = 'student',
       plan,
       refCode,
+      tuitionCode,
       source,
       waOptIn,
     } = body;
@@ -28,7 +29,8 @@ export async function POST(request: Request) {
       recordOptIn(phone);
     }
     const cleanPassword = typeof password === 'string' ? password.trim() : password;
-    const referralSource = refCode ? `ref:${refCode}` : (source || 'app');
+    const cleanTuitionCode = (tuitionCode || '').trim().toUpperCase();
+    const referralSource = cleanTuitionCode ? `tuition:${cleanTuitionCode}` : (refCode ? `ref:${refCode}` : (source || 'app'));
 
     const scriptUrl = process.env.APPS_SCRIPT_URL;
     const secretKey = process.env.APPS_SCRIPT_SECRET;
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
                 stream,
                 medium,
                 password: cleanPassword, // forwarded to Apps Script
+                tuitionCode: cleanTuitionCode || undefined,
                 source: referralSource,
                 ref: refCode || '',
               };
@@ -77,6 +80,9 @@ export async function POST(request: Request) {
               medium,
               password: cleanPassword,
             });
+            if (cleanTuitionCode) {
+              joinMockTuition(phone, cleanTuitionCode);
+            }
           }
           return NextResponse.json(
             { ok: true, source: 'live', ...resData },
@@ -104,6 +110,9 @@ export async function POST(request: Request) {
         medium,
         password: cleanPassword,
       });
+      if (cleanTuitionCode) {
+        joinMockTuition(phone, cleanTuitionCode);
+      }
     }
 
     return NextResponse.json(

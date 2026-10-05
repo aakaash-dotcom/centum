@@ -93,6 +93,12 @@ export const rawTexts = {
     standardLabel: { en: 'Standard', ta: 'வகுப்பு' },
     streamLabel: { en: 'Stream', ta: 'பிரிவு' },
     districtLabel: { en: 'District', ta: 'மாவட்டம்' },
+    tuitionLabel: { en: 'Tuition centre code (optional)', ta: 'டியூஷன் மைய குறியீடு (விருப்பத்தேர்வு)' },
+    tuitionPlaceholder: { en: 'e.g. APEX10 or DEMO10', ta: 'எ.கா. APEX10 அல்லது DEMO10' },
+    tuitionValidating: { en: 'Checking tuition code...', ta: 'குறியீடு சரிபார்க்கப்படுகிறது...' },
+    tuitionValid: { en: 'Tuition verified!', ta: 'டியூஷன் மையம் உறுதிசெய்யப்பட்டது!' },
+    tuitionInvalid: { en: 'Invalid tuition centre code', ta: 'தவறான டியூஷன் குறியீடு' },
+    tuitionDiscountUnlocked: { en: 'Discount unlocked!', ta: 'தள்ளுபடி பெறப்பட்டது!' },
     button: { en: 'Unlock everything ✨', ta: 'அனைத்தையும் திற ✨' },
     saving: { en: 'unlocking... 🚀', ta: 'திறக்கிறது... 🚀' },
     termsNotice: {
