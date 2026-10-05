@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Paper, PaperCategory } from '@/types';
 import { SkeletonCard } from '@/components/SkeletonCard';
-import { FileText, ArrowRight, ArrowLeft, Sparkles, Lock, ChevronDown } from 'lucide-react';
+import { FileText, ArrowRight, ArrowLeft, Sparkles, Lock, ChevronDown, Crown } from 'lucide-react';
 import {
   detectBilingualPapers,
   deduplicateBilingualPapers,
@@ -564,6 +565,31 @@ function MaterialsContent() {
               </button>
             ))}
           </div>
+
+          {/* PRO MATERIALS HUB ENTRY CARD - matching Pro quiz entry visual language */}
+          <Link
+            href={`/pro-materials?classLevel=${encodeURIComponent(guestStandard || student?.standard?.replace(/\D/g, '') || '10')}`}
+            className="w-full mt-3 min-h-[68px] px-4 py-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 border-amber-400 dark:border-amber-400/80 bg-gradient-to-r from-amber-400/15 via-yellow-400/20 to-amber-500/25 dark:from-amber-500/20 dark:via-yellow-500/20 dark:to-amber-400/25 text-[#2E1065] dark:text-[#F5F0FF] shadow-sm hover:shadow-md dark:shadow-amber-500/10 group"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl group-hover:scale-110 transition-transform">👑</span>
+              <div className="text-left">
+                <span className="text-xs sm:text-sm font-black text-amber-950 dark:text-amber-200 block leading-tight flex items-center gap-1.5">
+                  <span>Pro Materials Hub</span>
+                  <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-400/30 px-1.5 py-0.2 rounded-md">New ✨</span>
+                </span>
+                <span className="text-[10px] font-bold text-amber-800/80 dark:text-amber-300/80">
+                  Chapter video masterclasses, high-yield PDF notes & concept tests
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 shadow-xs border border-amber-300">
+                Pro
+              </span>
+              <ArrowRight className="w-4 h-4 text-amber-600 dark:text-amber-300 group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </Link>
         </div>
       ) : (
         <>

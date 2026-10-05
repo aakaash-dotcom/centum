@@ -7,10 +7,24 @@ import { GateSheet } from '@/components/GateSheet';
 import { PaywallSheet } from '@/components/PaywallSheet';
 import { Toast } from '@/components/Toast';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://centum-omega.vercel.app';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: 'Centum - Tamil Nadu Board Question Papers & Tests',
   description: 'Tamil Nadu State Board 10th and 12th question papers, model papers, books, and chapter tests.',
   manifest: '/manifest.json',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Centum - Tamil Nadu Board Question Papers & Tests',
+    description: 'Tamil Nadu State Board 10th and 12th question papers, model papers, books, and chapter tests.',
+    url: SITE_URL,
+    siteName: 'Centum',
+    locale: 'en_IN',
+    type: 'website',
+  },
   icons: {
     icon: [
       { url: '/icon.svg', type: 'image/svg+xml' },

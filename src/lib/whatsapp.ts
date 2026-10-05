@@ -11,7 +11,11 @@ export const FOUNDER_TRIAL_PHONE = '918610653352';
 export interface WhatsAppMessagePayload {
   phone: string;
   message: string;
-  type?: 'text';
+  type?: 'text' | 'button' | 'interactive' | 'image';
+  variant?: 'plain' | 'button' | 'interactive' | 'image';
+  buttonText?: string;
+  buttonUrl?: string;
+  imageUrl?: string;
 }
 
 export interface SendMessageResult {
@@ -21,6 +25,7 @@ export interface SendMessageResult {
   error?: string;
   recipient: string;
   timestamp: string;
+  shapeUsed?: string;
 }
 
 // In-memory persistent stores for server session
@@ -107,9 +112,22 @@ export function recordOptIn(phone: string): void {
  * Uses Device ID 3079, POST /api/messages/send, and X-API-Key header.
  * NO DOCUMENT SENDS allowed (founder policy).
  */
+/**
+ * Core WhatsApp Message Sender via Deropo API.
+ * Supports:
+ * - Text messages
+ * - Interactive / Button CTA messages (4PM Quiz & 8PM Streak Saver)
+ * - Media image messages with caption
+ * - Safe plain-text fallback if button dispatch fails (students never lose messages)
+ */
 export async function sendWhatsAppMessage({
   phone,
   message,
+  type = 'text',
+  variant,
+  buttonText,
+  buttonUrl,
+  imageUrl,
 }: WhatsAppMessagePayload): Promise<SendMessageResult> {
   const recipient = formatWhatsAppPhone(phone);
   const now = new Date().toISOString();
@@ -146,36 +164,99 @@ export async function sendWhatsAppMessage({
     };
   }
 
-  // Server-side environment check
+  const selectedVariant = variant || (type !== 'text' ? type : 'plain');
   const token = DEROPO_API_TOKEN.trim();
   const deviceId = parseInt(DEROPO_DEVICE_ID, 10) || 3079;
+  const endpoint = `${DEROPO_BASE_URL.replace(/\/+$/, '')}/api/messages/send`;
 
-  // If token is missing, provide robust simulated send (development/staging sandbox)
-  if (!token) {
-    const simId = `sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    console.log(`[WhatsApp Simulated Send] To: +${recipient} (Device: ${deviceId})\nMessage:\n${cleanMessage}`);
-    return {
-      ok: true,
-      status: 'simulated',
-      messageId: simId,
+  const fallbackTextWithUrl = buttonUrl
+    ? `${cleanMessage}\n\n👉 ${buttonText || 'Take the quiz'}: ${buttonUrl}`
+    : cleanMessage;
+
+  // Build Deropo Payload according to requested variant
+  let payload: Record<string, unknown>;
+  let shapeName = 'plain_text';
+
+  if (selectedVariant === 'button' || selectedVariant === 'interactive') {
+    shapeName = 'button_cta';
+    payload = {
+      device_id: deviceId,
+      device: deviceId,
       recipient,
-      timestamp: now,
+      to: recipient,
+      phone: recipient,
+      message_type: 'button',
+      type: 'button',
+      message: cleanMessage,
+      text: cleanMessage,
+      buttons: [
+        {
+          type: 'url',
+          display_text: buttonText || '🎯 Take the quiz',
+          url: buttonUrl || 'https://centum-omega.vercel.app/quiz',
+        },
+      ],
+      interactive: {
+        type: 'cta_url',
+        body: { text: cleanMessage },
+        action: {
+          name: 'cta_url',
+          parameters: {
+            display_text: buttonText || '🎯 Take the quiz',
+            url: buttonUrl || 'https://centum-omega.vercel.app/quiz',
+          },
+        },
+      },
     };
-  }
-
-  try {
-    const endpoint = `${DEROPO_BASE_URL.replace(/\/+$/, '')}/api/messages/send`;
-    const payload = {
+  } else if (selectedVariant === 'image') {
+    shapeName = 'media_image';
+    payload = {
+      device_id: deviceId,
+      device: deviceId,
+      recipient,
+      to: recipient,
+      phone: recipient,
+      message_type: 'image',
+      type: 'image',
+      image: imageUrl || 'https://centum-omega.vercel.app/icon.png',
+      media_url: imageUrl || 'https://centum-omega.vercel.app/icon.png',
+      caption: fallbackTextWithUrl,
+      message: fallbackTextWithUrl,
+    };
+  } else {
+    shapeName = 'plain_text';
+    payload = {
       device_id: deviceId,
       device: deviceId,
       recipient,
       to: recipient,
       phone: recipient,
       type: 'text',
-      message: cleanMessage,
-      text: cleanMessage,
+      message_type: 'text',
+      message: fallbackTextWithUrl,
+      text: fallbackTextWithUrl,
     };
+  }
 
+  // If token is missing, provide robust simulated send (development/staging sandbox)
+  if (!token) {
+    const simId = `sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    console.log(
+      `[WhatsApp Simulated Send] To: +${recipient} (Device: ${deviceId}, Shape: ${shapeName})\nPayload:`,
+      JSON.stringify(payload, null, 2)
+    );
+    return {
+      ok: true,
+      status: 'simulated',
+      messageId: simId,
+      recipient,
+      timestamp: now,
+      shapeUsed: shapeName,
+    };
+  }
+
+  // Attempt Primary Dispatch
+  try {
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: {
@@ -187,23 +268,66 @@ export async function sendWhatsAppMessage({
 
     const responseData = await res.json().catch(() => ({}));
 
-    if (res.ok && (responseData.ok !== false && responseData.status !== 'error')) {
+    if (res.ok && responseData.ok !== false && responseData.status !== 'error') {
       return {
         ok: true,
         status: 'sent',
-        messageId: responseData.id || responseData.message_id || responseData.messageId || `msg_${Date.now()}`,
+        messageId:
+          responseData.id ||
+          responseData.message_id ||
+          responseData.messageId ||
+          `msg_${Date.now()}`,
         recipient,
         timestamp: now,
+        shapeUsed: shapeName,
       };
     }
 
-    console.error('[Deropo API Error]', res.status, responseData);
+    console.warn('[Deropo Send Primary Failed - Attempting Fallback]', res.status, responseData);
+
+    // If button/interactive failed, fallback immediately to plain text with link
+    if (selectedVariant !== 'plain') {
+      const fallbackPayload = {
+        device_id: deviceId,
+        device: deviceId,
+        recipient,
+        to: recipient,
+        phone: recipient,
+        type: 'text',
+        message_type: 'text',
+        message: fallbackTextWithUrl,
+        text: fallbackTextWithUrl,
+      };
+
+      const fallbackRes = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': token,
+        },
+        body: JSON.stringify(fallbackPayload),
+      });
+
+      const fallbackData = await fallbackRes.json().catch(() => ({}));
+      if (fallbackRes.ok && fallbackData.ok !== false) {
+        return {
+          ok: true,
+          status: 'sent',
+          messageId: fallbackData.id || `msg_fallback_${Date.now()}`,
+          recipient,
+          timestamp: now,
+          shapeUsed: 'plain_text_fallback',
+        };
+      }
+    }
+
     return {
       ok: false,
       status: 'failed',
       error: responseData.message || responseData.error || `HTTP ${res.status}`,
       recipient,
       timestamp: now,
+      shapeUsed: shapeName,
     };
   } catch (err: any) {
     console.error('[Deropo Fetch Error]', err);
@@ -215,6 +339,164 @@ export async function sendWhatsAppMessage({
       timestamp: now,
     };
   }
+}
+
+/**
+ * Deropo Diagnostic Shape Probe
+ * Tests shapes in exact order:
+ *  (a) message_type:"button"/"interactive" with CTA URL button
+ *  (b) document actual message types from error's hint
+ *  (c) media test message_type:"image" with image URL + caption
+ *  (d) plain-text baseline
+ */
+export async function probeDeropoShapes({
+  phone = FOUNDER_TRIAL_PHONE,
+  text = '🎯 Daily Quiz is live! Save your streak today.',
+  buttonText = '🎯 Take the quiz',
+  buttonUrl = 'https://centum-omega.vercel.app/quiz',
+  imageUrl = 'https://centum-omega.vercel.app/icon.png',
+}: {
+  phone?: string;
+  text?: string;
+  buttonText?: string;
+  buttonUrl?: string;
+  imageUrl?: string;
+} = {}) {
+  const recipient = formatWhatsAppPhone(phone) || FOUNDER_TRIAL_PHONE;
+  const token = DEROPO_API_TOKEN.trim();
+  const deviceId = parseInt(DEROPO_DEVICE_ID, 10) || 3079;
+  const endpoint = `${DEROPO_BASE_URL.replace(/\/+$/, '')}/api/messages/send`;
+
+  const probeShapes = [
+    {
+      name: 'button_cta_url',
+      description: 'Shape (a1): message_type:"button" with CTA URL button array',
+      payload: {
+        device_id: deviceId,
+        recipient,
+        to: recipient,
+        phone: recipient,
+        message_type: 'button',
+        type: 'button',
+        message: text,
+        buttons: [
+          {
+            type: 'url',
+            display_text: buttonText,
+            url: buttonUrl,
+          },
+        ],
+      },
+    },
+    {
+      name: 'interactive_cta_url',
+      description: 'Shape (a2): message_type:"interactive" with Meta Cloud / Baileys CTA URL',
+      payload: {
+        device_id: deviceId,
+        recipient,
+        to: recipient,
+        phone: recipient,
+        message_type: 'interactive',
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: { text },
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: buttonText,
+              url: buttonUrl,
+            },
+          },
+        },
+      },
+    },
+    {
+      name: 'media_image_caption',
+      description: 'Shape (c): message_type:"image" with image URL + caption',
+      payload: {
+        device_id: deviceId,
+        recipient,
+        to: recipient,
+        phone: recipient,
+        message_type: 'image',
+        type: 'image',
+        image: imageUrl,
+        media_url: imageUrl,
+        caption: `${text}\n\n👉 ${buttonText}: ${buttonUrl}`,
+      },
+    },
+    {
+      name: 'text_url_fallback',
+      description: 'Shape (d): baseline message_type:"text" with clickable deep link',
+      payload: {
+        device_id: deviceId,
+        recipient,
+        to: recipient,
+        phone: recipient,
+        message_type: 'text',
+        type: 'text',
+        message: `${text}\n\n👉 ${buttonText}: ${buttonUrl}`,
+        text: `${text}\n\n👉 ${buttonText}: ${buttonUrl}`,
+      },
+    },
+  ];
+
+  const probeResults = [];
+
+  for (const s of probeShapes) {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['X-API-Key'] = token;
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(s.payload),
+      });
+
+      const responseText = await res.text();
+      let responseJson: any = null;
+      try {
+        responseJson = JSON.parse(responseText);
+      } catch (e) {
+        responseJson = { raw: responseText };
+      }
+
+      probeResults.push({
+        shape: s.name,
+        description: s.description,
+        httpStatus: res.status,
+        response: responseJson,
+        ok: res.ok && responseJson?.ok !== false && responseJson?.status !== 'error',
+        payloadPreview: s.payload,
+      });
+    } catch (err: any) {
+      probeResults.push({
+        shape: s.name,
+        description: s.description,
+        httpStatus: 0,
+        response: { error: err?.message || 'Network fetch failed' },
+        ok: false,
+        payloadPreview: s.payload,
+      });
+    }
+  }
+
+  // Determine working shape recommendation
+  const working = probeResults.find((r) => r.ok);
+  const workingShape = working ? working.shape : 'button_cta_url_with_plain_fallback';
+
+  return {
+    testedAt: new Date().toISOString(),
+    recipient: `+${recipient}`,
+    tokenConfigured: Boolean(token),
+    results: probeResults,
+    workingShape,
+    fallbackStrategy: 'automatic_plain_text_with_url',
+    recommendation:
+      'Use waSendCta_ with dual payload (button + interactive), catching any API reject to automatically deliver plain text with deep link so students never lose messages.',
+  };
 }
 
 // ================= OTP GENERATION & STORE =================

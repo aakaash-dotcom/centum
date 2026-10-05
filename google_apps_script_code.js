@@ -250,6 +250,8 @@ function doGet(e) {
     }
 
     if ((e.parameter.action||"").indexOf("classroom")===0 || (e.parameter.action||"").indexOf("seat-")===0 || (e.parameter.action||"").indexOf("tuition-")===0 || (e.parameter.action||"")==="ops-classroom-add" || (e.parameter.action||"")==="ops-classrooms-list") { const _out = typeof classroomRouteGet === 'function' ? classroomRouteGet(e.parameter) : null; if (_out) return json_(_out); }
+    if (a === "founderStats") { const _out = typeof founderStats === 'function' ? founderStats(e) : null; if (_out) return json_(_out); }
+    if (a === "proMaterials") { const _out = typeof proMaterials === 'function' ? proMaterials(e) : null; if (_out) return json_(_out); }
 
     return json_({ ok: false, error: "unknown action" });
   } catch (err) { return json_({ ok: false, error: String(err) }); }

@@ -708,3 +708,129 @@ export function generateMockSeats(tuitionCode: string, count: number) {
 
   return { ok: true, seats: newSeats, seatsTotal: tuition.seatsTotal };
 }
+
+export function getMockFounderStats() {
+  const usersList = Array.from(store.users.values());
+  const registeredTotal = Math.max(usersList.length * 156, 1420);
+  const registeredToday = 28;
+  const registered7d = 194;
+  const waOptedIn = Math.round(registeredTotal * 0.83); // 83% opt-in rate
+  const active24h = 312;
+  const active7d = 845;
+
+  const byClass = [
+    { classLevel: '6', registered: 45, active7d: 18 },
+    { classLevel: '7', registered: 62, active7d: 29 },
+    { classLevel: '8', registered: 98, active7d: 54 },
+    { classLevel: '9', registered: 184, active7d: 112 },
+    { classLevel: '10', registered: 520, active7d: 348 },
+    { classLevel: '11', registered: 196, active7d: 105 },
+    { classLevel: '12', registered: 315, active7d: 179 },
+  ];
+
+  const topStreaks = [
+    { name: 'Karthik Raja', phone: 'xxxxx5352', classLevel: '10th', streakDays: 24 },
+    { name: 'Ananya Srinivasan', phone: 'xxxxx3456', classLevel: '12th', streakDays: 21 },
+    { name: 'Dinesh Kumar', phone: 'xxxxx8821', classLevel: '10th', streakDays: 18 },
+    { name: 'Kavitha R', phone: 'xxxxx6780', classLevel: '10th', streakDays: 16 },
+    { name: 'Sanjay V', phone: 'xxxxx1190', classLevel: '11th', streakDays: 14 },
+    { name: 'Priya Dharshini', phone: 'xxxxx4423', classLevel: '12th', streakDays: 12 },
+    { name: 'Muthu Selvan', phone: 'xxxxx7654', classLevel: '9th', streakDays: 11 },
+    { name: 'Deepika M', phone: 'xxxxx9012', classLevel: '10th', streakDays: 10 },
+    { name: 'Saravanan T', phone: 'xxxxx3341', classLevel: '8th', streakDays: 9 },
+    { name: 'Naveen Prakash', phone: 'xxxxx2289', classLevel: '10th', streakDays: 8 },
+  ];
+
+  return {
+    ok: true,
+    registeredTotal,
+    registeredToday,
+    registered7d,
+    waOptedIn,
+    active24h,
+    active7d,
+    byClass,
+    topStreaks,
+  };
+}
+
+export interface MockProMaterial {
+  id: string;
+  classLevel: string;
+  subject: string;
+  chapter: string;
+  title: string;
+  videoEmbedUrl?: string;
+  notesPdfUrl?: string;
+  conceptQuizUrl?: string;
+  bookbackQuizUrl?: string;
+  importantQuestionsUrl?: string;
+  status: 'live' | 'draft';
+  createdAt: string;
+}
+
+const mockProMaterials: MockProMaterial[] = [
+  {
+    id: 'pm-10-maths-ch1',
+    classLevel: '10',
+    subject: 'maths',
+    chapter: 'Chapter 1: Relations and Functions',
+    title: 'Relations and Functions (உறவுகளும் சார்புகளும்)',
+    videoEmbedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_maths_ch1.pdf',
+    conceptQuizUrl: '/test-runner?class=10&subject=maths&chapter=Relations%20and%20Functions&type=concept',
+    bookbackQuizUrl: '/test-runner?class=10&subject=maths&chapter=Relations%20and%20Functions&type=oneword',
+    importantQuestionsUrl: '/test-runner?class=10&subject=maths&chapter=Relations%20and%20Functions&type=important',
+    status: 'live',
+    createdAt: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: 'pm-10-maths-ch2',
+    classLevel: '10',
+    subject: 'maths',
+    chapter: 'Chapter 2: Numbers and Sequences',
+    title: 'Numbers and Sequences (எண்களும் தொடர்வரிசைகளும்)',
+    videoEmbedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_maths_ch2.pdf',
+    conceptQuizUrl: '/test-runner?class=10&subject=maths&chapter=Numbers%20and%20Sequences&type=concept',
+    bookbackQuizUrl: '/test-runner?class=10&subject=maths&chapter=Numbers%20and%20Sequences&type=oneword',
+    importantQuestionsUrl: '/test-runner?class=10&subject=maths&chapter=Numbers%20and%20Sequences&type=important',
+    status: 'live',
+    createdAt: '2026-10-02T10:00:00Z',
+  },
+  {
+    id: 'pm-10-maths-ch3',
+    classLevel: '10',
+    subject: 'maths',
+    chapter: 'Chapter 3: Algebra',
+    title: 'Algebra (இயற்கணிதம்)',
+    videoEmbedUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_maths_ch3.pdf',
+    conceptQuizUrl: '/test-runner?class=10&subject=maths&chapter=Algebra&type=concept',
+    bookbackQuizUrl: '/test-runner?class=10&subject=maths&chapter=Algebra&type=oneword',
+    importantQuestionsUrl: '/test-runner?class=10&subject=maths&chapter=Algebra&type=important',
+    status: 'live',
+    createdAt: '2026-10-03T10:00:00Z',
+  },
+  {
+    id: 'pm-10-maths-ch4',
+    classLevel: '10',
+    subject: 'maths',
+    chapter: 'Chapter 4: Geometry',
+    title: 'Geometry (வடிவியல்)',
+    status: 'draft',
+    createdAt: '2026-10-04T10:00:00Z',
+  },
+];
+
+export function listMockProMaterials(classLevel?: string, subject?: string) {
+  const normClass = classLevel ? String(classLevel).replace(/\D/g, '') : '';
+  const normSub = subject ? String(subject).trim().toLowerCase() : '';
+
+  return mockProMaterials.filter((m) => {
+    if (m.status !== 'live') return false;
+    if (normClass && m.classLevel !== normClass) return false;
+    if (normSub && !m.subject.toLowerCase().includes(normSub) && !normSub.includes(m.subject.toLowerCase())) return false;
+    return true;
+  });
+}

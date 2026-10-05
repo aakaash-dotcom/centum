@@ -25,6 +25,12 @@ import {
   Ticket,
   Copy,
   Check,
+  Flame,
+  MessageSquare,
+  Zap,
+  TrendingUp,
+  Trophy,
+  Calendar,
 } from 'lucide-react';
 
 export default function AdminPage() {
@@ -39,6 +45,19 @@ export default function AdminPage() {
   // Screen 2 State
   const [activeTab, setActiveTab] = useState<'stats' | 'students' | 'classrooms' | 'content'>('stats');
   const [stats, setStats] = useState<AdminStats | null>(null);
+
+  interface FounderActiveStats {
+    registeredTotal: number;
+    registeredToday: number;
+    registered7d: number;
+    waOptedIn: number;
+    active24h: number;
+    active7d: number;
+    byClass: Array<{ classLevel: string; registered: number; active7d: number }>;
+    topStreaks: Array<{ name: string; phone: string; classLevel: string; streakDays: number }>;
+  }
+  const [founderStats, setFounderStats] = useState<FounderActiveStats | null>(null);
+
   const [students, setStudents] = useState<AdminStudentRow[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -200,6 +219,7 @@ export default function AdminPage() {
           setIsAuthenticated(true);
           // Load initial dashboard data using in-memory credentials in request body
           fetchStats(cleanPhone, cleanPassword);
+          fetchFounderStats(cleanPhone, cleanPassword);
           fetchStudents(cleanPhone, cleanPassword);
           fetchClassrooms(cleanPhone, cleanPassword);
           fetchDiagnostics();
@@ -225,10 +245,34 @@ export default function AdminPage() {
     }
   };
 
+  // Data Call: Founder Active Stats
+  const fetchFounderStats = async (phone = normalizePhone(adminPhone), pass = adminPassword) => {
+    try {
+      const res = await fetch('/api/admin/founder-stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminPhone: phone,
+          adminPassword: pass,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.ok) {
+          setFounderStats(data);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch founder active stats');
+    }
+  };
+
   // Data Call 1: Stats
   const fetchStats = async (phone = normalizePhone(adminPhone), pass = adminPassword) => {
     try {
       setIsLoadingData(true);
+      fetchFounderStats(phone, pass);
       const res = await fetch('/api/admin/stats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -732,21 +776,226 @@ export default function AdminPage() {
 
           {/* TAB 1: STATS */}
           {activeTab === 'stats' && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635]">
-                  Platform Telemetry
-                </span>
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A3E635] flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Founder Live Active Metrics</span>
+                  </span>
+                  <p className="text-[11px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
+                    real-time active users & streak telemetry
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => fetchStats()}
+                  onClick={() => {
+                    fetchStats();
+                    fetchFounderStats();
+                  }}
                   disabled={isLoadingData}
-                  className="min-h-[34px] px-2.5 rounded-lg text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center gap-1 hover:bg-[#FAF5FF] cursor-pointer"
+                  className="min-h-[34px] px-2.5 rounded-lg text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] bg-white dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 flex items-center gap-1 hover:bg-[#FAF5FF] cursor-pointer shadow-xs"
                 >
                   <RefreshCw className={`w-3 h-3 ${isLoadingData ? 'animate-spin' : ''}`} />
                   <span>refresh</span>
                 </button>
               </div>
+
+              {/* FOUNDER STATS: 5 LIVE CARDS */}
+              {founderStats ? (
+                <div className="space-y-3">
+                  {/* Row 1: Registered Students & WhatsApp Opt-In */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Card 1: Registered Students (Total, + today, + 7d) */}
+                    <div className="bg-gradient-to-br from-[#FAF5FF] to-white dark:from-[#3B0F6E] dark:to-[#230542] p-4 rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs relative overflow-hidden">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#DDD6FE]/80 flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-[#7C3AED] dark:text-[#A3E635]" />
+                          <span>Registered Students</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#DCFCE7] text-[#166534] dark:bg-[#14532D] dark:text-[#86EFAC]">
+                            +{founderStats.registeredToday} today
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#F3E8FF] text-[#6B21A8] dark:bg-[#581C87] dark:text-[#E9D5FF]">
+                            +{founderStats.registered7d} 7d
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-3xl font-black tracking-tight text-[#2E1065] dark:text-[#FAF5FF]">
+                        {founderStats.registeredTotal.toLocaleString('en-IN')}
+                      </div>
+                      <p className="text-[11px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/60 mt-1">
+                        Active Tamil Nadu student accounts in database
+                      </p>
+                    </div>
+
+                    {/* Card 2: WhatsApp Opted-In Count */}
+                    <div className="bg-gradient-to-br from-[#F0FDF4] to-white dark:from-[#14532D]/40 dark:to-[#230542] p-4 rounded-2xl border border-[#BBF7D0] dark:border-[#22C55E]/20 shadow-xs">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-extrabold uppercase tracking-wider text-[#166534] dark:text-[#86EFAC] flex items-center gap-1">
+                          <MessageSquare className="w-3.5 h-3.5 text-[#22C55E]" />
+                          <span>WhatsApp Opt-In</span>
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#DCFCE7] text-[#166534] dark:bg-[#14532D] dark:text-[#86EFAC]">
+                          {Math.round((founderStats.waOptedIn / (founderStats.registeredTotal || 1)) * 100)}% opt-in
+                        </span>
+                      </div>
+                      <div className="text-3xl font-black tracking-tight text-[#166534] dark:text-[#86EFAC]">
+                        {founderStats.waOptedIn.toLocaleString('en-IN')}
+                      </div>
+                      <p className="text-[11px] font-bold text-[#166534]/70 dark:text-[#86EFAC]/70 mt-1">
+                        Verified student mobile numbers receiving daily alerts
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Active in last 24h & Active in last 7d (>= 1 score row in Scores) */}
+                  <div className="bg-white dark:bg-[#3B0F6E] p-4 rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] flex items-center gap-1">
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>Active Quiz & Test Takers (Logged Scores)</span>
+                      </span>
+                      <span className="text-[10px] font-black text-[#6D28D9]/70 dark:text-[#DDD6FE]/60">
+                        active = ≥1 test in Scores
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-xl border border-[#DDD6FE]/40 dark:border-[#DDD6FE]/10">
+                        <span className="text-[11px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 block mb-0.5">
+                          Active in last 24h ⚡
+                        </span>
+                        <span className="text-2xl font-black text-[#7C3AED] dark:text-[#A3E635]">
+                          {founderStats.active24h.toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/50 block mt-0.5">
+                          distinct students today
+                        </span>
+                      </div>
+
+                      <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-xl border border-[#DDD6FE]/40 dark:border-[#DDD6FE]/10">
+                        <span className="text-[11px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70 block mb-0.5">
+                          Active in last 7d 📅
+                        </span>
+                        <span className="text-2xl font-black text-[#2E1065] dark:text-[#FAF5FF]">
+                          {founderStats.active7d.toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[10px] font-bold text-[#6D28D9]/60 dark:text-[#DDD6FE]/50 block mt-0.5">
+                          {Math.round((founderStats.active7d / (founderStats.registeredTotal || 1)) * 100)}% weekly active rate
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Per-class breakdown (6..12) of registered vs active7d */}
+                  <div className="bg-white dark:bg-[#3B0F6E] p-4 rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] flex items-center gap-1">
+                        <TrendingUp className="w-3.5 h-3.5" />
+                        <span>Per-Class Breakdown (Class 6 to 12)</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/60">
+                        Registered vs Active 7d
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {founderStats.byClass.map((c) => {
+                        const ratio = c.registered > 0 ? Math.round((c.active7d / c.registered) * 100) : 0;
+                        return (
+                          <div key={c.classLevel} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs font-bold">
+                              <span className="flex items-center gap-1.5">
+                                <span className="w-6 font-black text-[#7C3AED] dark:text-[#A3E635]">
+                                  {c.classLevel}th
+                                </span>
+                                <span className="text-[#2E1065] dark:text-[#FAF5FF]">
+                                  {c.registered} students
+                                </span>
+                              </span>
+                              <span className="text-[11px] font-black text-[#16A34A] dark:text-[#86EFAC]">
+                                {c.active7d} active ({ratio}%)
+                              </span>
+                            </div>
+                            <div className="w-full bg-[#EDE9FE] dark:bg-[#230542] rounded-full h-2 overflow-hidden flex">
+                              <div
+                                className="bg-[#7C3AED] dark:bg-[#A3E635] h-full rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(ratio, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Card 5: Top-10 streak leaderboard (phone masked · name, class, streak days) */}
+                  <div className="bg-white dark:bg-[#3B0F6E] p-4 rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-[#7C3AED] dark:text-[#A3E635] flex items-center gap-1">
+                        <Flame className="w-4 h-4 text-[#F97316]" />
+                        <span>Top 10 Consecutive Streak Leaders</span>
+                      </span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#FFEDD5] text-[#C2410C] dark:bg-[#7C2D12] dark:text-[#FDBA74]">
+                        Daily Quiz Streaks
+                      </span>
+                    </div>
+
+                    <div className="divide-y divide-[#EDE9FE] dark:divide-[#DDD6FE]/10">
+                      {founderStats.topStreaks.map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="py-2 flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center font-black text-[10px] ${
+                                idx === 0
+                                  ? 'bg-[#FEF08A] text-[#854D0E]'
+                                  : idx === 1
+                                  ? 'bg-[#E2E8F0] text-[#334155]'
+                                  : idx === 2
+                                  ? 'bg-[#FED7AA] text-[#9A3412]'
+                                  : 'bg-[#F3E8FF] dark:bg-[#230542] text-[#6D28D9] dark:text-[#DDD6FE]'
+                              }`}
+                            >
+                              {idx + 1}
+                            </span>
+                            <div>
+                              <div className="font-bold text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
+                                <span>{item.name}</span>
+                                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE]/40 text-[#6D28D9] dark:text-[#A3E635]">
+                                  {item.classLevel}
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-mono text-[#6D28D9]/60 dark:text-[#DDD6FE]/50">
+                                {item.phone}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 font-black text-sm text-[#EA580C] dark:text-[#FB923C]">
+                            <Flame className="w-3.5 h-3.5 fill-[#EA580C] text-[#EA580C]" />
+                            <span>{item.streakDays}d</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-6 bg-white dark:bg-[#3B0F6E] rounded-2xl border border-[#EDE9FE] dark:border-[#DDD6FE]/20 text-center text-xs font-bold text-[#6D28D9]/70 dark:text-[#DDD6FE]/70">
+                  Loading active users & streak telemetry... ⚡
+                </div>
+              )}
+
+              {/* SECONDARY STATS: REVENUE & PLATFORM METRICS */}
+              <div className="pt-2">
+                <span className="text-xs font-black uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] block px-1 mb-2">
+                  Subscription & Financial Telemetry
+                </span>
 
               {stats ? (
                 <div className="grid grid-cols-2 gap-3">
@@ -828,7 +1077,8 @@ export default function AdminPage() {
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
           {/* TAB 2: STUDENTS */}
           {activeTab === 'students' && (

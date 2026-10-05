@@ -3,6 +3,7 @@ import {
   FOUNDER_TRIAL_PHONE,
   formatWhatsAppPhone,
   sendWhatsAppMessage,
+  probeDeropoShapes,
 } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
@@ -42,14 +43,35 @@ export async function GET(request: Request) {
     );
   }
 
+  const url = new URL(request.url);
+  const isProbe = url.searchParams.get('probe') === '1' || url.searchParams.get('test') === 'probe';
+  const variantParam = url.searchParams.get('variant');
+
+  if (isProbe) {
+    const probeLog = await probeDeropoShapes({
+      phone: FOUNDER_TRIAL_PHONE,
+      text: '🎯 10th Maths Daily Quiz is Live! Save your streak today.',
+      buttonText: '🎯 Take the quiz',
+      buttonUrl: 'https://centum-omega.vercel.app/quiz',
+      imageUrl: 'https://centum-omega.vercel.app/icon.png',
+    });
+    return NextResponse.json({
+      ok: true,
+      service: 'CENTUM WhatsApp Shape Probe',
+      probe: probeLog,
+    });
+  }
+
   return NextResponse.json({
     ok: true,
     service: 'CENTUM WhatsApp Trial Stage',
     recipientLock: `+${FOUNDER_TRIAL_PHONE}`,
+    variantOverride: variantParam || 'default',
     policy: {
       documentSends: 'strictly_forbidden',
-      mediaSends: 'strictly_forbidden',
-      textSendsOnly: true,
+      mediaSends: 'allowed_for_cta_image_probes',
+      textSendsOnly: false,
+      ctaButtonsSupported: true,
       allowedRecipient: `+${FOUNDER_TRIAL_PHONE}`,
     },
     status: 'ready',
@@ -76,22 +98,36 @@ export async function POST(request: Request) {
     );
   }
 
-  // 2. Founder Policy Guard: STRICTLY NO DOCUMENT / MEDIA SENDS
-  const hasDocument = Boolean(
+  // Check URL query override for A/B testing
+  const url = new URL(request.url);
+  const variantQuery = url.searchParams.get('variant');
+  const selectedVariant = variantQuery === 'plain' ? 'plain' : (body.variant || body.type || 'plain');
+
+  // Handle probe request via POST
+  if (selectedVariant === 'probe' || body.probe === true) {
+    const probeLog = await probeDeropoShapes({
+      phone: FOUNDER_TRIAL_PHONE,
+      text: body.message || body.text || '🎯 10th Maths Daily Quiz is Live!',
+      buttonText: body.buttonText || '🎯 Take the quiz',
+      buttonUrl: body.buttonUrl || 'https://centum-omega.vercel.app/quiz',
+      imageUrl: body.imageUrl || 'https://centum-omega.vercel.app/icon.png',
+    });
+    return NextResponse.json({ ok: true, probe: probeLog });
+  }
+
+  // 2. Founder Policy Guard: STRICTLY NO ATTACHED PDF / RAW DOCUMENT SENDS
+  const hasRawDocument = Boolean(
     body.document ||
     body.file ||
     body.pdf ||
-    body.media ||
-    body.mediaUrl ||
-    body.attachment ||
-    (body.type && body.type !== 'text')
+    body.attachment
   );
 
-  if (hasDocument) {
+  if (hasRawDocument) {
     return NextResponse.json(
       {
         ok: false,
-        error: 'DOCUMENT SENDS STRICTLY PROHIBITED. Under CENTUM founder policy, /api/wa-trial only allows text messages. No PDFs, documents, or media files.',
+        error: 'DOCUMENT SENDS STRICTLY PROHIBITED. Under CENTUM founder policy, raw PDF and document attachments are forbidden. Use CTA buttons or direct deep links.',
       },
       { status: 400 }
     );
@@ -117,12 +153,15 @@ export async function POST(request: Request) {
   const defaultTrialText = `⚡ CENTUM Trial Alert: Verified test message from Centum Next.js Engine.\nTimestamp: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}\nStatus: Active`;
   const finalMessage = messageText || defaultTrialText;
 
-  // 5. Send message
+  // 5. Send message with CTA / variant support
   try {
     const result = await sendWhatsAppMessage({
       phone: FOUNDER_TRIAL_PHONE,
       message: finalMessage,
-      type: 'text',
+      variant: selectedVariant,
+      buttonText: body.buttonText || (selectedVariant === 'streak' ? '🔥 Save my streak' : '🎯 Take the quiz'),
+      buttonUrl: body.buttonUrl || 'https://centum-omega.vercel.app/quiz',
+      imageUrl: body.imageUrl,
     });
 
     return NextResponse.json({
@@ -130,6 +169,8 @@ export async function POST(request: Request) {
       status: result.status,
       messageId: result.messageId,
       recipient: `+${result.recipient}`,
+      variant: selectedVariant,
+      shapeUsed: result.shapeUsed,
       timestamp: result.timestamp,
       error: result.error,
     });
