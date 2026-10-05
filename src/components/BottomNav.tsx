@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { texts } from '@/data/texts';
-import { Home, BookOpen, Brain, Newspaper } from 'lucide-react';
+import { Home, BookOpen, Brain, School, Newspaper } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const pathname = usePathname();
@@ -30,6 +30,13 @@ export const BottomNav: React.FC = () => {
       icon: Brain,
       isActive: pathname.startsWith('/tests'),
       emoji: '🧠',
+    },
+    {
+      name: texts.nav.classroom,
+      href: '/classroom',
+      icon: School,
+      isActive: pathname.startsWith('/classroom'),
+      emoji: '🏫',
     },
     {
       name: texts.nav.news,

@@ -49,6 +49,26 @@ interface MockStore {
   tuitions: Map<string, MockTuition>;
   seats: Map<string, MockSeat>;
   studentTuitions: Map<string, string>; // phone -> tuitionCode
+  diary: Map<string, MockDiaryEntry[]>; // tuitionCode -> diary entries
+  attendance: Map<string, MockAttendanceRecord[]>; // tuitionCode -> attendance records
+}
+
+export interface MockDiaryEntry {
+  id: string;
+  tuitionCode: string;
+  date: string;
+  tag: 'homework' | 'notice' | 'exam';
+  text: string;
+  createdAt: string;
+}
+
+export interface MockAttendanceRecord {
+  id: string;
+  tuitionCode: string;
+  date: string;
+  phone: string;
+  status: 'P' | 'A';
+  note?: string;
 }
 
 declare global {
@@ -206,6 +226,46 @@ function initMockStore(): MockStore {
 
   studentTuitions.set('9123456780', 'DEMO10');
 
+  const diary = new Map<string, MockDiaryEntry[]>();
+  const attendance = new Map<string, MockAttendanceRecord[]>();
+
+  // Seed sample diary entries for DEMO10
+  diary.set('DEMO10', [
+    {
+      id: 'd1',
+      tuitionCode: 'DEMO10',
+      date: '2026-10-05',
+      tag: 'homework',
+      text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
+      createdAt: '2026-10-05T08:30:00.000Z',
+    },
+    {
+      id: 'd2',
+      tuitionCode: 'DEMO10',
+      date: '2026-10-04',
+      tag: 'notice',
+      text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
+      createdAt: '2026-10-04T11:00:00.000Z',
+    },
+    {
+      id: 'd3',
+      tuitionCode: 'DEMO10',
+      date: '2026-10-02',
+      tag: 'exam',
+      text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
+      createdAt: '2026-10-02T15:20:00.000Z',
+    },
+  ]);
+
+  // Seed sample attendance records for DEMO10
+  attendance.set('DEMO10', [
+    { id: 'att-1', tuitionCode: 'DEMO10', date: '2026-10-05', phone: '9123456780', status: 'P' },
+    { id: 'att-2', tuitionCode: 'DEMO10', date: '2026-10-04', phone: '9123456780', status: 'P' },
+    { id: 'att-3', tuitionCode: 'DEMO10', date: '2026-10-03', phone: '9123456780', status: 'P' },
+    { id: 'att-4', tuitionCode: 'DEMO10', date: '2026-10-02', phone: '9123456780', status: 'A', note: 'Sick leave' },
+    { id: 'att-5', tuitionCode: 'DEMO10', date: '2026-10-01', phone: '9123456780', status: 'P' },
+  ]);
+
   return {
     users,
     adminPhones,
@@ -216,10 +276,51 @@ function initMockStore(): MockStore {
     tuitions,
     seats,
     studentTuitions,
+    diary,
+    attendance,
   };
 }
 
 const store: MockStore = globalThis.__centum_mock_store__ || (globalThis.__centum_mock_store__ = initMockStore());
+if (!store.diary) {
+  store.diary = new Map();
+  store.diary.set('DEMO10', [
+    {
+      id: 'd1',
+      tuitionCode: 'DEMO10',
+      date: '2026-10-05',
+      tag: 'homework',
+      text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
+      createdAt: '2026-10-05T08:30:00.000Z',
+    },
+    {
+      id: 'd2',
+      tuitionCode: 'DEMO10',
+      date: '2026-10-04',
+      tag: 'notice',
+      text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
+      createdAt: '2026-10-04T11:00:00.000Z',
+    },
+    {
+      id: 'd3',
+      tuitionCode: 'DEMO10',
+      date: '2026-10-02',
+      tag: 'exam',
+      text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
+      createdAt: '2026-10-02T15:20:00.000Z',
+    },
+  ]);
+}
+if (!store.attendance) {
+  store.attendance = new Map();
+  store.attendance.set('DEMO10', [
+    { id: 'att-1', tuitionCode: 'DEMO10', date: '2026-10-05', phone: '9123456780', status: 'P' },
+    { id: 'att-2', tuitionCode: 'DEMO10', date: '2026-10-04', phone: '9123456780', status: 'P' },
+    { id: 'att-3', tuitionCode: 'DEMO10', date: '2026-10-03', phone: '9123456780', status: 'P' },
+    { id: 'att-4', tuitionCode: 'DEMO10', date: '2026-10-02', phone: '9123456780', status: 'A', note: 'Sick leave' },
+    { id: 'att-5', tuitionCode: 'DEMO10', date: '2026-10-01', phone: '9123456780', status: 'P' },
+  ]);
+}
 
 export function findMockUser(phone: string): MockUser | undefined {
   const clean = normalizePhone(phone) || phone;
@@ -972,4 +1073,287 @@ export function listMockProVideos(classLevel?: string, subject?: string, chapter
     return true;
   });
 }
+
+// =================== CLASSROOM & OWNER DIARY / ATTENDANCE HELPERS ===================
+
+export function getMockClassroomView(rawPhone: string) {
+  const cleanPhone = normalizePhone(rawPhone) || rawPhone;
+
+  // Find student's tuition code
+  let tuitionCode = store.studentTuitions.get(cleanPhone) || null;
+
+  if (!tuitionCode) {
+    // Check claimed seats
+    for (const seat of store.seats.values()) {
+      if (seat.phone && (normalizePhone(seat.phone) || seat.phone) === cleanPhone) {
+        tuitionCode = seat.tuitionCode;
+        break;
+      }
+    }
+  }
+
+  // If not enrolled in any tuition, return unjoined payload with preview teaser
+  if (!tuitionCode) {
+    return {
+      ok: true,
+      joined: false,
+      tuition: null,
+      diary: [],
+      myAttendance: null,
+      preview: {
+        sampleTuition: {
+          name: 'Apex Centum Academy',
+          teacher: 'Ramesh Kumar Sir',
+          code: 'DEMO10',
+        },
+        sampleDiary: [
+          {
+            id: 'sample-1',
+            tag: 'homework',
+            text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
+            date: 'Today',
+          },
+          {
+            id: 'sample-2',
+            tag: 'notice',
+            text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
+            date: 'Yesterday',
+          },
+          {
+            id: 'sample-3',
+            tag: 'exam',
+            text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
+            date: '2 days ago',
+          },
+        ],
+        sampleAttendance: { pct30: 93, lastDate: 'Today' },
+      },
+    };
+  }
+
+  const tuition = store.tuitions.get(tuitionCode);
+  const allDiary = store.diary.get(tuitionCode) || [];
+  const sortedDiary = [...allDiary]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 20);
+
+  // Calculate my attendance
+  const allAtt = store.attendance.get(tuitionCode) || [];
+  const myRecords = allAtt.filter((r) => (normalizePhone(r.phone) || r.phone) === cleanPhone);
+
+  let pct30 = 100;
+  let lastDate = '';
+
+  if (myRecords.length > 0) {
+    const sorted = [...myRecords].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    lastDate = sorted[0].date;
+    const pCount = myRecords.filter((r) => r.status === 'P').length;
+    pct30 = Math.round((pCount / myRecords.length) * 100);
+  }
+
+  return {
+    ok: true,
+    joined: true,
+    tuition: {
+      name: tuition?.tuitionName || 'Tuition Centre',
+      teacher: tuition?.ownerName || 'Tuition Teacher',
+      code: tuitionCode,
+    },
+    diary: sortedDiary,
+    myAttendance: {
+      pct30,
+      lastDate: lastDate || 'No records yet',
+    },
+  };
+}
+
+function verifyMockOwnerAuth(code: string, ownerPhone: string): boolean {
+  const cleanCode = (code || '').trim().toUpperCase();
+  const tuition = store.tuitions.get(cleanCode);
+  if (!tuition) return false;
+
+  const cleanOwner = (normalizePhone(ownerPhone) || ownerPhone).replace(/\D/g, '').slice(-10);
+  const targetOwner = tuition.ownerPhone.replace(/\D/g, '').slice(-10);
+
+  return Boolean(cleanOwner && targetOwner && cleanOwner === targetOwner);
+}
+
+export function getMockOwnerDiary(code: string, ownerPhone: string) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!verifyMockOwnerAuth(cleanCode, ownerPhone)) {
+    return { ok: false, error: 'unauthorized-cross-tuition-denied' };
+  }
+
+  const entries = store.diary.get(cleanCode) || [];
+  const sorted = [...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return { ok: true, code: cleanCode, diary: sorted };
+}
+
+export function saveMockOwnerDiary(
+  code: string,
+  ownerPhone: string,
+  date: string,
+  tag: 'homework' | 'notice' | 'exam',
+  text: string
+) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!verifyMockOwnerAuth(cleanCode, ownerPhone)) {
+    return { ok: false, error: 'unauthorized-cross-tuition-denied' };
+  }
+
+  const cleanText = (text || '').trim().slice(0, 500);
+  if (!cleanText) return { ok: false, error: 'text-required' };
+
+  const validTags = ['homework', 'notice', 'exam'];
+  const cleanTag = validTags.includes(tag) ? tag : 'homework';
+  const cleanDate = date || new Date().toISOString().slice(0, 10);
+
+  const id = `d_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const entry: MockDiaryEntry = {
+    id,
+    tuitionCode: cleanCode,
+    date: cleanDate,
+    tag: cleanTag as 'homework' | 'notice' | 'exam',
+    text: cleanText,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!store.diary.has(cleanCode)) {
+    store.diary.set(cleanCode, []);
+  }
+  store.diary.get(cleanCode)!.unshift(entry);
+
+  return { ok: true, id, entry };
+}
+
+export function deleteMockOwnerDiary(code: string, ownerPhone: string, id: string) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!verifyMockOwnerAuth(cleanCode, ownerPhone)) {
+    return { ok: false, error: 'unauthorized-cross-tuition-denied' };
+  }
+
+  const entries = store.diary.get(cleanCode) || [];
+  const filtered = entries.filter((e) => e.id !== id);
+  store.diary.set(cleanCode, filtered);
+
+  return { ok: true, deleted: true };
+}
+
+export function getMockOwnerAttendance(code: string, ownerPhone: string, date?: string) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!verifyMockOwnerAuth(cleanCode, ownerPhone)) {
+    return { ok: false, error: 'unauthorized-cross-tuition-denied' };
+  }
+
+  const targetDate = date || new Date().toISOString().slice(0, 10);
+
+  // Find all claimed students for this tuition
+  const studentPhones = new Set<string>();
+  for (const [ph, tCode] of store.studentTuitions.entries()) {
+    if (tCode === cleanCode) studentPhones.add(ph);
+  }
+  for (const seat of store.seats.values()) {
+    if (seat.tuitionCode === cleanCode && seat.phone) {
+      studentPhones.add(normalizePhone(seat.phone) || seat.phone);
+    }
+  }
+
+  const allAtt = store.attendance.get(cleanCode) || [];
+
+  const roster = Array.from(studentPhones).map((ph) => {
+    const user = store.users.get(ph);
+    const myHistory = allAtt.filter((r) => (normalizePhone(r.phone) || r.phone) === ph);
+    const dayRecord = allAtt.find((r) => (normalizePhone(r.phone) || r.phone) === ph && r.date === targetDate);
+
+    let pct30 = 100;
+    if (myHistory.length > 0) {
+      const pCount = myHistory.filter((r) => r.status === 'P').length;
+      pct30 = Math.round((pCount / myHistory.length) * 100);
+    }
+
+    return {
+      phone: ph,
+      maskedPhone: ph.length >= 10 ? `xxxxx${ph.slice(-4)}` : ph,
+      name: user?.name || `Student ${ph.slice(-4)}`,
+      standard: user?.standard || '10th',
+      status: dayRecord ? dayRecord.status : null,
+      note: dayRecord?.note || '',
+      pct30,
+    };
+  });
+
+  const presentCount = roster.filter((r) => r.status === 'P').length;
+  const absentCount = roster.filter((r) => r.status === 'A').length;
+
+  return {
+    ok: true,
+    code: cleanCode,
+    date: targetDate,
+    roster,
+    summary: {
+      present: presentCount,
+      absent: absentCount,
+      unmarked: roster.length - presentCount - absentCount,
+      total: roster.length,
+    },
+  };
+}
+
+export function saveMockOwnerAttendance(
+  code: string,
+  ownerPhone: string,
+  date: string,
+  records: Array<{ phone: string; status: 'P' | 'A'; note?: string }>
+) {
+  const cleanCode = (code || '').trim().toUpperCase();
+  if (!verifyMockOwnerAuth(cleanCode, ownerPhone)) {
+    return { ok: false, error: 'unauthorized-cross-tuition-denied' };
+  }
+
+  const targetDate = date || new Date().toISOString().slice(0, 10);
+  if (!store.attendance.has(cleanCode)) {
+    store.attendance.set(cleanCode, []);
+  }
+
+  // Validate student phone belongs to this tuition
+  const validPhones = new Set<string>();
+  for (const s of store.seats.values()) {
+    if (s.tuitionCode === cleanCode && s.phone) {
+      validPhones.add(normalizePhone(s.phone) || s.phone);
+    }
+  }
+  for (const [ph, tCode] of store.studentTuitions.entries()) {
+    if (tCode === cleanCode) {
+      validPhones.add(normalizePhone(ph) || ph);
+    }
+  }
+
+  const attList = store.attendance.get(cleanCode)!;
+  let savedCount = 0;
+
+  for (const item of records) {
+    const cleanPh = normalizePhone(item.phone) || item.phone;
+    if (!validPhones.has(cleanPh)) continue;
+
+    const existing = attList.find((r) => (normalizePhone(r.phone) || r.phone) === cleanPh && r.date === targetDate);
+
+    if (existing) {
+      existing.status = item.status === 'A' ? 'A' : 'P';
+      if (item.note !== undefined) existing.note = item.note;
+    } else {
+      attList.push({
+        id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        tuitionCode: cleanCode,
+        date: targetDate,
+        phone: cleanPh,
+        status: item.status === 'A' ? 'A' : 'P',
+        note: item.note || '',
+      });
+    }
+    savedCount++;
+  }
+
+  return { ok: true, savedCount: savedCount, date: targetDate };
+}
+
 

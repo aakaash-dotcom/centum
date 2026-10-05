@@ -253,6 +253,11 @@ function doGet(e) {
     if (a === "founderStats") { const _out = typeof founderStats === 'function' ? founderStats(e) : null; if (_out) return json_(_out); }
     if (a === "proMaterials") { const _out = typeof proMaterials === 'function' ? proMaterials(e) : null; if (_out) return json_(_out); }
 
+    // ==== CLASSROOMS COMPANION (DIARY & ATTENDANCE) GET DISPATCH ====
+    if (a === "classroom") { const _out = typeof classroomView === 'function' ? classroomView(e) : null; if (_out) return json_(_out); }
+    if (a === "ownerDiary") { const _out = typeof ownerDiary === 'function' ? ownerDiary(e) : null; if (_out) return json_(_out); }
+    if (a === "ownerAttendance") { const _out = typeof ownerAttendance === 'function' ? ownerAttendance(e) : null; if (_out) return json_(_out); }
+
     return json_({ ok: false, error: "unknown action" });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
 }
@@ -324,6 +329,16 @@ function doPost(e) {
     } else if (body.type === "coin-spend") {
       // v5 — balance-checked spend (avatar store etc.)
       return json_(spendCoins_(String(body.phone || ""), Number(body.amount) || 0, String(body.reason || "spend"), String(body.ref || "")));
+    // ==== CLASSROOMS COMPANION (DIARY & ATTENDANCE) POST DISPATCH ====
+    } else if (body.type === "ownerDiarySave" || body.action === "ownerDiarySave") {
+      const _out = typeof ownerDiarySave === 'function' ? ownerDiarySave(body) : null;
+      if (_out) return json_(_out);
+    } else if (body.type === "ownerDiaryDelete" || body.action === "ownerDiaryDelete") {
+      const _out = typeof ownerDiaryDelete === 'function' ? ownerDiaryDelete(body) : null;
+      if (_out) return json_(_out);
+    } else if (body.type === "ownerAttendanceSave" || body.action === "ownerAttendanceSave") {
+      const _out = typeof ownerAttendanceSave === 'function' ? ownerAttendanceSave(body) : null;
+      if (_out) return json_(_out);
     } else if ((body.action || body.type || "").indexOf("classroom") === 0 || (body.action || body.type || "").indexOf("seat-") === 0 || (body.action || body.type || "").indexOf("tuition-") === 0 || (body.action || body.type || "") === "ops-classroom-add" || (body.action || body.type || "") === "ops-seat-generate") {
       const _out = typeof classroomRoutePost === 'function' ? classroomRoutePost(body) : null;
       if (_out) return json_(_out);

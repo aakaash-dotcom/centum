@@ -78,6 +78,7 @@ export const rawTexts = {
     home: { en: 'Home', ta: 'முகப்பு' },
     materials: { en: 'Materials', ta: 'பொருட்கள்' },
     tests: { en: 'Tests', ta: 'தேர்வுகள்' },
+    classroom: { en: 'Classroom', ta: 'வகுப்பறை' },
     news: { en: 'News', ta: 'செய்திகள்' },
     profile: { en: 'Profile', ta: 'சுயவிவரம்' },
   },
