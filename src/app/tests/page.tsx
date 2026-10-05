@@ -18,7 +18,11 @@ import {
   ArrowLeft,
   Check,
 } from 'lucide-react';
-import { normalizeSubject } from '@/app/materials/page';
+import {
+  getCanonicalSubjects,
+  normalizeSubject,
+  isSubjectAllowedForClassStream,
+} from '@/data/canonicalSubjects';
 import { isLanguageSubject } from '@/lib/data';
 
 const getChapterSortKey = (name: string): number => {
@@ -82,12 +86,13 @@ function TestsContent() {
     }
   }, [confirmModal]);
 
-  // Fetch questions from API
+  // Fetch questions from API with student's class and medium
   const fetchQuestions = () => {
     setIsLoading(true);
     setIsError(false);
 
-    fetch(`/api/questions?medium=${medium}`)
+    const streamParam = student?.stream ? `&stream=${encodeURIComponent(student.stream)}` : '';
+    fetch(`/api/questions?classLevel=${encodeURIComponent(effectiveStandard)}&medium=${encodeURIComponent(medium || 'english')}${streamParam}`)
       .then(async (res) => {
         if (!res.ok) {
           setIsError(true);
@@ -113,14 +118,14 @@ function TestsContent() {
 
   useEffect(() => {
     fetchQuestions();
-  }, [medium]);
+  }, [medium, effectiveStandard, student?.stream]);
 
   // Reset selected subject when medium switches
   useEffect(() => {
     setSelectedSubject('');
   }, [medium]);
 
-  // Questions filtered strictly by user's standard (6th..12th) & active medium:
+  // Questions filtered strictly by user's standard (6th..12th) & active medium & canonical subjects:
   // Tamil & English language subjects are common to both mediums.
   // Other subjects strictly match user's current medium (English or Tamil).
   const standardQuestions = useMemo(() => {
@@ -130,24 +135,23 @@ function TestsContent() {
       const targetStd = effectiveStandard.replace(/\D/g, '');
       if (qStd !== targetStd) return false;
 
+      // Server/canonical subject allowed check
+      if (!isSubjectAllowedForClassStream(effectiveStandard, q.subject, student?.stream)) {
+        return false;
+      }
+
       const isLang = isLanguageSubject(q.subject || '');
       if (isLang) return true;
 
       const qMed = String(q.medium || '').trim().toLowerCase();
       return qMed === userMed || (userMed.length > 0 && qMed.startsWith(userMed.slice(0, 1)));
     });
-  }, [questions, effectiveStandard, medium]);
+  }, [questions, effectiveStandard, medium, student?.stream]);
 
-  // Extract unique subjects for this standard
+  // Canonical subject chips for this standard & stream (TASK B: built strictly from canonical map)
   const availableSubjects = useMemo(() => {
-    const set = new Set<string>();
-    standardQuestions.forEach((q) => {
-      if (q.subject) {
-        set.add(normalizeSubject(q.subject));
-      }
-    });
-    return Array.from(set).sort();
-  }, [standardQuestions]);
+    return getCanonicalSubjects(effectiveStandard, student?.stream);
+  }, [effectiveStandard, student?.stream]);
 
   // When standardQuestions change, if selectedSubject is not in availableSubjects, reset it
   useEffect(() => {

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel') || '10';
-  const subject = searchParams.get('subject') || 'maths';
+  const subject = searchParams.get('subject') || '';
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;

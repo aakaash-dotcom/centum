@@ -7,7 +7,7 @@ import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Question, QuizResult, UserAnswerRecord, TestType } from '@/types';
 import { ScoreRing } from '@/components/ScoreRing';
-import { normalizeSubject } from '@/app/materials/page';
+import { normalizeSubject } from '@/data/canonicalSubjects';
 import { isLanguageSubject } from '@/lib/data';
 import {
   ArrowLeft,
@@ -40,7 +40,7 @@ function formatTimer(totalSeconds: number): string {
 function TestRunnerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { medium, saveQuizResult, showToast } = useApp();
+  const { medium, student, saveQuizResult, showToast } = useApp();
 
   const subjectParam = searchParams.get('subject') || '';
   const chapterParam = searchParams.get('chapter') || '';
@@ -73,7 +73,16 @@ function TestRunnerContent() {
     setIsLoading(true);
     setIsError(false);
 
-    fetch(`/api/questions?medium=${medium}`)
+    const apiParams = new URLSearchParams();
+    if (standardParam) apiParams.set('classLevel', standardParam);
+    if (subjectParam) apiParams.set('subject', subjectParam);
+    if (chapterParam) apiParams.set('chapter', chapterParam);
+    if (typeParam) apiParams.set('type', typeParam);
+    if (medium) apiParams.set('medium', medium);
+    if (countParam) apiParams.set('count', countParam);
+    if (student?.stream) apiParams.set('stream', student.stream);
+
+    fetch(`/api/questions?${apiParams.toString()}`)
       .then(async (res) => {
         if (!res.ok) throw new Error('questions fetch failed');
         return res.json();
@@ -93,6 +102,21 @@ function TestRunnerContent() {
         const userMed = String(medium || '').trim().toLowerCase();
 
         const matched = pool.filter((q) => {
+          // 0. Defensive structural validation (TASK A: bad questions skipped, never crash session)
+          if (
+            !q ||
+            typeof q.question !== 'string' ||
+            !q.question.trim() ||
+            !Array.isArray(q.options) ||
+            q.options.length !== 4 ||
+            typeof q.answerIndex !== 'number' ||
+            q.answerIndex < 0 ||
+            q.answerIndex > 3
+          ) {
+            console.warn('[TestRunner] Skipping malformed question row:', q?.id);
+            return false;
+          }
+
           // 1. Subject mapper
           const qSubj = normalizeSubject(q.subject || '').toLowerCase();
           const matchSubj = !subjectParam || qSubj === normSubjParam;
@@ -146,7 +170,7 @@ function TestRunnerContent() {
 
   useEffect(() => {
     loadAndFilterQuestions();
-  }, [medium, subjectParam, chapterParam, typeParam, standardParam, countParam]);
+  }, [medium, subjectParam, chapterParam, typeParam, standardParam, countParam, student?.stream]);
 
   // Live timer countdown
   useEffect(() => {
@@ -515,7 +539,7 @@ function TestRunnerContent() {
                       </p>
 
                       <div className="space-y-1.5 pt-1">
-                        {q.options.map((opt, optIdx) => {
+                        {(Array.isArray(q.options) ? q.options : []).map((opt, optIdx) => {
                           const isThisCorrect = optIdx === q.answerIndex;
                           const isThisUserPick = optIdx === userPick;
 
@@ -547,12 +571,12 @@ function TestRunnerContent() {
                       )}
 
                       {/* E2: Render explanation container ONLY if non-empty */}
-                      {hasExplanation && (
+                      {hasExplanation && q.explanation && String(q.explanation).trim() && (
                         <div className="p-3 rounded-xl bg-[#FAF5FF] dark:bg-[#0F0618] border border-[#DDD6FE] dark:border-[#3B2063] text-[11px] font-medium text-[#2E1065]/90 dark:text-[#F5F0FF]/90 mt-2">
                           <span className="font-black text-[#7C3AED] dark:text-[#A78BFA] block mb-0.5">
                             💡 {texts.tests.explanation}:
                           </span>
-                          {q.explanation}
+                          {String(q.explanation)}
                         </div>
                       )}
                     </div>
@@ -619,56 +643,74 @@ function TestRunnerContent() {
       {/* Main Question Card */}
       <div className="flex-1 flex flex-col justify-between">
         <div className="space-y-4">
-          <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs">
-            <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#0F0618] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] inline-block mb-2">
-              {texts.tests.questionProgress} {currentIndex + 1}
-            </span>
-            <h2 className="text-sm sm:text-base font-extrabold text-[#2E1065] dark:text-[#F5F0FF] leading-relaxed">
-              {currentQ.question}
-            </h2>
-          </div>
+          {!currentQ || !Array.isArray(currentQ.options) || currentQ.options.length !== 4 ? (
+            <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 border border-amber-300 dark:border-amber-600/40 shadow-xs text-center">
+              <span className="text-3xl mb-2 block">⚠️</span>
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-200 mb-4">
+                This question could not be displayed properly.
+              </p>
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="px-6 py-2.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black cursor-pointer transition-all shadow-md"
+              >
+                Skip Question →
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs">
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#0F0618] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] inline-block mb-2">
+                  {texts.tests.questionProgress} {currentIndex + 1}
+                </span>
+                <h2 className="text-sm sm:text-base font-extrabold text-[#2E1065] dark:text-[#F5F0FF] leading-relaxed">
+                  {currentQ.question}
+                </h2>
+              </div>
 
-          {/* 4 Options Grid with Neutral Selected Highlight (Exam-style delay) */}
-          <div className="space-y-2.5">
-            {currentQ.options.map((optionText, optIdx) => {
-              const optionLetters = ['A', 'B', 'C', 'D'];
-              const isSelected = userSelection === optIdx;
+              {/* 4 Options Grid with Neutral Selected Highlight (Exam-style delay) */}
+              <div className="space-y-2.5">
+                {currentQ.options.map((optionText, optIdx) => {
+                  const optionLetters = ['A', 'B', 'C', 'D'];
+                  const isSelected = userSelection === optIdx;
 
-              const buttonStyle = isSelected
-                ? 'bg-[#FAF5FF] dark:bg-[#2A1247] border-2 border-[#7C3AED] dark:border-[#A78BFA] text-[#7C3AED] dark:text-[#A78BFA] shadow-xs'
-                : 'bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] text-[#2E1065] dark:text-[#F5F0FF] hover:border-[#7C3AED]/40 hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]';
+                  const buttonStyle = isSelected
+                    ? 'bg-[#FAF5FF] dark:bg-[#2A1247] border-2 border-[#7C3AED] dark:border-[#A78BFA] text-[#7C3AED] dark:text-[#A78BFA] shadow-xs'
+                    : 'bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] text-[#2E1065] dark:text-[#F5F0FF] hover:border-[#7C3AED]/40 hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]';
 
-              const badgeStyle = isSelected
-                ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
-                : 'bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border-[#DDD6FE] dark:border-[#3B2063]';
+                  const badgeStyle = isSelected
+                    ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
+                    : 'bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border-[#DDD6FE] dark:border-[#3B2063]';
 
-              return (
-                <button
-                  key={optIdx}
-                  type="button"
-                  onClick={() => handleSelectAnswer(optIdx)}
-                  className={`w-full min-h-[50px] p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${buttonStyle}`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black border shrink-0 ${badgeStyle}`}
+                  return (
+                    <button
+                      key={optIdx}
+                      type="button"
+                      onClick={() => handleSelectAnswer(optIdx)}
+                      className={`w-full min-h-[50px] p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${buttonStyle}`}
                     >
-                      {optionLetters[optIdx] || optIdx + 1}
-                    </span>
-                    <span className="text-xs sm:text-sm font-bold leading-snug">
-                      {optionText}
-                    </span>
-                  </div>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span
+                          className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black border shrink-0 ${badgeStyle}`}
+                        >
+                          {optionLetters[optIdx] || optIdx + 1}
+                        </span>
+                        <span className="text-xs sm:text-sm font-bold leading-snug">
+                          {optionText}
+                        </span>
+                      </div>
 
-                  {isSelected && (
-                    <div className="w-5 h-5 rounded-full bg-[#7C3AED] dark:bg-[#A78BFA] text-white flex items-center justify-center shrink-0">
-                      <div className="w-2 h-2 rounded-full bg-white dark:bg-[#1B0B2E]" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                      {isSelected && (
+                        <div className="w-5 h-5 rounded-full bg-[#7C3AED] dark:bg-[#A78BFA] text-white flex items-center justify-center shrink-0">
+                          <div className="w-2 h-2 rounded-full bg-white dark:bg-[#1B0B2E]" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Footer Navigation Bar */}

@@ -860,6 +860,8 @@ export interface MockProMaterial {
   classLevel: string;
   subject: string;
   chapter: string;
+  chapterNo?: number;
+  type?: 'notes' | 'papers' | 'quiz' | string;
   title: string;
   videoEmbedUrl?: string;
   notesPdfUrl?: string;
@@ -868,6 +870,7 @@ export interface MockProMaterial {
   importantQuestionsUrl?: string;
   status: 'live' | 'draft';
   createdAt: string;
+  interactiveNotes?: string;
 }
 
 const mockProMaterials: MockProMaterial[] = [
@@ -921,6 +924,66 @@ const mockProMaterials: MockProMaterial[] = [
     title: 'Geometry (வடிவியல்)',
     status: 'draft',
     createdAt: '2026-10-04T10:00:00Z',
+  },
+  {
+    id: 'pm-10-m-notes-ch1',
+    classLevel: '10',
+    subject: 'maths',
+    chapter: 'Chapter 1: Relations and Functions',
+    chapterNo: 1,
+    type: 'notes',
+    title: 'Relations & Functions — book-back key points (குறிப்புகள்)',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_maths_ch1_keypoints.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Maths&chapter=Relations%20and%20Functions&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Maths&chapter=Relations%20and%20Functions&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 Relations and Functions — Book-Back Key Points (முக்கிய குறிப்புகள்)
+
+1. **Ordered Pair (வரிசைச் சோடி)**:
+   - A pair of numbers written in a specific order: $(a, b)$.
+   - $(a, b) = (c, d) \\iff a = c$ and $b = d$.
+
+2. **Cartesian Product (கார்டீசியன் பெருக்கல்)**:
+   - $A \\times B = \\{(a, b) \\mid a \\in A, b \\in B\\}$.
+   - If $n(A) = p$ and $n(B) = q$, then $n(A \\times B) = pq$.
+   - $A \\times B = \\emptyset \\iff A = \\emptyset$ or $B = \\emptyset$.
+
+3. **Relation (உறவு)**:
+   - A relation $R$ from $A$ to $B$ is a subset of $A \\times B$: $R \\subseteq A \\times B$.
+   - Total number of relations from $A$ to $B$ is $2^{pq}$.
+
+4. **Function (சார்பு)**:
+   - A relation $f \\subseteq A \\times B$ is a function if every element in $A$ has a unique image in $B$.
+   - **Vertical Line Test**: A curve is a function if any vertical line intersects it at at most one point.`,
+  },
+  {
+    id: 'pm-10-s-paper-ch1',
+    classLevel: '10',
+    subject: 'science',
+    chapter: 'Chapter 1: Laws of Motion',
+    chapterNo: 1,
+    type: 'papers',
+    title: '10th Science Chapter 1 · Laws of Motion Model Question Paper (PDF)',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_science_ch1_laws_of_motion.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Laws%20of%20Motion&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Laws%20of%20Motion&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+  },
+  {
+    id: 'pm-10-s-ch1',
+    classLevel: '10',
+    subject: 'science',
+    chapter: 'Chapter 1: Laws of Motion',
+    chapterNo: 1,
+    type: 'notes',
+    title: 'Laws of Motion (இயக்க விதிகள்) — High-Yield Notes',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_science_ch1_notes.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Laws%20of%20Motion&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Laws%20of%20Motion&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
   },
 ];
 
@@ -1054,6 +1117,97 @@ const mockProVideos: ProVideoItem[] = [
     order: 1,
     lang: 'ta',
     driveFileId: '1invalid_drive_id_chapter3',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  // Class 10 Science Chapter 1: Laws of Motion (TM) Demo Videos (TASK D)
+  {
+    id: 'pv-10-s-1-1',
+    classLevel: '10',
+    subject: 'science',
+    chapterNo: 1,
+    topic: 'நியூட்டனின் முதல் இயக்க விதி & நிலைமம் (Inertia Concept Explainer)',
+    videoType: 'concept-explainer',
+    targetSec: 480,
+    order: 1,
+    lang: 'ta',
+    driveFileId: 'https://drive.google.com/uc?id=1s_Sample_CCBY_BigBuckBunny_Drive_Vid1',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-s-1-2',
+    classLevel: '10',
+    subject: 'science',
+    chapterNo: 1,
+    topic: 'உந்தம் மற்றும் நியூட்டனின் இரண்டாம் இயக்க விதி (F = ma Derivation)',
+    videoType: 'concept-explainer',
+    targetSec: 540,
+    order: 2,
+    lang: 'ta',
+    driveFileId: 'https://drive.google.com/uc?id=1s_Sample_CCBY_BigBuckBunny_Drive_Vid2',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-s-1-3',
+    classLevel: '10',
+    subject: 'science',
+    chapterNo: 1,
+    topic: 'கணத்தாக்கு விசை & நேர்க்கோட்டு உந்த அழிவின்மை விதி',
+    videoType: 'concept-explainer',
+    targetSec: 420,
+    order: 3,
+    lang: 'ta',
+    driveFileId: 'https://drive.google.com/uc?id=1s_Sample_CCBY_BigBuckBunny_Drive_Vid3',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-s-1-4',
+    classLevel: '10',
+    subject: 'science',
+    chapterNo: 1,
+    topic: 'ராக்கெட் ஏவுதல் தத்துவம் & நடைமுறை பயன்பாடுகள்',
+    videoType: 'concept-explainer',
+    targetSec: 600,
+    order: 4,
+    lang: 'ta',
+    driveFileId: 'https://drive.google.com/uc?id=1s_Sample_CCBY_BigBuckBunny_Drive_Vid4',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-s-1-5',
+    classLevel: '10',
+    subject: 'science',
+    chapterNo: 1,
+    topic: 'புவியீர்ப்பு முடுக்கம் g vs ஈர்ப்பியல் மாறிலி G வேறுபாடுகள்',
+    videoType: 'concept-explainer',
+    targetSec: 390,
+    order: 5,
+    lang: 'ta',
+    driveFileId: 'https://drive.google.com/uc?id=1s_Sample_CCBY_BigBuckBunny_Drive_Vid5',
+    ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
+  {
+    id: 'pv-10-s-1-6',
+    classLevel: '10',
+    subject: 'science',
+    chapterNo: 1,
+    topic: 'தோற்ற எடை & எடையின்மை நிலை (Apparent Weight in Elevator)',
+    videoType: 'concept-explainer',
+    targetSec: 510,
+    order: 6,
+    lang: 'ta',
+    driveFileId: 'https://drive.google.com/uc?id=1s_Sample_CCBY_BigBuckBunny_Drive_Vid6',
     ytUrl: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
     status: 'live',
     aspectRatio: '16:9',

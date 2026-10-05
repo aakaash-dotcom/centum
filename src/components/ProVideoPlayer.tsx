@@ -104,7 +104,9 @@ export function ProVideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false);
 
   const driveStreamUrl = video.driveFileId
-    ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(video.driveFileId)}`
+    ? video.driveFileId.startsWith('http')
+      ? video.driveFileId
+      : `https://drive.google.com/uc?export=download&id=${encodeURIComponent(video.driveFileId)}`
     : '';
 
   const ytId = extractYouTubeId(video.ytUrl);

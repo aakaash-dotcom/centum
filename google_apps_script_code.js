@@ -169,7 +169,7 @@ function doGet(e) {
     if (a === "today-quiz") { ensureQuizSchedule_(); const cl = String(e.parameter.classLevel || "").replace(/\D/g, ""); const md = String(e.parameter.medium || "").trim().toLowerCase(); const targetDate = String(e.parameter.date || Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd")).slice(0, 10); const data = sheet_("QuizSchedule").getDataRange().getValues(); if (data.length < 2) return json_({ ok: true, quiz: null }); const h = data[0].map(String); const g = function (r, name) { const i = h.indexOf(name); return i === -1 ? "" : data[r][i]; }; for (let r = 1; r < data.length; r++) { const d = g(r, "date"); const rd = d instanceof Date ? Utilities.formatDate(d, TZ, "yyyy-MM-dd") : String(d).slice(0, 10); if (rd !== targetDate) continue; if (cl && String(g(r, "classLevel")).replace(/\D/g, "") !== cl) continue; if (md && String(g(r, "medium")).trim().toLowerCase() !== md) continue; return json_({ ok: true, quiz: { date: rd, classLevel: String(g(r, "classLevel")), medium: String(g(r, "medium")), subject: String(g(r, "subject")), chapter: String(g(r, "chapter")), type: String(g(r, "type") || "oneword"), count: Number(g(r, "count")) || 10 } }); } return json_({ ok: true, quiz: null }); }
     if (a === "papers")      return json_({ ok: true, papers: rows_("Papers") });
     if (a === "news")        return json_({ ok: true, news: rows_("News") });
-    if (a === "questions")   return json_({ ok: true, questions: questionRows_() });
+    if (a === "questions")   return json_(questionsQuery_(e.parameter));
     if (a === "dailyquiz")   return json_({ ok: true, quiz: dailyQuiz_(e.parameter.classLevel, e.parameter.stream, e.parameter.medium) });
     if (a === "leaderboard") return json_(leaderboard_(e.parameter.standard, e.parameter.phone));
     if (a === "plan")        return json_(planFor_(e.parameter.phone));
@@ -626,14 +626,212 @@ function rows_(name) {
 }
 function append_(name, row) { sheet_(name).appendRow(row); }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
-function splitOptions_(c) { return String(c).split("|").map(function (s) { return s.trim(); }); }
+function splitOptions_(c) {
+  if (Array.isArray(c)) return c.map(function (s) { return String(s).trim(); });
+  return String(c || "").split("|").map(function (s) { return s.trim(); });
+}
 function publicStudent_(s, phone) { return { name: s.name, phone: String(phone || ""), district: s.district, standard: s.standard, stream: s.stream, medium: s.medium, plan: s.plan }; }
+
+// Canonical subject map mirror in Apps Script (TASK B)
+const CANONICAL_MAP_GAS = {
+  secondary: ["Maths", "Science", "Social Science", "Tamil", "English"],
+  higherSecondary: {
+    maths: ["Maths", "Physics", "Chemistry", "Computer Science", "Tamil", "English"],
+    bio: ["Physics", "Chemistry", "Botany", "Zoology", "Biology", "Tamil", "English"],
+    commerce: ["Accountancy", "Commerce", "Business Maths", "Economics", "Tamil", "English"],
+    arts: ["Economics", "Tamil", "English"],
+    general: ["Tamil", "English"]
+  }
+};
+
+function normalizeSubjectGas_(subj) {
+  if (!subj) return "";
+  const s = String(subj).trim().toLowerCase();
+  if (s === "maths" || s === "mathematics" || s === "கணிதம்") return "Maths";
+  if (s === "science" || s === "general science" || s === "அறிவியல்") return "Science";
+  if (s === "social" || s === "social science" || s === "சமூக அறிவியல்") return "Social Science";
+  if (s === "tamil" || s === "தமிழ்") return "Tamil";
+  if (s === "english" || s === "ஆங்கிலம்") return "English";
+  if (s === "physics" || s === "இயற்பியல்") return "Physics";
+  if (s === "chemistry" || s === "வேதியியல்") return "Chemistry";
+  if (s === "biology" || s === "உயிரியல்") return "Biology";
+  if (s === "botany" || s === "தாவரவியல்") return "Botany";
+  if (s === "zoology" || s === "விலங்கியல்") return "Zoology";
+  if (s === "computer science" || s === "கணினி அறிவியல்") return "Computer Science";
+  if (s === "accountancy" || s === "கணக்குப் பதிவியல்") return "Accountancy";
+  if (s === "commerce" || s === "வணிகவியல்") return "Commerce";
+  if (s === "economics" || s === "பொருளியல்") return "Economics";
+  if (s === "business maths" || s === "business mathematics" || s === "வணிகக் கணிதம்") return "Business Maths";
+  return String(subj).trim();
+}
+
+function isLanguageSubjectGas_(subj) {
+  if (!subj) return false;
+  const s = String(subj).trim().toLowerCase();
+  return s === "tamil" || s === "english" || s === "தமிழ்" || s === "ஆங்கிலம்" || s.indexOf("tamil") === 0 || s.indexOf("english") === 0;
+}
+
+function getAllowedSubjectsGas_(classLevel, stream) {
+  const clNum = parseInt(String(classLevel || "").replace(/\D/g, ""), 10);
+  if (isNaN(clNum) || clNum <= 10) {
+    return CANONICAL_MAP_GAS.secondary;
+  }
+  const str = String(stream || "").toLowerCase();
+  let streamKey = "maths";
+  if (str.indexOf("bio") !== -1) streamKey = "bio";
+  else if (str.indexOf("comm") !== -1 || str.indexOf("acc") !== -1) streamKey = "commerce";
+  else if (str.indexOf("art") !== -1 || str.indexOf("hist") !== -1) streamKey = "arts";
+  return CANONICAL_MAP_GAS.higherSecondary[streamKey] || CANONICAL_MAP_GAS.higherSecondary.maths;
+}
+
+function isSubjectAllowedGas_(classLevel, subject, stream) {
+  if (!subject) return false;
+  const norm = normalizeSubjectGas_(subject).toLowerCase();
+  const allowed = getAllowedSubjectsGas_(classLevel, stream);
+  for (let i = 0; i < allowed.length; i++) {
+    if (allowed[i].toLowerCase() === norm) return true;
+  }
+  return false;
+}
+
+function questionsQuery_(params) {
+  params = params || {};
+  const reqClass = params.classLevel ? String(params.classLevel).replace(/\D/g, "") : "";
+  const reqSubj = params.subject ? normalizeSubjectGas_(params.subject).toLowerCase() : "";
+  const reqType = params.type ? String(params.type).trim().toLowerCase() : "";
+  const reqChapter = params.chapter ? String(params.chapter).trim().toLowerCase() : "";
+  const reqMedium = params.medium ? String(params.medium).trim().toLowerCase() : "";
+  const reqStream = params.stream ? String(params.stream).trim().toLowerCase() : "";
+  const count = Math.min(Math.max(parseInt(params.count || "40", 10) || 40, 1), 50);
+
+  const sh = sheet_("Questions");
+  const data = sh.getDataRange().getValues();
+  if (data.length < 2) return { ok: true, questions: [], skipped: [] };
+  const h = data[0].map(function (x) { return String(x).trim(); });
+
+  const idxId = h.indexOf("id");
+  const idxClass = h.indexOf("classLevel");
+  const idxSubj = h.indexOf("subject");
+  const idxChap = h.indexOf("chapter");
+  const idxType = h.indexOf("type");
+  const idxQ = h.indexOf("question");
+  const idxOpt = h.indexOf("options");
+  const idxAns = h.indexOf("answerIndex");
+  const idxExp = h.indexOf("explanation");
+  const idxMed = h.indexOf("medium");
+  const idxPlan = h.indexOf("plan");
+
+  const matching = [];
+  const skipped = [];
+
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+    const qId = idxId !== -1 ? String(row[idxId] || ("row-" + (r + 1))) : ("row-" + (r + 1));
+    const rawClass = idxClass !== -1 ? String(row[idxClass] || "") : "";
+    const rowClassNum = rawClass.replace(/\D/g, "");
+
+    // 1. Class filter (if requested)
+    if (reqClass && rowClassNum !== reqClass) continue;
+
+    // 2. Subject canonical check
+    const rawSubj = idxSubj !== -1 ? String(row[idxSubj] || "") : "";
+    if (rawClass && !isSubjectAllowedGas_(rawClass, rawSubj, reqStream)) {
+      continue;
+    }
+    if (reqSubj && normalizeSubjectGas_(rawSubj).toLowerCase() !== reqSubj) {
+      continue;
+    }
+
+    // 3. Medium filter (Languages common to both, other subjects strict)
+    const rawMed = idxMed !== -1 ? String(row[idxMed] || "english").trim().toLowerCase() : "english";
+    if (reqMedium) {
+      const isLang = isLanguageSubjectGas_(rawSubj);
+      if (!isLang) {
+        if (rawMed !== reqMedium && !rawMed.startsWith(reqMedium.slice(0, 1))) continue;
+      }
+    }
+
+    // 4. Type filter
+    const rawType = idxType !== -1 ? String(row[idxType] || "oneword").trim().toLowerCase() : "oneword";
+    if (reqType && rawType !== reqType) continue;
+
+    // 5. Chapter filter
+    const rawChap = idxChap !== -1 ? String(row[idxChap] || "").trim().toLowerCase() : "";
+    if (reqChapter) {
+      const cleanReqChap = reqChapter.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, "").trim();
+      const cleanRawChap = rawChap.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, "").trim();
+      if (rawChap !== reqChapter && cleanRawChap !== cleanReqChap && rawChap.indexOf(cleanReqChap) === -1) {
+        continue;
+      }
+    }
+
+    // 6. VALIDATE OPTIONS & ANSWER INDEX (Never crash, log and skip bad rows)
+    const rawQText = idxQ !== -1 ? String(row[idxQ] || "").trim() : "";
+    if (!rawQText) {
+      skipped.push({ id: qId, reason: "empty_question" });
+      continue;
+    }
+
+    const rawOptsVal = idxOpt !== -1 ? row[idxOpt] : "";
+    let opts = [];
+    if (Array.isArray(rawOptsVal)) {
+      opts = rawOptsVal.map(function (x) { return String(x).trim(); });
+    } else {
+      opts = splitOptions_(rawOptsVal);
+    }
+
+    if (opts.length !== 4 || opts.some(function (o) { return !o; })) {
+      skipped.push({ id: qId, reason: "invalid_options_count_" + opts.length });
+      continue;
+    }
+
+    const rawAnsVal = idxAns !== -1 ? row[idxAns] : "";
+    const ai = Number(rawAnsVal);
+    if (isNaN(ai) || ai < 0 || ai > 3 || Math.floor(ai) !== ai) {
+      skipped.push({ id: qId, reason: "invalid_answer_index_" + rawAnsVal });
+      continue;
+    }
+
+    const exp = idxExp !== -1 ? String(row[idxExp] || "") : "";
+    const plan = idxPlan !== -1 ? String(row[idxPlan] || "free") : "free";
+
+    matching.push({
+      id: qId,
+      classLevel: (rowClassNum ? rowClassNum + "th" : rawClass) || "10th",
+      subject: normalizeSubjectGas_(rawSubj),
+      chapter: idxChap !== -1 ? String(row[idxChap] || "") : "",
+      type: rawType,
+      question: rawQText,
+      options: opts,
+      answerIndex: ai,
+      explanation: exp,
+      medium: rawMed,
+      plan: plan
+    });
+  }
+
+  // Randomize / shuffle matching questions so sessions get varied selections
+  for (let i = matching.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = matching[i];
+    matching[i] = matching[j];
+    matching[j] = temp;
+  }
+
+  const result = matching.slice(0, count);
+  return {
+    ok: true,
+    questions: result,
+    totalMatching: matching.length,
+    returned: result.length,
+    skippedCount: skipped.length,
+    skipped: skipped
+  };
+}
+
 function questionRows_() {
-  return rows_("Questions").map(function (q) {
-    return { id: q.id, classLevel: String(q.classLevel), subject: q.subject, chapter: q.chapter, type: q.type,
-      question: q.question, options: splitOptions_(q.options), answerIndex: Number(q.answerIndex),
-      explanation: q.explanation || "", medium: q.medium || "English", plan: q.plan || "free" };
-  });
+  const res = questionsQuery_({ count: 50 });
+  return res.questions || [];
 }
 function dailyQuiz_(classLevel, stream, medium) {
   const today = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd");
