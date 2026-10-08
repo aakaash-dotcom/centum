@@ -73,13 +73,19 @@ function TestRunnerContent() {
     setIsLoading(true);
     setIsError(false);
 
+    const isPracticeAll =
+      !chapterParam ||
+      chapterParam.toLowerCase() === 'all' ||
+      chapterParam.toLowerCase().includes('practice — all chapters') ||
+      chapterParam.toLowerCase().includes('all chapters');
+
     const apiParams = new URLSearchParams();
     if (standardParam) apiParams.set('classLevel', standardParam);
     if (subjectParam) apiParams.set('subject', subjectParam);
-    if (chapterParam) apiParams.set('chapter', chapterParam);
-    if (typeParam) apiParams.set('type', typeParam);
+    if (chapterParam && !isPracticeAll) apiParams.set('chapter', chapterParam);
+    if (typeParam && typeParam !== 'all') apiParams.set('type', typeParam);
     if (medium) apiParams.set('medium', medium);
-    if (countParam) apiParams.set('count', countParam);
+    apiParams.set('count', 'all');
     if (student?.stream) apiParams.set('stream', student.stream);
 
     fetch(`/api/questions?${apiParams.toString()}`)
@@ -100,9 +106,23 @@ function TestRunnerContent() {
         const normSubjParam = subjectParam.toLowerCase();
         const normStdParam = standardParam.replace(/th/gi, '').trim().toLowerCase();
         const userMed = String(medium || '').trim().toLowerCase();
+        const isPracticeAll =
+          !chapterParam ||
+          chapterParam.toLowerCase() === 'all' ||
+          chapterParam.toLowerCase().includes('practice — all chapters') ||
+          chapterParam.toLowerCase().includes('all chapters');
+
+        const isDisciplinePractice = chapterParam.toLowerCase().includes('practice — all');
+        let targetDiscipline = '';
+        if (isDisciplinePractice) {
+          if (chapterParam.toLowerCase().includes('history') || chapterParam.includes('வரலாறு')) targetDiscipline = 'history';
+          else if (chapterParam.toLowerCase().includes('geography') || chapterParam.includes('புவியியல்')) targetDiscipline = 'geography';
+          else if (chapterParam.toLowerCase().includes('civics') || chapterParam.includes('குடிமையியல்')) targetDiscipline = 'civics';
+          else if (chapterParam.toLowerCase().includes('economics') || chapterParam.includes('பொருளியல்')) targetDiscipline = 'economics';
+        }
 
         const matched = pool.filter((q) => {
-          // 0. Defensive structural validation (TASK A: bad questions skipped, never crash session)
+          // 0. Defensive structural validation (bad questions skipped, never crash session)
           if (
             !q ||
             typeof q.question !== 'string' ||
@@ -121,21 +141,39 @@ function TestRunnerContent() {
           const qSubj = normalizeSubject(q.subject || '').toLowerCase();
           const matchSubj = !subjectParam || qSubj === normSubjParam;
 
-          // 2. Chapter match: exact or normalized prefix stripped
+          // 2. Chapter match: exact, normalized prefix stripped, practice mega-set, or discipline mega-set
           const qChap = String(q.chapter || '').trim().toLowerCase();
           const targetChap = chapterParam.trim().toLowerCase();
-          const matchChap =
-            !chapterParam ||
-            qChap === targetChap ||
-            normalizeChapter(q.chapter) === normalizeChapter(chapterParam);
+
+          let matchChap = false;
+          if (isPracticeAll) {
+            matchChap = true;
+          } else if (targetDiscipline) {
+            if (targetDiscipline === 'history') matchChap = qChap.includes('history') || qChap.includes('வரலாறு');
+            else if (targetDiscipline === 'geography') matchChap = qChap.includes('geography') || qChap.includes('புவியியல்');
+            else if (targetDiscipline === 'civics') matchChap = qChap.includes('civics') || qChap.includes('குடிமையியல்');
+            else if (targetDiscipline === 'economics') matchChap = qChap.includes('economics') || qChap.includes('பொருளியல்');
+          } else {
+            const normQ = normalizeChapter(q.chapter);
+            const normT = normalizeChapter(chapterParam);
+            const qNumMatch = qChap.match(/\b\d+\b/);
+            const tNumMatch = targetChap.match(/\b\d+\b/);
+            const sameNum = Boolean(qNumMatch && tNumMatch && qNumMatch[0] === tNumMatch[0]);
+
+            matchChap =
+              !chapterParam ||
+              qChap === targetChap ||
+              Boolean(normQ && normT && (normQ === normT || qChap.includes(normT) || targetChap.includes(normQ))) ||
+              sameNum;
+          }
 
           // 3. Class level: "10th" vs "10"
           const qStd = String(q.classLevel || '').replace(/th/gi, '').trim().toLowerCase();
           const matchStd = !standardParam || qStd === normStdParam;
 
-          // 4. Type match if present
+          // 4. Type match if present (support type=all / pooled)
           const qType = String(q.type || '').trim().toLowerCase();
-          const matchType = !typeParam || qType === typeParam.toLowerCase();
+          const matchType = !typeParam || typeParam.toLowerCase() === 'all' || qType === typeParam.toLowerCase();
 
           // 5. Medium match: Tamil & English subjects common to both; others strict medium match
           const isLang = isLanguageSubject(q.subject || '');
@@ -147,7 +185,7 @@ function TestRunnerContent() {
 
         const shuffled = shuffle ? [...matched].sort(() => Math.random() - 0.5) : matched;
         const parsedCount = parseInt(countParam, 10);
-        const finalCount = parsedCount > 0 ? parsedCount : shuffled.length > 0 ? shuffled.length : 10;
+        const finalCount = parsedCount > 0 ? parsedCount : Math.min(shuffled.length, 15);
         const sliced = shuffled.slice(0, finalCount);
 
         setQuestions(sliced);

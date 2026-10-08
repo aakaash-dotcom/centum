@@ -22,6 +22,11 @@ import {
   Lock,
   ExternalLink,
   X,
+  Copy,
+  Check,
+  BarChart3,
+  Info,
+  Users,
 } from 'lucide-react';
 
 interface DiaryEntry {
@@ -84,6 +89,14 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(false);
   const [seatInput, setSeatInput] = useState('');
   const [isDemoOpen, setIsDemoOpen] = useState(false);
+  // TASK D: Guided Demo interactive states
+  const [demoTab, setDemoTab] = useState<'info' | 'diary' | 'attendance' | 'stats'>('info');
+  const [demoCopied, setDemoCopied] = useState(false);
+  const [demoPerksExpanded, setDemoPerksExpanded] = useState(false);
+  const [demoDiaryFilter, setDemoDiaryFilter] = useState<'all' | 'homework' | 'notice' | 'exam'>('all');
+  const [demoActiveDiaryId, setDemoActiveDiaryId] = useState<string | null>(null);
+  const [demoSelectedDay, setDemoSelectedDay] = useState<number | null>(null);
+  const [demoStatsView, setDemoStatsView] = useState<'overview' | 'breakdown'>('overview');
 
   // TASK VI: Fetch student classroom data in parallel and swap seamlessly without blocking
   const fetchClassroom = async () => {
@@ -545,175 +558,527 @@ export default function ClassroomPage() {
         </div>
       )}
 
-      {/* TASK VII: Full Read-Only Demo Classroom View (No Seat Code / OTP required) */}
+      {/* TASK D: Full-bleed interactive guided demo classroom */}
       {isDemoOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Demo Classroom Preview"
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-fade-in"
-          onClick={() => setIsDemoOpen(false)}
+          aria-label="Interactive Demo Classroom Preview"
+          className="fixed inset-0 z-[9999] flex flex-col bg-slate-950 text-slate-100 overflow-hidden animate-fade-in"
         >
-          <div
-            className="w-full max-w-2xl bg-slate-50 dark:bg-slate-950 rounded-3xl p-5 sm:p-6 shadow-2xl border border-slate-200 dark:border-slate-800 my-auto text-slate-900 dark:text-white space-y-5 max-h-[92dvh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* 1. Top Header Banner: DEMO - sample data */}
-            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-yellow-500/15 to-amber-500/15 border border-amber-500/30 text-amber-950 dark:text-amber-200">
-              <div className="flex items-center gap-2.5">
-                <span className="text-xl">🧪</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-black tracking-wider uppercase px-2 py-0.5 rounded-md bg-amber-500 text-slate-950">
-                      DEMO
-                    </span>
-                    <span className="text-xs font-black text-amber-900 dark:text-amber-200">
-                      {isTamil ? 'மாதிரி தரவு மட்டுமே (முழுமையான பார்வை)' : 'Sample Data Only — Read-Only Preview'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] font-bold text-amber-800/80 dark:text-amber-300/80 mt-0.5">
-                    {isTamil
-                      ? 'இருக்கை குறியீடு தேவையில்லை. ஒரு மாணவர் பார்க்கும் நேரடி காட்சி.'
-                      : 'No seat code or login needed. Exactly what enrolled students experience.'}
-                  </p>
-                </div>
+          {/* Top Bar Header */}
+          <div className="shrink-0 px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white text-sm font-black shadow-xs">
+                👑
               </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Live Demo · DEMO10
+                  </span>
+                  <span className="text-xs font-black text-white">
+                    {isTamil ? 'மாதிரி வகுப்பறை' : 'Classroom Demo'}
+                  </span>
+                </div>
+                <p className="text-[11px] font-medium text-slate-400 mt-0.5 line-clamp-1">
+                  {isTamil ? 'மாணவர்கள் அனுபவிக்கும் நேரடி வடிவம்' : 'Experience daily diary, attendance & stats'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsDemoOpen(false)}
+              className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center shrink-0 cursor-pointer transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Section Navigation Tabs: Class Info · Diary · Attendance · Stats */}
+          <div className="shrink-0 px-3 py-2 bg-slate-900 border-b border-slate-800/80">
+            <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+              <button
+                type="button"
+                data-testid="demo-tab-info"
+                onClick={() => setDemoTab('info')}
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                  demoTab === 'info'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>🏫</span>
+                <span className="truncate">Class Info</span>
+              </button>
 
               <button
                 type="button"
-                onClick={() => setIsDemoOpen(false)}
-                className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center shrink-0 cursor-pointer shadow-xs"
-                aria-label="Close"
+                data-testid="demo-tab-diary"
+                onClick={() => setDemoTab('diary')}
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                  demoTab === 'diary'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
               >
-                <X className="w-4 h-4" />
+                <span>📖</span>
+                <span className="truncate">Diary</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="demo-tab-attendance"
+                onClick={() => setDemoTab('attendance')}
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                  demoTab === 'attendance'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>📅</span>
+                <span className="truncate">Attendance</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="demo-tab-stats"
+                onClick={() => setDemoTab('stats')}
+                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
+                  demoTab === 'stats'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>📊</span>
+                <span className="truncate">Stats</span>
               </button>
             </div>
+          </div>
 
-            {/* 2. Sample Tuition Card */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white p-5 shadow-xl border border-emerald-500/30">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 mb-2">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Demo Tuition Academy</span>
+          {/* Scrollable Tab Content Container */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-2xl mx-auto w-full">
+            {/* TAB 1: Class Info */}
+            {demoTab === 'info' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                {/* Tuition Hero Card */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white p-5 shadow-xl border border-emerald-500/30">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 mb-2">
+                        <Sparkles className="w-3 h-3 text-emerald-400" />
+                        <span>Enrolled Classroom</span>
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black text-white">
+                        {data?.preview?.sampleTuition?.name || 'Apex Centum Academy'}
+                      </h3>
+                      <p className="text-xs text-emerald-200/90 mt-1 flex items-center gap-1.5">
+                        <span>👨‍🏫</span>
+                        <span>Teacher: <strong className="text-white">{data?.preview?.sampleTuition?.teacher || 'Ramesh Kumar Sir'}</strong> (M.Sc., B.Ed.)</span>
+                      </p>
+                    </div>
+
+                    <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/80 text-center self-start sm:self-auto min-w-[130px]">
+                      <span className="block text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">
+                        Tuition Code
+                      </span>
+                      <span className="text-base font-black tracking-widest text-emerald-400 font-mono block my-0.5">
+                        {data?.preview?.sampleTuition?.code || 'DEMO10'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                            navigator.clipboard.writeText(data?.preview?.sampleTuition?.code || 'DEMO10');
+                          }
+                          setDemoCopied(true);
+                          setTimeout(() => setDemoCopied(false), 2000);
+                        }}
+                        className="w-full mt-1 px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                      >
+                        {demoCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        <span>{demoCopied ? 'Copied! ✓' : 'Copy Code'}</span>
+                      </button>
+                    </div>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-white">
-                    {data?.preview?.sampleTuition?.name || 'Apex Centum Academy'}
-                  </h3>
-                  <p className="text-xs text-emerald-200/90 mt-1 flex items-center gap-1.5">
-                    <span>👨‍🏫</span>
-                    <span>Teacher: <strong className="text-white">{data?.preview?.sampleTuition?.teacher || 'Ramesh Kumar Sir'}</strong></span>
+                </div>
+
+                {/* Batch & Schedule Card */}
+                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Batch Details
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Active Term
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Standard & Subject</span>
+                      <span className="font-bold text-white mt-0.5 block">Class 10th · Maths & Science Centum Mastery</span>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Timings & Days</span>
+                      <span className="font-bold text-white mt-0.5 block">Mon — Fri, 6:00 PM – 7:30 PM (Evening)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Interactive Expander: Classroom Syllabus & Perks */}
+                <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setDemoPerksExpanded(!demoPerksExpanded)}
+                    className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-850 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-black text-white">
+                        Classroom Perks & Syllabus Flow
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-emerald-400">
+                      {demoPerksExpanded ? 'Hide ▲' : 'View Perks ▼'}
+                    </span>
+                  </button>
+
+                  {demoPerksExpanded && (
+                    <div className="p-4 pt-1 border-t border-slate-800 text-xs space-y-2 text-slate-300 animate-fadeIn">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>Daily 15-minute formula recap & instant concept checking.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>Personalized homework tracking & board exam answer writing drills.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>Automatic WhatsApp parent notification on student attendance check-in.</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                        <span>Monthly Centum mock board examinations with district rank analysis.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: Diary */}
+            {demoTab === 'diary' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                {/* Interactive Filter Chips */}
+                <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {[
+                    { id: 'all', label: 'All Entries', icon: '📝' },
+                    { id: 'homework', label: 'Homework', icon: '✍️' },
+                    { id: 'notice', label: 'Notices', icon: '📢' },
+                    { id: 'exam', label: 'Exams', icon: '🧪' },
+                  ].map((filter) => (
+                    <button
+                      key={filter.id}
+                      type="button"
+                      onClick={() => setDemoDiaryFilter(filter.id as any)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
+                        demoDiaryFilter === filter.id
+                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-xs'
+                          : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <span className="mr-1">{filter.icon}</span>
+                      <span>{filter.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Diary Entries Feed with Interactive Row Tap */}
+                <div className="space-y-2.5">
+                  {[
+                    {
+                      id: 'd1',
+                      tag: 'homework',
+                      text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
+                      date: 'Today, 4:30 PM',
+                      detail: 'Teacher Note: Show full Cartesian product step mappings. Important for 5-mark board question.',
+                      status: 'Pending Submission',
+                    },
+                    {
+                      id: 'd2',
+                      tag: 'notice',
+                      text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
+                      date: 'Yesterday',
+                      detail: 'Venue: Apex Academy Hall A. Carry your state board textbook and graph sheets.',
+                      status: 'Mandatory Attendance',
+                    },
+                    {
+                      id: 'd3',
+                      tag: 'exam',
+                      text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
+                      date: '2 days ago',
+                      detail: 'Review question #4 and #8 solution tricks. Average score: 22/25.',
+                      status: 'Answer Key Live',
+                    },
+                    {
+                      id: 'd4',
+                      tag: 'homework',
+                      text: 'Science Chapter 1 — Practice ray diagrams and Newton second law numericals.',
+                      date: '3 days ago',
+                      detail: 'Submit numerical workout sheet to Ramesh Sir before 6:15 PM.',
+                      status: 'Completed ✓',
+                    },
+                  ]
+                    .filter((item) => demoDiaryFilter === 'all' || item.tag === demoDiaryFilter)
+                    .map((item) => {
+                      const isExpanded = demoActiveDiaryId === item.id;
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => setDemoActiveDiaryId(isExpanded ? null : item.id)}
+                          className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-xs space-y-2"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            {renderTagChip(item.tag)}
+                            <span className="text-[11px] font-medium text-slate-400">{item.date}</span>
+                          </div>
+
+                          <p className="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed">
+                            {item.text}
+                          </p>
+
+                          {/* Interactive Detail Drawer on Tap */}
+                          {isExpanded ? (
+                            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5 animate-fadeIn">
+                              <p className="text-emerald-300 font-semibold">{item.detail}</p>
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
+                                <span className="text-slate-400">Status: <strong className="text-white">{item.status}</strong></span>
+                                <span className="text-slate-500">Tap to collapse ▲</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-end text-[10px] text-slate-500 font-bold">
+                              <span>Tap for teacher notes & instructions ▼</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Attendance */}
+            {demoTab === 'attendance' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                {/* Attendance Summary */}
+                <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white font-bold text-sm">
+                      <Calendar className="w-4 h-4 text-emerald-400" />
+                      <span>Classroom Attendance (Last 30 Days)</span>
+                    </div>
+                    <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      🌟 Excellent
+                    </span>
+                  </div>
+
+                  <div className="flex items-baseline gap-3 my-1">
+                    <span className="text-4xl font-black text-emerald-400">93%</span>
+                    <span className="text-xs text-slate-400 font-bold">28 of 30 Days Present</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-amber-300 font-bold bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/20">
+                    <span>🔥</span>
+                    <span>14 Days Continuous Active Streak! Centum Eligible.</span>
+                  </div>
+                </div>
+
+                {/* Interactive 30-Day Mini Attendance Chips */}
+                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-300">
+                      Tap a day chip to view check-in log:
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">30-Day Record</span>
+                  </div>
+
+                  {/* 30 Chips Grid */}
+                  <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
+                    {Array.from({ length: 30 }).map((_, idx) => {
+                      const day = idx + 1;
+                      const isLeave = day === 12 || day === 22;
+                      const isSelected = demoSelectedDay === day;
+
+                      return (
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => setDemoSelectedDay(day)}
+                          className={`p-2 rounded-xl text-center text-xs font-black transition-all cursor-pointer border ${
+                            isSelected
+                              ? 'ring-2 ring-emerald-400 scale-105 shadow-md bg-emerald-500 text-slate-950 border-emerald-400'
+                              : isLeave
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30'
+                          }`}
+                        >
+                          <span className="block text-[10px] text-slate-400 font-normal">D{day}</span>
+                          <span>{isLeave ? '—' : '✓'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Interactive Status Popover */}
+                  {demoSelectedDay !== null ? (
+                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center justify-between animate-fadeIn">
+                      <div>
+                        <span className="font-bold text-white">Day {demoSelectedDay}: </span>
+                        {demoSelectedDay === 12 || demoSelectedDay === 22 ? (
+                          <span className="text-amber-400 font-semibold">Excused Leave (Prior Notice Received)</span>
+                        ) : (
+                          <span className="text-emerald-400 font-semibold">Present ✓ — Checked in at 6:05 PM</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setDemoSelectedDay(null)}
+                        className="text-[10px] text-slate-400 hover:text-white ml-2 underline"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-500 text-center">
+                      Tap any Day (D1–D30) above to inspect timestamp & verification details.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: Stats */}
+            {demoTab === 'stats' && (
+              <div className="space-y-3.5 animate-fadeIn">
+                {/* Seat Stats Bar */}
+                <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                      Academy Seat Capacity
+                    </span>
+                    <span className="text-xs font-black text-emerald-400">
+                      18 / 20 Seats Claimed (90%)
+                    </span>
+                  </div>
+
+                  {/* Visual Progress Bar */}
+                  <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
+                      style={{ width: '90%' }}
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 flex items-center justify-between">
+                    <span>Only 2 Seats Remaining for this Batch</span>
+                    <span className="text-emerald-400 font-bold">Fast Filling 🔥</span>
                   </p>
                 </div>
 
-                <div className="bg-slate-800/80 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-700/60 text-center self-start sm:self-auto">
-                  <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Tuition Code
-                  </span>
-                  <span className="text-sm font-black tracking-widest text-emerald-400 font-mono">
-                    {data?.preview?.sampleTuition?.code || 'DEMO10'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Sample Attendance Summary Card */}
-            <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-sm">
-                  <Calendar className="w-4 h-4 text-emerald-500" />
-                  <span>{isTamil ? 'மாதிரி வருகைப்பதிவு' : 'Sample Attendance Summary'}</span>
-                </div>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  Last 30 Days
-                </span>
-              </div>
-
-              <div className="flex items-baseline gap-3 my-2">
-                <span className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                  {data?.preview?.sampleAttendance?.pct30 ?? 93}%
-                </span>
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  🌟 Excellent
-                </span>
-              </div>
-
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Last marked date: <strong className="text-slate-700 dark:text-slate-300">{data?.preview?.sampleAttendance?.lastDate || 'Today'}</strong>
-              </p>
-            </div>
-
-            {/* 4. Complete Sample Diary Feed (📝📢🧪) */}
-            <div className="rounded-2xl bg-white dark:bg-slate-900 p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-blue-500" />
-                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                    {isTamil ? 'மாதிரி நாள்குறிப்பு விவரம்' : 'Sample Classroom Diary Feed'}
-                  </h4>
-                </div>
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
-                  {(data?.preview?.sampleDiary?.length || 3)} entries
-                </span>
-              </div>
-
-              <div className="space-y-2.5">
-                {(data?.preview?.sampleDiary || [
-                  {
-                    id: 'preview-1',
-                    tag: 'homework',
-                    text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
-                    date: 'Today',
-                  },
-                  {
-                    id: 'preview-2',
-                    tag: 'notice',
-                    text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
-                    date: 'Yesterday',
-                  },
-                  {
-                    id: 'preview-3',
-                    tag: 'exam',
-                    text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
-                    date: '2 days ago',
-                  },
-                ]).map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 text-xs space-y-1.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      {renderTagChip(item.tag)}
-                      <span className="text-[11px] text-slate-400">{item.date}</span>
+                {/* Interactive Metric Switcher */}
+                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-white">Performance Metrics</span>
+                    <div className="inline-flex p-0.5 rounded-lg bg-slate-950 border border-slate-800">
+                      <button
+                        type="button"
+                        onClick={() => setDemoStatsView('overview')}
+                        className={`px-2.5 py-1 text-[10px] font-black rounded-md transition-all cursor-pointer ${
+                          demoStatsView === 'overview'
+                            ? 'bg-emerald-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Overview
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDemoStatsView('breakdown')}
+                        className={`px-2.5 py-1 text-[10px] font-black rounded-md transition-all cursor-pointer ${
+                          demoStatsView === 'breakdown'
+                            ? 'bg-emerald-600 text-white'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        Subjects
+                      </button>
                     </div>
-                    <p className="text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                      {item.text}
-                    </p>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {/* 5. TWO CTAs */}
-            <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Link
-                href="/join"
-                onClick={() => setIsDemoOpen(false)}
-                className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <span>{isTamil ? 'உண்மையான குறியீட்டுடன் இணையவும் 🚀' : 'Join with Real Seat Code 🚀'}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-              <a
-                href="https://wa.me/918610653352?text=Hi%20Centum,%20I%20saw%20the%20demo%20classroom%20and%20want%20to%20get%20my%20own%20tuition%20classroom"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-                <span>{isTamil ? 'டியூஷன் நடத்துகிறீர்களா? உங்கள் சொந்தத்தைப் பெறுங்கள்' : 'Running a tuition? get yours 💬'}</span>
-              </a>
-            </div>
+                  {demoStatsView === 'overview' ? (
+                    <div className="grid grid-cols-3 gap-2.5 pt-1 text-center">
+                      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                        <span className="text-xs text-slate-400 block font-bold">Class Average</span>
+                        <span className="text-lg font-black text-emerald-400 block mt-1">88.5%</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                        <span className="text-xs text-slate-400 block font-bold">Class Rank</span>
+                        <span className="text-lg font-black text-teal-400 block mt-1">#3 / 18</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
+                        <span className="text-xs text-slate-400 block font-bold">Tests Completed</span>
+                        <span className="text-lg font-black text-amber-400 block mt-1">12</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 pt-1">
+                      {[
+                        { subj: 'Mathematics', score: 92, rank: 'Top 5%' },
+                        { subj: 'Science', score: 89, rank: 'Top 10%' },
+                        { subj: 'Social Science', score: 85, rank: 'Top 15%' },
+                      ].map((s) => (
+                        <div
+                          key={s.subj}
+                          className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between text-xs"
+                        >
+                          <span className="font-bold text-white">{s.subj}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-emerald-400 font-black">{s.score}%</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">{s.rank}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sticky Bottom Actions */}
+          <div className="shrink-0 p-3 sm:p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 max-w-2xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <Link
+              href="/join"
+              onClick={() => setIsDemoOpen(false)}
+              className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>{isTamil ? 'உங்கள் வகுப்பறையில் இணையவும் 🚀' : 'Join your classroom'}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+            <a
+              href="https://wa.me/918610653352?text=Hi%20Centum,%20I%20saw%20the%20demo%20classroom%20and%20want%20to%20get%20my%20own%20tuition%20classroom"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-black border border-slate-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isTamil ? 'டியூஷன் நடத்துகிறீர்களா? உங்கள் சொந்தத்தைப் பெறுங்கள்' : 'Running a tuition? get yours 💬'}</span>
+            </a>
           </div>
         </div>
       )}

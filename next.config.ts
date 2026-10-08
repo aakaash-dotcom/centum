@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
         destination: '/materials',
         permanent: true,
       },
+      {
+        source: '/pro',
+        destination: '/pricing',
+        permanent: false,
+      },
     ];
   },
 };

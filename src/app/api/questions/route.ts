@@ -83,14 +83,14 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
       }
     }
 
-    // 4. Type filter (e.g. concept vs oneword)
+    // 4. Type filter (e.g. concept vs oneword; 'all' pools both)
     const qType = String(q.type || 'oneword').trim().toLowerCase();
-    if (targetType && qType !== targetType) {
+    if (targetType && targetType !== 'all' && qType !== targetType) {
       continue;
     }
 
-    // 5. Chapter filter
-    if (targetChap) {
+    // 5. Chapter filter (bypass for mega-sets / all chapters)
+    if (targetChap && targetChap !== 'all' && !targetChap.includes('all chapters') && !targetChap.includes('practice')) {
       const qChap = String(q.chapter || '').trim().toLowerCase();
       const cleanTargetChap = targetChap.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, '').trim();
       const cleanQChap = qChap.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, '').trim();
@@ -142,14 +142,14 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     });
   }
 
-  const isCountAll = String(count || '').toLowerCase() === 'all';
-  const parsedCount = parseInt(count || '40', 10);
+  const isCountAll = !count || String(count).toLowerCase() === 'all';
+  const parsedCount = parseInt(count || '0', 10);
   const maxCount = isCountAll
     ? validQuestions.length
     : isNaN(parsedCount) || parsedCount <= 0
-    ? 40
+    ? validQuestions.length
     : Math.min(parsedCount, 1000);
-  const sliced = validQuestions.slice(0, maxCount);
+  const sliced = isCountAll ? validQuestions : validQuestions.slice(0, maxCount);
 
   return {
     questions: sliced,
@@ -167,7 +167,7 @@ export async function GET(request: Request) {
   const type = searchParams.get('type');
   const medium = searchParams.get('medium');
   const stream = searchParams.get('stream');
-  const count = searchParams.get('count') || '40';
+  const count = searchParams.get('count'); // If omitted or 'all', stream full sheet
 
   const filterParams: FilterParams = {
     classLevel,
@@ -193,7 +193,8 @@ export async function GET(request: Request) {
       if (type) externalUrl.searchParams.set('type', type);
       if (medium) externalUrl.searchParams.set('medium', medium);
       if (stream) externalUrl.searchParams.set('stream', stream);
-      if (count) externalUrl.searchParams.set('count', count);
+      // Stream fully from GAS: passthrough count, defaulting to 'all'
+      externalUrl.searchParams.set('count', count || 'all');
 
       const res = await fetch(externalUrl.toString(), {
         cache: 'no-store',
@@ -202,13 +203,20 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.questions)) {
-          const sanitized = sanitizeAndFilterQuestions(data.questions, filterParams);
+          const rawSheetQuestions = data.questions;
+          const sanitized = sanitizeAndFilterQuestions(rawSheetQuestions, filterParams);
+          // Preserve real upstream totalMatching from sheet if provided, else use filtered valid count
+          const upstreamTotalMatching = typeof data.totalMatching === 'number' && data.totalMatching > 0
+            ? data.totalMatching
+            : sanitized.totalMatching;
 
           return NextResponse.json(
             {
               ok: true,
               questions: sanitized.questions,
-              totalMatching: sanitized.totalMatching,
+              totalMatching: upstreamTotalMatching,
+              sheetTotal: rawSheetQuestions.length,
+              servedFrom: 'gas',
               source: 'live',
               skipped: [...(data.skipped || []), ...sanitized.skipped],
             },
@@ -239,7 +247,7 @@ export async function GET(request: Request) {
       if (type) prodUrl.searchParams.set('type', type);
       if (medium) prodUrl.searchParams.set('medium', medium);
       if (stream) prodUrl.searchParams.set('stream', stream);
-      if (count) prodUrl.searchParams.set('count', count);
+      prodUrl.searchParams.set('count', count || 'all');
 
       const prodRes = await fetch(prodUrl.toString(), { cache: 'no-store' });
       if (prodRes.ok) {
@@ -248,6 +256,8 @@ export async function GET(request: Request) {
           return NextResponse.json(
             {
               ...prodData,
+              sheetTotal: prodData.sheetTotal ?? prodData.questions.length,
+              servedFrom: prodData.servedFrom || 'gas',
               source: 'live-bridge',
             },
             {
@@ -265,7 +275,7 @@ export async function GET(request: Request) {
     }
   }
 
-  // Fallback to bundled sample questions (dev or offline fallback)
+  // Fallback to bundled sample questions ONLY on genuine failure
   const sanitized = sanitizeAndFilterQuestions(SAMPLE_QUESTIONS, filterParams);
 
   return NextResponse.json(
@@ -273,6 +283,8 @@ export async function GET(request: Request) {
       ok: true,
       questions: sanitized.questions,
       totalMatching: sanitized.totalMatching,
+      sheetTotal: 0,
+      servedFrom: 'mock-fallback',
       source: 'mock-fallback',
       skipped: sanitized.skipped,
     },

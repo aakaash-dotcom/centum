@@ -984,6 +984,168 @@ const mockProMaterials: MockProMaterial[] = [
     bookbackQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Laws%20of%20Motion&type=oneword',
     status: 'live',
     createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 Laws of Motion — High-Yield Key Points (இயக்க விதிகள்)
+1. **Newton's First Law**: Every body continues to be in its state of rest or uniform motion unless acted upon by an external unbalanced force.
+2. **Inertia (நிலைமம்)**: Inertia of rest, inertia of motion, and inertia of direction.
+3. **Newton's Second Law**: $F = ma$ (Force = mass × acceleration). SI Unit: Newton ($N$).
+4. **Newton's Third Law**: For every action, there is an equal and opposite reaction ($F_A = -F_B$).
+5. **Law of Conservation of Linear Momentum**: In the absence of an external force, the total linear momentum of a system remains conserved: $m_1 u_1 + m_2 u_2 = m_1 v_1 + m_2 v_2$.`,
+  },
+  {
+    id: 'pm-10-s-ch2',
+    classLevel: '10',
+    subject: 'science',
+    chapter: 'Chapter 2: Optics',
+    chapterNo: 2,
+    type: 'notes',
+    title: 'Optics (ஒளியியல்) — Ray Diagrams & Formula Guide',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_science_ch2_optics.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Optics&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Science&chapter=Optics&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 Optics (ஒளியியல்) — Formulas & Ray Conventions
+1. **Refraction (ஒளிவிலகல்)**: Snell's Law $\\frac{\\sin i}{\\sin r} = \\frac{\\mu_2}{\\mu_1}$.
+2. **Lens Formula**: $\\frac{1}{f} = \\frac{1}{v} - \\frac{1}{u}$.
+3. **Magnification ($m$)**: $m = \\frac{v}{u} = \\frac{h'}{h}$.
+4. **Power of a Lens ($P$)**: $P = \\frac{1}{f \\text{ (in metres)}}$, measured in Dioptres ($D$).
+5. **Myopia (கிட்டப்பார்வை)**: Corrected using Concave lens ($f = -\\frac{xy}{y-x}$).
+6. **Hypermetropia (தூரப்பார்வை)**: Corrected using Convex lens.`,
+  },
+  {
+    id: 'pm-10-soc-ch1',
+    classLevel: '10',
+    subject: 'social science',
+    chapter: 'History 1: Outbreak of World War I',
+    chapterNo: 1,
+    type: 'notes',
+    title: 'Outbreak of WWI and its Aftermath — Timeline & Key Events',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_social_hist_ch1.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Social%20Science&chapter=History%201&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Social%20Science&chapter=History%201&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 History Unit 1 — Outbreak of WWI & Aftermath
+1. **Triple Alliance (1882)**: Germany, Austria-Hungary, and Italy.
+2. **Triple Entente (1907)**: Britain, France, and Russia.
+3. **Immediate Cause**: Assassination of Archduke Franz Ferdinand of Austria in Sarajevo (June 28, 1914).
+4. **Treaty of Versailles (1919)**: Germany forced to accept war guilt, pay huge reparations, and demilitarise the Rhineland.
+5. **League of Nations**: Formed in 1920 to maintain world peace, spearheaded by Woodrow Wilson's 14 Points.`,
+  },
+  {
+    id: 'pm-10-soc-ch2',
+    classLevel: '10',
+    subject: 'social science',
+    chapter: 'Geography 1: India - Location, Relief and Drainage',
+    chapterNo: 2,
+    type: 'notes',
+    title: 'India: Location, Relief & Drainage — Fast Map Summary',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_social_geo_ch1.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Social%20Science&chapter=Geography%201&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Social%20Science&chapter=Geography%201&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 Geography Unit 1 — Relief & Drainage
+1. **Total Land Frontier**: 15,200 km; Coastline length including islands: 7,516.6 km.
+2. **Standard Meridian of India**: $82^\\circ 30' \\text{ E}$ longitude passing through Mirzapur (UP).
+3. **Himalayan Mountain Divisions**: Trans-Himalayas (Tibet), Himadri (Greater), Himachal (Lesser), and Siwaliks (Outer).
+4. **Perennial Rivers**: Indus, Ganga, and Brahmaputra originate in the Himalayas.
+5. **Peninsular Rivers**: West-flowing (Narmada, Tapti) drain into Arabian Sea; East-flowing (Mahanadi, Godavari, Krishna, Cauvery) drain into Bay of Bengal.`,
+  },
+  {
+    id: 'pm-10-tam-ch1',
+    classLevel: '10',
+    subject: 'tamil',
+    chapter: 'இயல் 1: அன்னை மொழியே',
+    chapterNo: 1,
+    type: 'notes',
+    title: 'அன்னை மொழியே & தமிழ்ச்சொல் வளம் — குறிப்புகள் & வினா-விடை',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_tamil_iyal1.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Tamil&chapter=இயல்%201&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Tamil&chapter=இயல்%201&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 10-ஆம் வகுப்பு தமிழ் — இயல் 1 முக்கியக் குறிப்புகள்
+1. **அன்னை மொழியே**:
+   - ஆசிரியர்: பாவலரேறு பெருஞ்சித்திரனார் (இயற்பெயர்: துரை. மாணிக்கம்).
+   - நூல்: கனிச்சாறு (தொகுதி-1).
+   - இதழ்கள்: தென்மொழி, தமிழ்ச்சிட்டு.
+2. **தமிழ்ச்சொல் வளம்**:
+   - ஆசிரியர்: தேவநேயப் பாவாணர் ('செந்தமிழ்ச் செல்வர்', 'மொழிஞாயிறு').
+   - பயிர்களின் அடிப்பகுதியைக் குறிக்கும் சொற்கள்: தாள், தண்டு, கோல், தூறு, தட்டு/தட்டை, கழை, கழி.
+3. **இலக்கணம் — எழுத்து, சொல்**:
+   - முதல் எழுத்து: 30 (உயிர் 12 + மெய் 18).
+   - சார்பெழுத்து: 10 வகை (உயிரளபெடை, ஒற்றளபெடை உள்ளிட்டவை).
+   - செய்யுளிசை அளபெடை (இசைநிறை அளபெடை), இன்னிசை அளபெடை, சொல்லிசை அளபெடை.`,
+  },
+  {
+    id: 'pm-10-tam-ch2',
+    classLevel: '10',
+    subject: 'tamil',
+    chapter: 'இயல் 2: காற்றே வா',
+    chapterNo: 2,
+    type: 'notes',
+    title: 'காற்றே வா (பாரதியார்) — பாடல் பொருள் & அணி விளக்கம்',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_tamil_iyal2.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=Tamil&chapter=இயல்%202&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=Tamil&chapter=இயல்%202&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 10-ஆம் வகுப்பு தமிழ் — இயல் 2 குறிப்புகள்
+1. **காற்றே வா**:
+   - ஆசிரியர்: மகாகவி பாரதியார்.
+   - வசன கவிதை: உரைநடையும் கவிதையும் இணைந்து யாப்புக் கட்டுகளுக்கு அப்பாற்பட்டு உருவாக்கப்படும் கவிதை வடிவம்.
+2. **கேட்கிறதா என்குரல் (உரைநடை)**:
+   - திசைகள் வழி காற்று பெயர்கள்: கிழக்கு - கொண்டல், மேற்கு - கோடை, வடக்கு - வாடை, தெற்கு - தென்றல்.
+3. **முல்லைப்பாட்டு**:
+   - ஆசிரியர்: நப்பூதனார். பத்துப்பாட்டு நூல்களுள் மிகக் குறைந்த அடிகளை உடையது (103 அடிகள்).`,
+  },
+  {
+    id: 'pm-10-eng-ch1',
+    classLevel: '10',
+    subject: 'english',
+    chapter: 'Unit 1: His First Flight & Life',
+    chapterNo: 1,
+    type: 'notes',
+    title: 'His First Flight & Life (Poem) — Summary, Vocabulary & Grammar',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_english_unit1.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=English&chapter=Unit%201&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=English&chapter=Unit%201&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 Unit 1 — Prose: His First Flight & Poem: Life
+1. **His First Flight**:
+   - Author: Liam O'Flaherty.
+   - Central Theme: Overcoming fear and taking the first courageous step. The young seagull conquers his fear of flying when compelled by hunger and maternal love.
+2. **Life (Poem)**:
+   - Poet: Henry Van Dyke.
+   - Form: Sonnet (14 lines; Octave + Sestet).
+   - Message: Live life with enthusiasm, courage, and without mourning for lost moments.
+3. **Grammar Focus**:
+   - Modals and Semi-modals (can, could, should, ought to, must, used to).
+   - Active and Passive Voice basics.`,
+  },
+  {
+    id: 'pm-10-eng-ch2',
+    classLevel: '10',
+    subject: 'english',
+    chapter: 'Unit 2: The Night the Ghost Got In',
+    chapterNo: 2,
+    type: 'notes',
+    title: 'The Night the Ghost Got In — Character Sketches & Analysis',
+    notesPdfUrl: 'https://dge.tn.gov.in/docs/10th_english_unit2.pdf',
+    conceptQuizUrl: '/test-runner?standard=10th&subject=English&chapter=Unit%202&type=concept',
+    bookbackQuizUrl: '/test-runner?standard=10th&subject=English&chapter=Unit%202&type=oneword',
+    status: 'live',
+    createdAt: '2026-10-05T10:00:00Z',
+    interactiveNotes: `### 🎯 Unit 2 — Prose: The Night the Ghost Got In
+1. **Author**: James Grover Thurber.
+2. **Genre**: Humorous autobiographical sketch.
+3. **Key Characters**:
+   - Narrator (James): mistakes steps around the dining table for burglars or ghosts.
+   - Mother: panics and throws a shoe through the Bodwells' window to call the police.
+   - Grandfather: living in the attic, believes the police are General Meade's deserters and shoots an officer in the shoulder!
+4. **Vocabulary**: Hullabaloo, indignant, advent, hysterical.`,
   },
 ];
 

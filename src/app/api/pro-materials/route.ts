@@ -22,7 +22,9 @@ export async function GET(request: Request) {
       const res = await fetch(externalUrl.toString(), { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        return NextResponse.json(data);
+        if (data && data.ok && Array.isArray(data.materials) && data.materials.length > 0) {
+          return NextResponse.json(data);
+        }
       }
     } catch (e) {
       console.warn('Apps Script proMaterials GET failed, falling back to mock store', e);

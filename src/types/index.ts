@@ -4,7 +4,7 @@ export type ClassLevel = '6th' | '7th' | '8th' | '9th' | '10th' | '11th' | '12th
 
 export type PaperCategory = 'pyq' | 'model' | 'important' | 'book';
 
-export type TestType = 'oneword' | 'concept' | 'daily';
+export type TestType = 'oneword' | 'concept' | 'daily' | 'all';
 
 export type PlanType = 'free' | 'pro' | 'live';
 
