@@ -22,6 +22,7 @@ import {
   getCanonicalSubjects,
   normalizeSubject,
 } from '@/data/canonicalSubjects';
+import { ProUpsellModal, ProUpsellContext } from '@/components/ProUpsellModal';
 
 export interface ChapterItem {
   rawName: string;
@@ -204,6 +205,16 @@ function TestsContent() {
   // 3. Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<ConfirmationModalState | null>(null);
   const [mounted, setMounted] = useState(false);
+
+  // Pro Upsell Modal state
+  const [upsellModalOpen, setUpsellModalOpen] = useState(false);
+  const [upsellContext, setUpsellContext] = useState<ProUpsellContext>({
+    subject: '',
+    chapter: '',
+    videoCount: 2,
+    conceptCount: 18,
+    paperCount: 12,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -419,7 +430,14 @@ function TestsContent() {
 
     // Gate rule: Concept quiz chapters 2+ require Pro
     if (selectedType === 'concept' && !isChapter1 && !isUserPro) {
-      openPaywall(texts.tests.proQuizPitch);
+      setUpsellContext({
+        subject: selectedSubject || 'Maths',
+        chapter: ch.cleanTitle || ch.displayName,
+        conceptCount: ch.conceptCount || ch.poolSize || 18,
+        videoCount: 2,
+        paperCount: 12,
+      });
+      setUpsellModalOpen(true);
       return;
     }
 
@@ -725,12 +743,24 @@ function TestsContent() {
                     return (
                       <div
                         key={ch.rawName}
+                        data-testid={isLocked ? 'concept-ch2-locked' : 'concept-ch1-playable'}
                         onClick={() => handleChapterTap(ch, index)}
-                        className="w-full min-h-[50px] px-4 py-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-3 text-left group"
+                        className={`w-full min-h-[50px] px-4 py-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left group ${
+                          isLocked
+                            ? 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-400/40 hover:border-amber-500'
+                            : 'bg-white dark:bg-[#1B0B2E] border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs hover:shadow-md'
+                        }`}
                       >
-                        <span className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF] truncate">
-                          {displayRow}
-                        </span>
+                        <div className="flex items-center gap-2 truncate min-w-0">
+                          {isLocked && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200 shrink-0">
+                              Pro 🔒
+                            </span>
+                          )}
+                          <span className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF] truncate">
+                            {displayRow}
+                          </span>
+                        </div>
 
                         {isLocked ? (
                           <span className="p-1.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-400/30 shrink-0">
@@ -815,6 +845,13 @@ function TestsContent() {
         </div>,
         document.body
       )}
+
+      {/* Pro Upsell Modal */}
+      <ProUpsellModal
+        isOpen={upsellModalOpen}
+        onClose={() => setUpsellModalOpen(false)}
+        context={upsellContext}
+      />
     </div>
   );
 }

@@ -92,7 +92,7 @@ interface AttendanceStudentRow {
 }
 
 export default function OwnerPortalPage() {
-  const { medium, showToast } = useApp();
+  const { medium, showToast, student } = useApp();
   const isTamil = medium === 'tamil';
 
   // Auth states
@@ -124,7 +124,7 @@ export default function OwnerPortalPage() {
   const [isLoadingAttendance, setIsLoadingAttendance] = useState(false);
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
 
-  // Load saved session if exists
+  // Load saved session or auto-prefill demo owner (TASK 9)
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem('centum_owner_session');
@@ -137,10 +137,18 @@ export default function OwnerPortalPage() {
           fetchTuitionStats(parsed.tuitionCode, parsed.ownerPhone);
           fetchDiary(parsed.tuitionCode, parsed.ownerPhone);
           fetchAttendance(parsed.tuitionCode, parsed.ownerPhone, attendanceDate);
+          return;
         }
       }
+
+      // Check if logged in user is the demo owner (9840123456)
+      const studentPhone10 = student?.phone?.replace(/\D/g, '').slice(-10);
+      if (studentPhone10 === '9840123456') {
+        setOwnerPhone('9840123456');
+        setTuitionCode('DEMO10');
+      }
     } catch (e) {}
-  }, []);
+  }, [student?.phone]);
 
   const fetchTuitionStats = async (code: string, phone: string) => {
     setIsLoadingStats(true);
@@ -449,6 +457,30 @@ export default function OwnerPortalPage() {
               <span>{errorMsg}</span>
             </div>
           )}
+
+          {/* TASK 9: 1-Tap Demo Owner Showroom Button */}
+          <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-400 block">
+                Showroom Demo · Apex Centum
+              </span>
+              <p className="text-xs font-bold text-amber-900 dark:text-amber-200 truncate">
+                Pre-fill DEMO10 (Owner: Ramesh Kumar)
+              </p>
+            </div>
+            <button
+              type="button"
+              data-testid="demo-owner-prefill-btn"
+              onClick={() => {
+                setTuitionCode('DEMO10');
+                setOwnerPhone('9840123456');
+                showToast('DEMO10 auto-prefilled ✨');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs shrink-0 transition-all shadow-xs cursor-pointer"
+            >
+              One-Tap Fill ⚡
+            </button>
+          </div>
 
           {step === 'credentials' ? (
             <form onSubmit={handleSendOtp} className="space-y-4">

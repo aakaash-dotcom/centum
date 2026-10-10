@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { SAMPLE_QUESTIONS } from '@/data/sampleData';
+import { CENSUS_FALLBACK_QUESTIONS } from '@/lib/census-fallback';
 import { isLanguageSubject } from '@/lib/data';
 import {
   normalizeSubject,
@@ -252,7 +253,13 @@ export async function GET(request: Request) {
       const prodRes = await fetch(prodUrl.toString(), { cache: 'no-store' });
       if (prodRes.ok) {
         const prodData = await prodRes.json();
-        if (prodData && prodData.ok && Array.isArray(prodData.questions)) {
+        if (
+          prodData &&
+          prodData.ok &&
+          Array.isArray(prodData.questions) &&
+          prodData.servedFrom === 'gas' &&
+          (prodData.totalMatching || prodData.questions.length) >= 50
+        ) {
           return NextResponse.json(
             {
               ...prodData,
@@ -275,23 +282,24 @@ export async function GET(request: Request) {
     }
   }
 
-  // Fallback to bundled sample questions ONLY on genuine failure
-  const sanitized = sanitizeAndFilterQuestions(SAMPLE_QUESTIONS, filterParams);
+  // Fallback to bundled sample questions + census fallback pool ONLY on genuine failure or cold upstream
+  const allPool = [...SAMPLE_QUESTIONS, ...CENSUS_FALLBACK_QUESTIONS];
+  const sanitized = sanitizeAndFilterQuestions(allPool, filterParams);
 
   return NextResponse.json(
     {
       ok: true,
       questions: sanitized.questions,
       totalMatching: sanitized.totalMatching,
-      sheetTotal: 0,
-      servedFrom: 'mock-fallback',
-      source: 'mock-fallback',
+      sheetTotal: allPool.length,
+      servedFrom: 'census-fallback',
+      source: 'census-fallback',
       skipped: sanitized.skipped,
     },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
-        'x-data-source': 'mock',
+        'x-data-source': 'census-fallback',
         'x-cache-version': 'cdn-v1',
       },
     }

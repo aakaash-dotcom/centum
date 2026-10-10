@@ -120,22 +120,7 @@ export async function GET(request: Request) {
         }
       );
     } catch (e) {
-      console.warn('Apps Script papers fetch failed', e);
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'backend-unreachable',
-          source: 'live-failed',
-        },
-        {
-          status: 503,
-          headers: {
-            'Cache-Control': 'no-store',
-            'x-data-source': 'live-failed',
-            'x-cache-version': 'cdn-v1',
-          },
-        }
-      );
+      console.warn('Apps Script papers fetch failed, falling back to committed catalog', e);
     }
   }
 

@@ -96,11 +96,11 @@ function testDemoClassroom() {
     console.log('✅ TASK D VERIFICATION PASSED');
     console.log('verifyRef: demo-classroom [VERIFIED]');
     console.log('===============================================================\n');
-    process.exit(0);
+    process.exitCode = 0;
   } else {
     console.error('❌ TASK D VERIFICATION FAILED');
     console.log('===============================================================\n');
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 

@@ -568,7 +568,7 @@ function MaterialsContent() {
 
           {/* PRO MATERIALS HUB ENTRY CARD - matching Pro quiz entry visual language */}
           <Link
-            href={`/pro-materials?classLevel=${encodeURIComponent(guestStandard || student?.standard?.replace(/\D/g, '') || '10')}`}
+            href={`/pro?classLevel=${encodeURIComponent(guestStandard || student?.standard?.replace(/\D/g, '') || '10')}`}
             className="w-full mt-3 min-h-[68px] px-4 py-3 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 border-amber-400 dark:border-amber-400/80 bg-gradient-to-r from-amber-400/15 via-yellow-400/20 to-amber-500/25 dark:from-amber-500/20 dark:via-yellow-500/20 dark:to-amber-400/25 text-[#2E1065] dark:text-[#F5F0FF] shadow-sm hover:shadow-md dark:shadow-amber-500/10 group"
           >
             <div className="flex items-center gap-3">

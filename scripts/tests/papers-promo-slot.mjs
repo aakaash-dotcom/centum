@@ -68,11 +68,11 @@ function testPromoSlot() {
     console.log('✅ TASK C VERIFICATION PASSED');
     console.log('verifyRef: papers-promo-slot [VERIFIED]');
     console.log('===============================================================\n');
-    process.exit(0);
+    process.exitCode = 0;
   } else {
     console.error('❌ TASK C VERIFICATION FAILED');
     console.log('===============================================================\n');
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 

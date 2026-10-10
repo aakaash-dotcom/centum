@@ -28,6 +28,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // TASK 9: Demo-only OTP override (strictly sandboxed, NO WhatsApp dispatch)
+    const normalized10 = phone.slice(-10);
+    if (normalized10 === '9123456780' || normalized10 === '9840123456') {
+      return NextResponse.json({
+        ok: true,
+        status: 'demo',
+        demoOtp: '4321',
+        expiresInSeconds: 300,
+        recipient: `+${phone}`,
+        message: 'Demo account OTP: 4321 (no WhatsApp dispatch)',
+      });
+    }
+
     if (isOptedOut(phone)) {
       return NextResponse.json(
         {

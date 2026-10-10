@@ -54,11 +54,11 @@ async function testProMaterials() {
     console.log('✅ TASK B VERIFICATION PASSED: Zero empty panels for Class 10');
     console.log('verifyRef: pro-materials-pills [VERIFIED]');
     console.log('===============================================================\n');
-    process.exit(0);
+    process.exitCode = 0;
   } else {
     console.error('❌ TASK B VERIFICATION FAILED');
     console.log('===============================================================\n');
-    process.exit(1);
+    process.exitCode = 1;
   }
 }
 

@@ -228,6 +228,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedQuizzes = localStorage.getItem(QUIZ_RESULTS_KEY);
       if (savedQuizzes) {
         setQuizResults(JSON.parse(savedQuizzes));
+      } else if (savedStudent && JSON.parse(savedStudent).phone?.includes('9123456780')) {
+        // TASK 9: Demo student seed history (streak 4, coins, 3 past quiz results)
+        const demoQuizHistory: QuizResult[] = [
+          {
+            testId: '10th_Maths_Chapter 1_oneword',
+            title: '10th Maths Chapter 1',
+            classLevel: '10th',
+            score: 14,
+            total: 15,
+            accuracy: 93,
+            totalTimeSeconds: 180,
+            answers: [],
+            completedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+            subject: 'Maths',
+            chapter: 'Chapter 1 · Relations and Functions',
+            type: 'oneword',
+          },
+          {
+            testId: '10th_Science_Chapter 1_concept',
+            title: '10th Science Chapter 1',
+            classLevel: '10th',
+            score: 15,
+            total: 15,
+            accuracy: 100,
+            totalTimeSeconds: 150,
+            answers: [],
+            completedAt: new Date(Date.now() - 86400000).toISOString(),
+            subject: 'Science',
+            chapter: 'Chapter 1 · Laws of Motion',
+            type: 'concept',
+          },
+          {
+            testId: 'daily_quiz_today',
+            title: 'Daily Quiz',
+            classLevel: '10th',
+            score: 5,
+            total: 5,
+            accuracy: 100,
+            totalTimeSeconds: 60,
+            answers: [],
+            completedAt: new Date().toISOString(),
+            subject: 'Daily Quiz',
+            chapter: 'Mixed Revision',
+            type: 'daily',
+          },
+        ];
+        setQuizResults(demoQuizHistory);
+        localStorage.setItem(QUIZ_RESULTS_KEY, JSON.stringify(demoQuizHistory));
+        setCoinsBalance(150);
       }
 
       const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as 'light' | 'dark' | null;

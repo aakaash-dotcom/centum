@@ -133,6 +133,84 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* 7. Pro Hub Feature Tiles (Task 2) */}
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-2.5 px-1">
+            <h2 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF] tracking-tight flex items-center gap-1.5">
+              <span>👑</span>
+              <span>CENTUM Pro</span>
+            </h2>
+            <Link
+              href="/pro"
+              className="text-[11px] font-black text-[#7C3AED] dark:text-[#A78BFA] hover:underline"
+            >
+              அனைத்தும் →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <Link
+              href="/pro?section=videos"
+              className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-amber-500/15 border border-amber-400/40 hover:border-amber-500 transition-all shadow-xs flex items-center justify-between group"
+            >
+              <div className="min-w-0">
+                <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-300">
+                  VIDEOS
+                </span>
+                <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                  Masterclass ▶
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </Link>
+
+            <Link
+              href="/pro?section=concept"
+              className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-emerald-500/15 border border-emerald-400/40 hover:border-emerald-500 transition-all shadow-xs flex items-center justify-between group"
+            >
+              <div className="min-w-0">
+                <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300">
+                  CONCEPT
+                </span>
+                <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                  Concept Quiz 🧠
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </Link>
+
+            <Link
+              href="/pro?section=textbooks"
+              className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-sky-500/15 border border-sky-400/40 hover:border-sky-500 transition-all shadow-xs flex items-center justify-between group"
+            >
+              <div className="min-w-0">
+                <span className="text-[10px] font-black uppercase text-sky-700 dark:text-sky-300">
+                  TEXTBOOKS
+                </span>
+                <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                  பாடநூல்கள் 📚
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </Link>
+
+            <Link
+              href="/pro?section=notes"
+              className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/15 border border-pink-400/40 hover:border-pink-500 transition-all shadow-xs flex items-center justify-between group"
+            >
+              <div className="min-w-0">
+                <span className="text-[10px] font-black uppercase text-pink-700 dark:text-pink-300">
+                  NOTES
+                </span>
+                <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                  Study Notes 📝
+                </p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-pink-600 dark:text-pink-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+            </Link>
+          </div>
+        </div>
+
         {/* Demo footnote if env vars missing and mock fallback used */}
         {isDemoContent && (
           <div className="pt-2 text-center">
@@ -245,6 +323,84 @@ export default function HomePage() {
             </button>
           );
         })}
+      </div>
+
+      {/* 4. Pro Hub Feature Tiles (Task 2) */}
+      <div className="pt-2">
+        <div className="flex items-center justify-between mb-2.5 px-1">
+          <h2 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF] tracking-tight flex items-center gap-1.5">
+            <span>👑</span>
+            <span>CENTUM Pro</span>
+          </h2>
+          <Link
+            href="/pro"
+            className="text-[11px] font-black text-[#7C3AED] dark:text-[#A78BFA] hover:underline"
+          >
+            அனைத்தும் →
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2.5">
+          <Link
+            href="/pro?section=videos"
+            className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-amber-500/15 border border-amber-400/40 hover:border-amber-500 transition-all shadow-xs flex items-center justify-between group"
+          >
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase text-amber-700 dark:text-amber-300">
+                VIDEOS
+              </span>
+              <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                Masterclass ▶
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-amber-600 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+
+          <Link
+            href="/pro?section=concept"
+            className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-emerald-500/15 border border-emerald-400/40 hover:border-emerald-500 transition-all shadow-xs flex items-center justify-between group"
+          >
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300">
+                CONCEPT
+              </span>
+              <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                Concept Quiz 🧠
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+
+          <Link
+            href="/pro?section=textbooks"
+            className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-sky-500/15 border border-sky-400/40 hover:border-sky-500 transition-all shadow-xs flex items-center justify-between group"
+          >
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase text-sky-700 dark:text-sky-300">
+                TEXTBOOKS
+              </span>
+              <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                பாடநூல்கள் 📚
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+
+          <Link
+            href="/pro?section=notes"
+            className="p-3 rounded-2xl bg-gradient-to-br from-purple-500/10 to-pink-500/15 border border-pink-400/40 hover:border-pink-500 transition-all shadow-xs flex items-center justify-between group"
+          >
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase text-pink-700 dark:text-pink-300">
+                NOTES
+              </span>
+              <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                Study Notes 📝
+              </p>
+            </div>
+            <ArrowRight className="w-4 h-4 text-pink-600 dark:text-pink-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </div>
       </div>
 
       {/* Demo footnote if env vars missing and mock fallback used */}

@@ -26,6 +26,26 @@ export async function POST(request: Request) {
     const phone = formatWhatsAppPhone(rawPhone);
     const cleanOtp = String(rawOtp).trim();
 
+    // TASK 9: Demo-only OTP verify override (fixed OTP 4321)
+    const normalized10 = phone.slice(-10);
+    if (normalized10 === '9123456780' || normalized10 === '9840123456') {
+      if (cleanOtp === '4321') {
+        return NextResponse.json({
+          ok: true,
+          verified: true,
+          isDemo: true,
+          phone: `+${phone}`,
+          verifiedAt: new Date().toISOString(),
+          message: 'Demo OTP verified successfully',
+        });
+      } else {
+        return NextResponse.json(
+          { ok: false, verified: false, error: 'Invalid verification code' },
+          { status: 400 }
+        );
+      }
+    }
+
     if (cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
       return NextResponse.json(
         { ok: false, error: 'OTP must be exactly 6 digits' },

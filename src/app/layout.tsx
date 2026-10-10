@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 import { AppTopBar } from '@/components/AppTopBar';
+import { DemoBanner } from '@/components/DemoBanner';
 import { BottomNav } from '@/components/BottomNav';
 import { GateSheet } from '@/components/GateSheet';
 import { PaywallSheet } from '@/components/PaywallSheet';
@@ -75,6 +76,7 @@ export default function RootLayout({
         <AppProvider>
           {/* Mobile frame wrapper */}
           <div className="w-full max-w-md min-h-screen flex flex-col bg-[#FAF5FF] dark:bg-[#0F0618] relative pb-20 shadow-2xl sm:border-x sm:border-[#EDE9FE] dark:sm:border-[#3B2063] transition-colors">
+            <DemoBanner />
             <AppTopBar />
             <main className="flex-1 flex flex-col">{children}</main>
             <BottomNav />

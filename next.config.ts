@@ -9,9 +9,9 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: '/pro',
-        destination: '/pricing',
-        permanent: false,
+        source: '/pro-materials',
+        destination: '/pro',
+        permanent: true,
       },
     ];
   },
