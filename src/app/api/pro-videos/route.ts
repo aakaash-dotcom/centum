@@ -3,6 +3,8 @@ import { listMockProVideos } from '@/lib/server-mock-store';
 
 export const dynamic = 'force-dynamic';
 
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel') || '10';
@@ -24,7 +26,11 @@ export async function GET(request: Request) {
       const res = await fetch(externalUrl.toString(), { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        return NextResponse.json(data);
+        return NextResponse.json({
+          ...data,
+          source: 'live',
+          servedFrom: 'gas',
+        });
       }
     } catch (e) {
       console.warn('Apps Script proVideos GET failed, falling back to mock store', e);
@@ -33,7 +39,21 @@ export async function GET(request: Request) {
 
   const videos = listMockProVideos(classLevel, subject, chapter);
   return NextResponse.json(
-    { ok: true, classLevel, subject, chapter, videos },
-    { headers: { 'Cache-Control': 'public, max-age=60', 'x-data-source': 'mock' } }
+    {
+      ok: true,
+      classLevel,
+      subject,
+      chapter,
+      videos,
+      source: 'mock-fallback',
+      servedFrom: 'mock-store',
+    },
+    {
+      headers: {
+        'Cache-Control': 'public, max-age=60',
+        'x-data-source': 'mock-fallback',
+        'x-served-from': 'mock-store',
+      },
+    }
   );
 }

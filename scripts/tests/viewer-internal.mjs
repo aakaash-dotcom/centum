@@ -31,6 +31,10 @@ if (!fs.existsSync(viewerPath)) {
   hasFailure = true;
 } else {
   const viewerCode = fs.readFileSync(viewerPath, 'utf8');
+  const drawerPath = path.join(rootDir, 'src', 'app', 'viewer', 'ViewerInteractiveDrawer.tsx');
+  const drawerCode = fs.existsSync(drawerPath) ? fs.readFileSync(drawerPath, 'utf8') : '';
+  const combinedCode = viewerCode + '\n' + drawerCode;
+
   if (!viewerCode.includes('drive.google.com/file/d/') || !viewerCode.includes('<iframe')) {
     console.error('❌ FAIL: src/app/viewer/page.tsx does not embed Drive preview iframe');
     hasFailure = true;
@@ -38,7 +42,7 @@ if (!fs.existsSync(viewerPath)) {
     console.log('  ✓ /viewer full-bleed iframe embed confirmed');
   }
 
-  if (!viewerCode.includes('மேலும் தாள்கள்') && !viewerCode.includes('siblingPapers')) {
+  if (!combinedCode.includes('மேலும் தாள்கள்') && !combinedCode.includes('siblingPapers')) {
     console.error('❌ FAIL: /viewer missing sibling papers in-page swap section');
     hasFailure = true;
   } else {

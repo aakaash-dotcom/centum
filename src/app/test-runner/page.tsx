@@ -57,6 +57,7 @@ function TestRunnerContent() {
   const [secondsRemaining, setSecondsRemaining] = useState(300);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [isFallbackBackend, setIsFallbackBackend] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showExplanations, setShowExplanations] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Record<number, boolean>>({});
@@ -94,6 +95,12 @@ function TestRunnerContent() {
         return res.json();
       })
       .then((data) => {
+        if (data?.servedFrom && data.servedFrom !== 'gas') {
+          setIsFallbackBackend(true);
+          setIsLoading(false);
+          return;
+        }
+
         const pool: Question[] = data && Array.isArray(data.questions) ? data.questions : [];
 
         // If accessed directly without params, trigger graceful empty state
@@ -367,6 +374,40 @@ function TestRunnerContent() {
   }
 
   // Error State
+  if (isFallbackBackend) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-[#FAF5FF] dark:bg-[#0F0618] min-h-[70vh] animate-fade-in">
+        <div className="max-w-sm w-full bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 border-2 border-amber-500/40 shadow-xl flex flex-col items-center text-center">
+          <span className="text-4xl mb-3">⚠️</span>
+          <h2 className="text-base sm:text-lg font-black text-amber-900 dark:text-amber-300 leading-snug mb-2">
+            தரவு இணைப்பு தற்காலிகமாக இல்லை
+          </h2>
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-6">
+            நேரடி வினாத்தாள் தரவுத்தள இணைப்பு தற்காலிகமாக கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.
+          </p>
+          <div className="flex flex-col gap-2 w-full">
+            <button
+              type="button"
+              onClick={() => {
+                setIsFallbackBackend(false);
+                loadAndFilterQuestions();
+              }}
+              className="w-full min-h-[44px] rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+            >
+              <span>மறுமுயற்சி 🔄</span>
+            </button>
+            <Link
+              href="/tests"
+              className="w-full min-h-[44px] rounded-2xl bg-white dark:bg-[#2A1247] border border-[#DDD6FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#DDD6FE] text-xs font-black flex items-center justify-center gap-2 transition-all"
+            >
+              <span>← தேர்வுகள் பக்கத்திற்குத் திரும்பு</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isError) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#FAF5FF] dark:bg-[#0F0618] min-h-[60vh]">

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { allPapers, isLanguageSubject, detectBilingualPapers, deduplicateBilingualPapers } from '@/lib/data';
+import { allPapers, detectBilingualPapers, deduplicateBilingualPapers } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +12,28 @@ export const normClass = (v: unknown) => {
   return s;
 };
 
-export const normMedium = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'english' | 'tamil'
+export function resolveCanonicalMedium(val: unknown): 'english' | 'tamil' | null {
+  if (!val) return null;
+  const s = String(val).trim().toLowerCase();
+  if (['em', 'english', 'en', 'இங்கிலீஷ்', 'ஆங்கிலம்'].includes(s)) {
+    return 'english';
+  }
+  if (['tm', 'tamil', 'ta', 'தமிழ்'].includes(s)) {
+    return 'tamil';
+  }
+  return null;
+}
+
+export const normMedium = (v: unknown) => {
+  const canon = resolveCanonicalMedium(v);
+  return canon || String(v ?? '').trim().toLowerCase();
+};
+
 export const normCategory = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   return s || 'pyq';
 };
+
 export const normPlan = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   return s === 'pro' || s === 'live' ? s : 'free';
@@ -77,11 +94,18 @@ export async function GET(request: Request) {
               (p: any) => String(p.classLevel || '').replace(/\D/g, '') === targetDigit
             );
           }
+
+          // BUG 3 Fix: Canonical medium filtering without leaking other language papers
           if (medium && medium.toLowerCase() !== 'all') {
-            normalizedPapers = normalizedPapers.filter((p: any) => {
-              const isLang = isLanguageSubject(p.subject);
-              return isLang || p.isBilingual || String(p.medium || '').toLowerCase() === medium.toLowerCase();
-            });
+            const targetMedium = resolveCanonicalMedium(medium);
+            if (targetMedium) {
+              normalizedPapers = normalizedPapers.filter((p: any) => {
+                const paperMed = resolveCanonicalMedium(p.medium);
+                return paperMed === targetMedium;
+              });
+            } else {
+              normalizedPapers = [];
+            }
           }
 
           normalizedPapers = deduplicateBilingualPapers(normalizedPapers);
@@ -90,13 +114,16 @@ export async function GET(request: Request) {
             {
               ...data,
               papers: normalizedPapers,
+              totalCount: normalizedPapers.length,
               source: 'live',
+              servedFrom: 'gas',
             },
             {
               headers: {
                 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
                 'x-data-source': 'live',
-                'x-cache-version': 'cdn-v1',
+                'x-served-from': 'gas',
+                'x-cache-version': 'cdn-v2',
               },
             }
           );
@@ -109,13 +136,14 @@ export async function GET(request: Request) {
           ok: false,
           error: 'backend-unreachable',
           source: 'live-failed',
+          servedFrom: 'none',
         },
         {
           status: 503,
           headers: {
             'Cache-Control': 'no-store',
             'x-data-source': 'live-failed',
-            'x-cache-version': 'cdn-v1',
+            'x-cache-version': 'cdn-v2',
           },
         }
       );
@@ -142,12 +170,17 @@ export async function GET(request: Request) {
       (p) => String(p.classLevel || '').replace(/\D/g, '') === targetDigit
     );
   }
+
   if (medium && medium.toLowerCase() !== 'all') {
-    // Bug #11 & Bilingual: Tamil & English language papers and bilingual papers are common to both mediums
-    papers = papers.filter((p) => {
-      const isLang = isLanguageSubject(p.subject);
-      return isLang || p.isBilingual || String(p.medium || '').toLowerCase() === medium.toLowerCase();
-    });
+    const targetMedium = resolveCanonicalMedium(medium);
+    if (targetMedium) {
+      papers = papers.filter((p: any) => {
+        const paperMed = resolveCanonicalMedium(p.medium);
+        return paperMed === targetMedium;
+      });
+    } else {
+      papers = [];
+    }
   }
 
   papers = deduplicateBilingualPapers(papers);
@@ -156,13 +189,16 @@ export async function GET(request: Request) {
     {
       ok: true,
       papers,
+      totalCount: papers.length,
       source: 'catalog',
+      servedFrom: 'catalog-fallback',
     },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
         'x-data-source': 'catalog',
-        'x-cache-version': 'cdn-v1',
+        'x-served-from': 'catalog-fallback',
+        'x-cache-version': 'cdn-v2',
       },
     }
   );

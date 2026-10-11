@@ -167,7 +167,8 @@ function ProHomeContent() {
   const [livePapers, setLivePapers] = useState<Paper[]>(() => rawPapers as unknown as Paper[]);
   const [papersTotalCount, setPapersTotalCount] = useState<number>(4500);
   const [conceptQuestions, setConceptQuestions] = useState<Question[]>([]);
-  const [conceptTotalCount, setConceptTotalCount] = useState<number>(540);
+  const [lockedChapters, setLockedChapters] = useState<Array<{ chapter: string; count: number; locked: boolean }>>([]);
+  const [conceptTotalCount, setConceptTotalCount] = useState<number>(240);
   const [textbooks, setTextbooks] = useState<TextbookChapter[]>([]);
   const [isLoadingTextbooks, setIsLoadingTextbooks] = useState<boolean>(false);
 
@@ -265,11 +266,17 @@ function ProHomeContent() {
           const qData = await qRes.json();
           if (qData && qData.ok && Array.isArray(qData.questions)) {
             setConceptQuestions(qData.questions);
-            if (qData.totalMatching || qData.questions.length) {
-              setConceptTotalCount(Math.max(540, qData.totalMatching || qData.questions.length));
+            if (Array.isArray(qData.lockedChapters)) {
+              setLockedChapters(qData.lockedChapters);
+            } else {
+              setLockedChapters([]);
             }
+            const poolCount = qData.sheetTotal ?? qData.totalMatching ?? (medium ? 240 : 480);
+            setConceptTotalCount(poolCount);
           } else {
             setConceptQuestions([]);
+            setLockedChapters([]);
+            setConceptTotalCount(medium ? 240 : 480);
           }
         }
       } catch (e) {
@@ -406,6 +413,38 @@ function ProHomeContent() {
       });
     });
 
+    // Free user server-side paywall: append locked chapters 2–8
+    if (!isPro) {
+      if (lockedChapters.length > 0) {
+        lockedChapters.forEach((lc) => {
+          const match = String(lc.chapter).match(/(\d+)/);
+          const chNo = match ? parseInt(match[1], 10) : 2;
+          if (!rows.some((r) => r.chapterNo === chNo)) {
+            rows.push({
+              chapterNo: chNo,
+              title: `Chapter ${chNo}`,
+              count: lc.count || 30,
+              isFreeTeaser: false,
+              questions: [],
+            });
+          }
+        });
+      } else if (rows.length < 8) {
+        // Fallback for standard 8 chapters
+        for (let ch = 2; ch <= 8; ch++) {
+          if (!rows.some((r) => r.chapterNo === ch)) {
+            rows.push({
+              chapterNo: ch,
+              title: `Chapter ${ch}`,
+              count: 30,
+              isFreeTeaser: false,
+              questions: [],
+            });
+          }
+        }
+      }
+    }
+
     rows.sort((a, b) => a.chapterNo - b.chapterNo);
 
     // Free teaser is lowest-numbered chapter with >=10 rows (or ch 1)
@@ -417,7 +456,7 @@ function ProHomeContent() {
     }
 
     return rows;
-  }, [conceptQuestions]);
+  }, [conceptQuestions, lockedChapters, isPro]);
 
   // Class PYQ papers for current subject
   const classPapers = useMemo(() => {
@@ -445,7 +484,7 @@ function ProHomeContent() {
       subject: selectedSubject,
       chapter: chapterTitle,
       videoCount: videos.filter((v) => (v.chapterNo || 1) > 1).length || 2,
-      conceptCount: questionCount || 18,
+      conceptCount: questionCount || 30,
       paperCount: classPapers.length || 12,
     });
     setUpsellModalOpen(true);

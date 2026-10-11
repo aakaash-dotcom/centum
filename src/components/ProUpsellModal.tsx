@@ -38,7 +38,7 @@ export function ProUpsellModal({ isOpen, onClose, context }: ProUpsellModalProps
   const subject = context?.subject || 'Maths';
   const chapter = context?.chapter || 'Current Chapter';
   const vCount = context?.videoCount ?? 2;
-  const cCount = context?.conceptCount ?? 18;
+  const cCount = context?.conceptCount ?? 30;
   const pCount = context?.paperCount ?? 12;
 
   // Base pricing

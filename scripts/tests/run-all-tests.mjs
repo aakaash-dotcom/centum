@@ -30,6 +30,8 @@ const testFiles = [
   { ref: 'concept-gating', script: 'concept-gating.mjs' },
   { ref: 'understand-check-popup', script: 'understand-check-popup.mjs' },
   { ref: 'textbooks-section', script: 'textbooks-section.mjs' },
+  { ref: 'paywall-server-side', script: 'paywall-server-side.mjs' },
+  { ref: 'papers-medium-filter', script: 'papers-medium-filter.mjs' },
 ];
 
 async function runTest(test) {

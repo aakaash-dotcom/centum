@@ -23,21 +23,21 @@ console.log('===============================================================\n')
 const TEST_CASES = [
   {
     name: '10-maths-english-concept',
-    query: 'type=concept&classLevel=10&subject=maths&medium=english&count=all',
+    query: 'type=concept&classLevel=10&subject=maths&medium=english&count=all&plan=pro',
     minTotalMatching: 240,
     minQuestions: 100,
     gasDirectFloor: 240,
   },
   {
     name: '10-maths-tamil-concept',
-    query: 'type=concept&classLevel=10&subject=maths&medium=tamil&count=all',
+    query: 'type=concept&classLevel=10&subject=maths&medium=tamil&count=all&plan=pro',
     minTotalMatching: 240,
     minQuestions: 100,
     gasDirectFloor: 240,
   },
   {
     name: '10-science-tamil-concept',
-    query: 'type=concept&classLevel=10&subject=science&medium=tamil&count=all',
+    query: 'type=concept&classLevel=10&subject=science&medium=tamil&count=all&plan=pro',
     minTotalMatching: 60,
     minQuestions: 50,
     gasDirectFloor: 60,

@@ -5,7 +5,6 @@ import { isLanguageSubject } from '@/lib/data';
 import {
   normalizeSubject,
   isSubjectAllowedForClassStream,
-  getCanonicalSubjects,
 } from '@/data/canonicalSubjects';
 
 export const dynamic = 'force-dynamic';
@@ -19,11 +18,46 @@ export const normClass = (v: unknown) => {
   return s;
 };
 
-export const normMedium = (v: unknown) => String(v ?? '').trim().toLowerCase(); // 'english' | 'tamil'
+export const normMedium = (v: unknown) => {
+  const s = String(v ?? '').trim().toLowerCase();
+  if (['em', 'english', 'en', 'இங்கிலீஷ்', 'ஆங்கிலம்'].includes(s)) return 'english';
+  if (['tm', 'tamil', 'ta', 'தமிழ்'].includes(s)) return 'tamil';
+  return s;
+};
+
 export const normPlan = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   return s === 'pro' || s === 'live' ? s : 'free';
 };
+
+export function isChapterOne(chap: unknown): boolean {
+  if (!chap) return false;
+  const s = String(chap).trim().toLowerCase();
+  if (s === '1' || s === '01') return true;
+  const match = s.match(/(?:chapter|unit|ch|\b)(\d+)\b/i);
+  if (match && parseInt(match[1], 10) === 1) return true;
+  return s.startsWith('1.') || s.startsWith('1 -') || s.startsWith('1:');
+}
+
+export function extractPlanFromRequest(request: Request, searchParams: URLSearchParams): string {
+  // 1. Query parameter
+  const qPlan = searchParams.get('plan') || searchParams.get('userPlan');
+  if (qPlan) return normPlan(qPlan);
+
+  // 2. Custom headers
+  const hPlan =
+    request.headers.get('x-user-plan') ||
+    request.headers.get('x-centum-plan') ||
+    request.headers.get('x-plan');
+  if (hPlan) return normPlan(hPlan);
+
+  // 3. Cookies
+  const cookieHeader = request.headers.get('cookie') || '';
+  const match = cookieHeader.match(/(?:^|;\s*)centum_plan=([^;]+)/);
+  if (match) return normPlan(match[1]);
+
+  return 'free';
+}
 
 interface FilterParams {
   classLevel?: string | null;
@@ -33,10 +67,11 @@ interface FilterParams {
   medium?: string | null;
   stream?: string | null;
   count?: string | null;
+  plan?: string | null;
 }
 
 export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
-  const { classLevel, subject, chapter, type, medium, stream, count } = params;
+  const { classLevel, subject, chapter, type, medium, stream } = params;
   const targetClass = classLevel ? normClass(classLevel) : null;
   const targetClassNum = targetClass ? targetClass.replace(/\D/g, '') : null;
   const targetSubj = subject ? normalizeSubject(subject).toLowerCase() : null;
@@ -53,12 +88,12 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     const qClass = normClass(q.classLevel || q.standard);
     const qClassNum = qClass.replace(/\D/g, '');
 
-    // 1. Class filter (if requested)
+    // 1. Class filter
     if (targetClassNum && qClassNum && qClassNum !== targetClassNum) {
       continue;
     }
 
-    // 2. Canonical subject check (server-enforced, no leakage across streams)
+    // 2. Canonical subject check
     const effectiveClass = qClassNum || targetClassNum || '10';
     const qRawSubj = String(q.subject || '');
     const qSubj = normalizeSubject(qRawSubj);
@@ -68,29 +103,28 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
       continue;
     }
 
-    // Filter by specific requested subject
     if (targetSubj && qSubj.toLowerCase() !== targetSubj && qRawSubj.toLowerCase() !== targetSubj) {
       continue;
     }
 
-    // 3. Medium filter (Tamil and English language subjects apply to both mediums; others strict)
+    // 3. Medium filter
     const qMed = normMedium(q.medium);
-    if (targetMed) {
+    if (targetMed && targetMed !== 'all') {
       const isLang = isLanguageSubject(qRawSubj) || isLanguageSubject(qSubj);
       if (!isLang) {
-        if (qMed !== targetMed && !qMed.startsWith(targetMed.slice(0, 1))) {
+        if (qMed !== targetMed) {
           continue;
         }
       }
     }
 
-    // 4. Type filter (e.g. concept vs oneword; 'all' pools both)
+    // 4. Type filter
     const qType = String(q.type || 'oneword').trim().toLowerCase();
     if (targetType && targetType !== 'all' && qType !== targetType) {
       continue;
     }
 
-    // 5. Chapter filter (bypass for mega-sets / all chapters)
+    // 5. Chapter filter
     if (targetChap && targetChap !== 'all' && !targetChap.includes('all chapters') && !targetChap.includes('practice')) {
       const qChap = String(q.chapter || '').trim().toLowerCase();
       const cleanTargetChap = targetChap.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, '').trim();
@@ -100,7 +134,7 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
       }
     }
 
-    // 6. QUESTION TEXT & OPTIONS VALIDATION (Delimiter collisions & bad rows MUST be skipped, never crash)
+    // 6. Question Text & Options Validation
     const questionText = String(q.question || '').trim();
     if (!questionText) {
       skippedList.push({ id: qId, reason: 'empty_question_text' });
@@ -115,15 +149,13 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     }
 
     if (options.length !== 4 || options.some((opt) => opt.length === 0)) {
-      console.warn(`[QuestionsAPI] Skipping question ${qId}: invalid option count (${options.length})`);
       skippedList.push({ id: qId, reason: `invalid_options_count_${options.length}` });
       continue;
     }
 
-    // 7. ANSWER INDEX VALIDATION (0..3 bounds)
+    // 7. Answer Index Validation
     const ai = Number(q.answerIndex);
     if (isNaN(ai) || ai < 0 || ai > 3 || Math.floor(ai) !== ai) {
-      console.warn(`[QuestionsAPI] Skipping question ${qId}: invalid answerIndex (${q.answerIndex})`);
       skippedList.push({ id: qId, reason: `invalid_answer_index_${q.answerIndex}` });
       continue;
     }
@@ -143,19 +175,8 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     });
   }
 
-  const isCountAll = !count || String(count).toLowerCase() === 'all';
-  const parsedCount = parseInt(count || '0', 10);
-  const maxCount = isCountAll
-    ? validQuestions.length
-    : isNaN(parsedCount) || parsedCount <= 0
-    ? validQuestions.length
-    : Math.min(parsedCount, 1000);
-  const sliced = isCountAll ? validQuestions : validQuestions.slice(0, maxCount);
-
   return {
-    questions: sliced,
-    totalMatching: validQuestions.length,
-    returned: sliced.length,
+    validQuestions,
     skipped: skippedList,
   };
 }
@@ -168,7 +189,10 @@ export async function GET(request: Request) {
   const type = searchParams.get('type');
   const medium = searchParams.get('medium');
   const stream = searchParams.get('stream');
-  const count = searchParams.get('count'); // If omitted or 'all', stream full sheet
+  const count = searchParams.get('count');
+
+  const callerPlan = extractPlanFromRequest(request, searchParams);
+  const isPro = callerPlan === 'pro' || callerPlan === 'live';
 
   const filterParams: FilterParams = {
     classLevel,
@@ -178,10 +202,17 @@ export async function GET(request: Request) {
     medium,
     stream,
     count,
+    plan: callerPlan,
   };
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
+
+  let rawQuestions: any[] | null = null;
+  let upstreamTotal: number | null = null;
+  let upstreamSkipped: any[] = [];
+  let servedFrom: 'gas' | 'census-fallback' | 'mock-fallback' = 'gas';
+  let source: 'live' | 'census-fallback' | 'mock-fallback' = 'live';
 
   if (scriptUrl && secretKey) {
     try {
@@ -194,8 +225,8 @@ export async function GET(request: Request) {
       if (type) externalUrl.searchParams.set('type', type);
       if (medium) externalUrl.searchParams.set('medium', medium);
       if (stream) externalUrl.searchParams.set('stream', stream);
-      // Stream fully from GAS: passthrough count, defaulting to 'all'
-      externalUrl.searchParams.set('count', count || 'all');
+      // Always fetch all questions from GAS upstream so we have true sheet totals and can gate server-side
+      externalUrl.searchParams.set('count', 'all');
 
       const res = await fetch(externalUrl.toString(), {
         cache: 'no-store',
@@ -204,42 +235,20 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.questions)) {
-          const rawSheetQuestions = data.questions;
-          const sanitized = sanitizeAndFilterQuestions(rawSheetQuestions, filterParams);
-          // Preserve real upstream totalMatching from sheet if provided, else use filtered valid count
-          const upstreamTotalMatching = typeof data.totalMatching === 'number' && data.totalMatching > 0
-            ? data.totalMatching
-            : sanitized.totalMatching;
-
-          return NextResponse.json(
-            {
-              ok: true,
-              questions: sanitized.questions,
-              totalMatching: upstreamTotalMatching,
-              sheetTotal: rawSheetQuestions.length,
-              servedFrom: 'gas',
-              source: 'live',
-              skipped: [...(data.skipped || []), ...sanitized.skipped],
-            },
-            {
-              headers: {
-                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
-                'x-data-source': 'live',
-                'x-cache-version': 'cdn-v1',
-              },
-            }
-          );
+          rawQuestions = data.questions;
+          upstreamTotal = typeof data.totalMatching === 'number' ? data.totalMatching : data.questions.length;
+          upstreamSkipped = Array.isArray(data.skipped) ? data.skipped : [];
+          servedFrom = 'gas';
+          source = 'live';
         }
       }
-
-      console.warn('Live Apps Script questions failed or returned non-ok, falling back to mock');
     } catch (e) {
       console.warn('Apps Script questions fetch failed', e);
     }
   }
 
   // If in local development without direct GAS credentials, bridge to deployed live production API
-  if (!scriptUrl || !secretKey) {
+  if (!rawQuestions && (!scriptUrl || !secretKey)) {
     try {
       const prodUrl = new URL('https://centum-omega.vercel.app/api/questions');
       if (classLevel) prodUrl.searchParams.set('classLevel', classLevel);
@@ -248,7 +257,9 @@ export async function GET(request: Request) {
       if (type) prodUrl.searchParams.set('type', type);
       if (medium) prodUrl.searchParams.set('medium', medium);
       if (stream) prodUrl.searchParams.set('stream', stream);
-      prodUrl.searchParams.set('count', count || 'all');
+      // Pass pro plan to prod bridge if caller has pro
+      if (isPro) prodUrl.searchParams.set('plan', 'pro');
+      prodUrl.searchParams.set('count', 'all');
 
       const prodRes = await fetch(prodUrl.toString(), { cache: 'no-store' });
       if (prodRes.ok) {
@@ -260,21 +271,10 @@ export async function GET(request: Request) {
           prodData.servedFrom === 'gas' &&
           (prodData.totalMatching || prodData.questions.length) >= 50
         ) {
-          return NextResponse.json(
-            {
-              ...prodData,
-              sheetTotal: prodData.sheetTotal ?? prodData.questions.length,
-              servedFrom: prodData.servedFrom || 'gas',
-              source: 'live-bridge',
-            },
-            {
-              headers: {
-                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
-                'x-data-source': 'live-bridge',
-                'x-cache-version': 'cdn-v1',
-              },
-            }
-          );
+          rawQuestions = prodData.questions;
+          upstreamTotal = prodData.totalMatching ?? prodData.sheetTotal ?? prodData.questions.length;
+          servedFrom = 'gas';
+          source = 'live';
         }
       }
     } catch (e) {
@@ -283,24 +283,69 @@ export async function GET(request: Request) {
   }
 
   // Fallback to bundled sample questions + census fallback pool ONLY on genuine failure or cold upstream
-  const allPool = [...SAMPLE_QUESTIONS, ...CENSUS_FALLBACK_QUESTIONS];
-  const sanitized = sanitizeAndFilterQuestions(allPool, filterParams);
+  if (!rawQuestions) {
+    rawQuestions = [...SAMPLE_QUESTIONS, ...CENSUS_FALLBACK_QUESTIONS];
+    servedFrom = 'census-fallback';
+    source = 'census-fallback';
+  }
+
+  const { validQuestions, skipped } = sanitizeAndFilterQuestions(rawQuestions, filterParams);
+  const trueSheetTotal = upstreamTotal !== null ? upstreamTotal : validQuestions.length;
+
+  // BLOCKER 2: Enforce Plan Check Server-Side
+  // Free / unauthenticated callers may only receive Chapter 1 rows for concept questions.
+  // Locked chapters return metadata only (chapter, count, locked: true) — NEVER options/answerIndex/explanation.
+  let allowedQuestions: any[] = [];
+  const lockedChaptersMap = new Map<string, number>();
+
+  for (const q of validQuestions) {
+    const isConcept = q.type === 'concept';
+    if (!isConcept || isPro || isChapterOne(q.chapter)) {
+      allowedQuestions.push(q);
+    } else {
+      // Locked concept question from chapters 2–8
+      const chKey = String(q.chapter || 'Chapter 2').trim();
+      lockedChaptersMap.set(chKey, (lockedChaptersMap.get(chKey) || 0) + 1);
+    }
+  }
+
+  const lockedChapters = Array.from(lockedChaptersMap.entries()).map(([ch, cnt]) => ({
+    chapter: ch,
+    count: cnt,
+    locked: true,
+  }));
+
+  // Apply count slicing to allowed questions
+  const isCountAll = !count || String(count).toLowerCase() === 'all';
+  const parsedCount = parseInt(count || '0', 10);
+  const finalQuestions =
+    isCountAll || isNaN(parsedCount) || parsedCount <= 0
+      ? allowedQuestions
+      : allowedQuestions.slice(0, Math.min(parsedCount, 1000));
 
   return NextResponse.json(
     {
       ok: true,
-      questions: sanitized.questions,
-      totalMatching: sanitized.totalMatching,
-      sheetTotal: allPool.length,
-      servedFrom: 'census-fallback',
-      source: 'census-fallback',
-      skipped: sanitized.skipped,
+      questions: finalQuestions,
+      totalMatching: allowedQuestions.length,
+      returnedCount: finalQuestions.length,
+      sheetTotal: trueSheetTotal,
+      plan: callerPlan,
+      isPro,
+      lockedChapters: lockedChapters.length > 0 ? lockedChapters : undefined,
+      servedFrom,
+      source,
+      skipped: [...upstreamSkipped, ...skipped],
     },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
-        'x-data-source': 'census-fallback',
-        'x-cache-version': 'cdn-v1',
+        'Cache-Control':
+          isPro
+            ? 'private, no-cache, no-store, max-age=0'
+            : 'public, s-maxage=60, stale-while-revalidate=240',
+        'x-data-source': source,
+        'x-served-from': servedFrom,
+        'x-cache-version': 'cdn-v2',
       },
     }
   );

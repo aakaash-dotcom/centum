@@ -183,6 +183,7 @@ function TestsContent() {
     openPaywall,
     guestStandard,
     setGuestStandard,
+    showToast,
   } = useApp();
 
   const effectiveStandard = isRegistered
@@ -196,6 +197,7 @@ function TestsContent() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  const [isFallbackBackend, setIsFallbackBackend] = useState(false);
 
   // 1. Quiz Type selection ('all' = Merged pool | 'oneword' | 'concept')
   const [selectedType, setSelectedType] = useState<TestType>('all');
@@ -251,6 +253,11 @@ function TestsContent() {
       fetch(`${base}&type=concept`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ])
       .then(([onewordData, conceptData]) => {
+        const isFallback =
+          (onewordData?.servedFrom && onewordData.servedFrom !== 'gas') ||
+          (conceptData?.servedFrom && conceptData.servedFrom !== 'gas');
+        setIsFallbackBackend(Boolean(isFallback));
+
         const list1: Question[] = Array.isArray(onewordData?.questions) ? onewordData.questions : [];
         const list2: Question[] = Array.isArray(conceptData?.questions) ? conceptData.questions : [];
         const combined: Question[] = [];
@@ -268,6 +275,7 @@ function TestsContent() {
       })
       .catch(() => {
         setIsError(true);
+        setIsFallbackBackend(true);
         setQuestions([]);
         setIsLoading(false);
       });
@@ -441,6 +449,12 @@ function TestsContent() {
       return;
     }
 
+    // Guardrail: Never render fallback content as if it were live; block starting quiz
+    if (isFallbackBackend) {
+      showToast('தரவு இணைப்பு தற்காலிகமாக இல்லை');
+      return;
+    }
+
     if (!isRegistered) {
       openGate(() => {
         showConfirmation(ch);
@@ -488,6 +502,27 @@ function TestsContent() {
 
   return (
     <div className="flex-1 flex flex-col px-4 pt-4 pb-12 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
+      {/* Persistent Slim Fallback Banner (Bug 5) */}
+      {isFallbackBackend && (
+        <div
+          role="alert"
+          data-testid="fallback-offline-banner"
+          className="mb-3 px-3.5 py-2.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-2 shadow-xs"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚠️</span>
+            <span>தரவு இணைப்பு தற்காலிகமாக இல்லை</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchQuestions()}
+            className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors shrink-0"
+          >
+            மறுமுயற்சி 🔄
+          </button>
+        </div>
+      )}
+
       {/* Top Header */}
       <div className="flex items-center justify-between mb-4 gap-2">
         <div>
