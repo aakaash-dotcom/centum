@@ -207,8 +207,8 @@ export const rawTexts = {
       ta: 'இந்தப் பாடத்திற்கான தேர்வுகள் விரைவில் வரும் 👨‍🍳',
     },
     lessonsArrivingSoon: {
-      en: 'Lessons arriving this week 🌱',
-      ta: 'பாடங்கள் இந்த வாரம் சேர்க்கப்படும் 🌱',
+      en: 'Tests arriving soon 🌱',
+      ta: 'இந்தப் பாடத்திற்கான தேர்வுகள் விரைவில் 🌱',
     },
     back: {
       en: 'Back ⬅',

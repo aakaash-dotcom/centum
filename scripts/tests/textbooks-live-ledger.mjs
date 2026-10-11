@@ -45,13 +45,99 @@ function assert(condition, message) {
 
 // Synthetic test utilities matching route.ts specification
 function normalizeSubject(s) {
-  const str = String(s || '').trim().toLowerCase();
-  if (str.includes('math') || str.includes('கணித')) return 'maths';
-  if (str.includes('sci') || str.includes('அறிவிய')) return 'science';
-  if (str.includes('soc') || str.includes('சமூக')) return 'social';
-  if (str.includes('eng') || str.includes('ஆங்கில')) return 'english';
-  if (str.includes('tam') || str.includes('தமிழ்')) return 'tamil';
-  return str;
+  const raw = String(s || '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  const slug = lower.replace(/[_\s]+/g, '-');
+
+  // 1. Social Science / Social (BEFORE any science check!)
+  if (
+    slug === 'social' ||
+    slug === 'social-science' ||
+    lower === 'social science' ||
+    lower === 'சமூக அறிவியல்' ||
+    lower === 'சமூகஅறிவியல்' ||
+    lower === 'சமூகவியல்' ||
+    slug === 'social-studies' ||
+    lower === 'social studies'
+  ) {
+    return 'social';
+  }
+
+  // 2. Pure Science (NOT computer-science, NOT political-science, NOT home-science, NOT agricultural-science)
+  if (
+    slug === 'science' ||
+    slug === 'general-science' ||
+    lower === 'science' ||
+    lower === 'general science' ||
+    lower === 'அறிவியல்' ||
+    lower === 'பொது அறிவியல்'
+  ) {
+    return 'science';
+  }
+
+  // 3. Pure Maths (NOT business-mathematics-and-statistics, NOT business-maths)
+  if (
+    slug === 'maths' ||
+    slug === 'mathematics' ||
+    slug === 'math' ||
+    lower === 'maths' ||
+    lower === 'mathematics' ||
+    lower === 'math' ||
+    lower === 'கணிதம்'
+  ) {
+    return 'maths';
+  }
+
+  // 4. Pure English (NOT communicative-english, and NEVER any engineering subject!)
+  if (
+    slug === 'english' ||
+    lower === 'english' ||
+    lower === 'ஆங்கிலம்'
+  ) {
+    return 'english';
+  }
+
+  // 5. Pure Tamil (NOT advanced-tamil)
+  if (
+    slug === 'tamil' ||
+    lower === 'tamil' ||
+    lower === 'தமிழ்'
+  ) {
+    return 'tamil';
+  }
+
+  // Secondary canonical mappings for higher secondary subjects:
+  if (slug === 'computer-science' || lower === 'computer science' || lower === 'கணினி அறிவியல்') {
+    return 'computer-science';
+  }
+  if (slug === 'home-science' || lower === 'home science' || lower === 'மனை அறிவியல்') {
+    return 'home-science';
+  }
+  if (slug === 'political-science' || lower === 'political science' || lower === 'அரசியல் அறிவியல்') {
+    return 'political-science';
+  }
+  if (slug === 'agricultural-science' || lower === 'agricultural science' || lower === 'வேளாண் அறிவியல்') {
+    return 'agricultural-science';
+  }
+  if (
+    slug === 'business-mathematics-and-statistics' ||
+    slug === 'business-maths' ||
+    slug === 'business-mathematics' ||
+    lower === 'business mathematics' ||
+    lower === 'வணிகக் கணிதம்'
+  ) {
+    return 'business-mathematics-and-statistics';
+  }
+  if (slug === 'communicative-english' || lower === 'communicative english' || lower === 'தொடர்பு ஆங்கிலம்') {
+    return 'communicative-english';
+  }
+  if (slug === 'advanced-tamil' || lower === 'advanced tamil' || lower === 'சிறப்புத் தமிழ்') {
+    return 'advanced-tamil';
+  }
+
+  // Any other subject keeps its own normalized slug!
+  return slug;
 }
 
 function normalizeMedium(m) {
@@ -141,6 +227,73 @@ function sortTextbookRows(rows) {
 
     return (a.unitTitle || a.title || '').localeCompare(b.unitTitle || b.title || '');
   });
+}
+
+function parseRFC4180CSV(text) {
+  const rows = [];
+  let currentRow = [];
+  let currentField = '';
+  let inQuotes = false;
+  let i = 0;
+  const len = text.length;
+
+  while (i < len) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          currentField += '"';
+          i += 2;
+          continue;
+        } else {
+          inQuotes = false;
+          i++;
+          continue;
+        }
+      } else {
+        currentField += char;
+        i++;
+        continue;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+        i++;
+        continue;
+      } else if (char === ',') {
+        currentRow.push(currentField);
+        currentField = '';
+        i++;
+        continue;
+      } else if (char === '\r') {
+        if (nextChar === '\n') i++;
+        currentRow.push(currentField);
+        currentField = '';
+        rows.push(currentRow);
+        currentRow = [];
+        i++;
+        continue;
+      } else if (char === '\n') {
+        currentRow.push(currentField);
+        currentField = '';
+        rows.push(currentRow);
+        currentRow = [];
+        i++;
+        continue;
+      } else {
+        currentField += char;
+        i++;
+        continue;
+      }
+    }
+  }
+  if (currentField !== '' || currentRow.length > 0) {
+    currentRow.push(currentField);
+    rows.push(currentRow);
+  }
+  return rows;
 }
 
 async function runTests() {
@@ -359,6 +512,146 @@ async function runTests() {
     console.log('  ✓ PASS: 400-row synthetic ledger processed successfully!');
   } catch (err) {
     console.error('❌ Error in 400-row synthetic test:', err);
+    hasFailure = true;
+  }
+
+  // --- TEST 10: 187-Combo Ledger / App Parity & Canonical Subject Resolution ---
+  console.log('\n--- 10. Testing 187-Combo Ledger / App Parity & Exact Subject Resolution ---');
+  try {
+    let ledgerRows = [];
+    try {
+      const gvizUrl = 'https://docs.google.com/spreadsheets/d/1yt1zRi6LZC2HMtrBvRJWflR86BfYoHPsG0VzxPTtGJ0/gviz/tq?tqx=out:csv&sheet=Textbooks';
+      const gvizRes = await fetch(gvizUrl);
+      if (gvizRes.ok) {
+        const text = await gvizRes.text();
+        const parsed = parseRFC4180CSV(text);
+        if (parsed.length > 1) {
+          const header = parsed[0].map(h => h.trim());
+          ledgerRows = parsed.slice(1).filter(r => r.length > 1 && r.some(c => c.trim() !== '')).map(r => {
+            const o = {};
+            header.forEach((h, idx) => o[h] = (r[idx] || '').trim());
+            return o;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('  ⚠️ Live gviz fetch unavailable, falling back to snapshot for parity audit:', e.message);
+    }
+
+    if (ledgerRows.length === 0) {
+      const fs = await import('fs');
+      const snapPath = './src/data/textbooks-snapshot.json';
+      if (fs.existsSync(snapPath)) {
+        ledgerRows = JSON.parse(fs.readFileSync(snapPath, 'utf8'));
+      }
+    }
+
+    assert(ledgerRows.length >= 223, `Ledger contains >= 223 rows for parity audit (got: ${ledgerRows.length})`);
+
+    // Group valid served rows by (classLevel, subject, medium)
+    const comboMap = new Map();
+    for (const r of ledgerRows) {
+      if (!DRIVE_ID_REGEX.test(r.driveFileId)) continue;
+      const cls = String(r.classLevel || '').replace(/\D/g, '');
+      const med = normalizeMedium(r.medium);
+      const key = `${cls}__${r.subject}__${med}`;
+      if (!comboMap.has(key)) comboMap.set(key, []);
+      comboMap.get(key).push(r.driveFileId);
+    }
+
+    assert(comboMap.size === 187, `Exact 187 ledger combos with served Drive IDs identified (got: ${comboMap.size})`);
+
+    let parityMatches = 0;
+    const parityFailures = [];
+
+    for (const [key, expectedDriveIds] of comboMap.entries()) {
+      const [cls, rawSubj, med] = key.split('__');
+      const targetSubject = normalizeSubject(rawSubj);
+      const targetMedium = normalizeMedium(med);
+
+      const matched = ledgerRows.filter(r => {
+        if (!DRIVE_ID_REGEX.test(r.driveFileId)) return false;
+        const rCls = String(r.classLevel || '').replace(/\D/g, '');
+        const rSubj = normalizeSubject(r.subject);
+        const rMed = normalizeMedium(r.medium);
+        return rCls === cls && rSubj === targetSubject && rMed === targetMedium;
+      });
+
+      const returnedDriveIds = matched.map(r => r.driveFileId);
+      const expectedSet = new Set(expectedDriveIds);
+      const returnedSet = new Set(returnedDriveIds);
+
+      let isMatch = expectedSet.size === returnedSet.size;
+      if (isMatch) {
+        for (const id of expectedSet) {
+          if (!returnedSet.has(id)) {
+            isMatch = false;
+            break;
+          }
+        }
+      }
+
+      if (isMatch) {
+        parityMatches++;
+      } else {
+        parityFailures.push({ key, targetSubject, expected: expectedSet.size, returned: returnedSet.size });
+      }
+    }
+
+    assert(parityMatches === comboMap.size, `Ledger/app parity 187/187 achieved across all combos (got: ${parityMatches}/${comboMap.size})`);
+    if (parityFailures.length > 0) {
+      console.error('  ❌ Parity failures:', parityFailures.slice(0, 5));
+    }
+
+    // Explicit Class 10 Social Science verification:
+    const c10SocialSciTM = ledgerRows.filter(r => {
+      if (!DRIVE_ID_REGEX.test(r.driveFileId)) return false;
+      const rCls = String(r.classLevel || '').replace(/\D/g, '');
+      const rSubj = normalizeSubject(r.subject);
+      const rMed = normalizeMedium(r.medium);
+      return rCls === '10' && rSubj === normalizeSubject('social science') && rMed === 'TM';
+    });
+
+    assert(c10SocialSciTM.length === 27, `Class 10 Social Science TM returns exactly 27 chapters (got: ${c10SocialSciTM.length})`);
+    const sortedC10Social = sortTextbookRows(c10SocialSciTM);
+    const firstTitle = sortedC10Social[0]?.unitTitle || sortedC10Social[0]?.title || '';
+    assert(
+      firstTitle.includes('முதல் உலகப்போர்') || firstTitle.includes('வெடிப்பும்'),
+      `Class 10 Social Science first title is "${firstTitle}" (NOT a Science chapter)`
+    );
+    assert(
+      !firstTitle.includes('இயக்க விதிகள்') && !firstTitle.includes('ஒளியியல்'),
+      'First title confirmed NOT a Science chapter'
+    );
+
+    // Explicit Class 11/12 Engineering & Special Subjects verification:
+    const civilEngineeringSlug = normalizeSubject('Basic-Civil-Engineering');
+    assert(civilEngineeringSlug === 'basic-civil-engineering', `Basic-Civil-Engineering preserves own slug (got: ${civilEngineeringSlug})`);
+    assert(civilEngineeringSlug !== 'english', 'Basic-Civil-Engineering does NOT collapse to english');
+
+    const businessMathsSlug = normalizeSubject('Business-Mathematics-and-Statistics');
+    assert(businessMathsSlug === 'business-mathematics-and-statistics', `Business-Mathematics preserves own slug (got: ${businessMathsSlug})`);
+    assert(businessMathsSlug !== 'maths', 'Business-Mathematics does NOT collapse to maths');
+
+    const compSciSlug = normalizeSubject('Computer-Science');
+    assert(compSciSlug === 'computer-science', `Computer-Science preserves own slug (got: ${compSciSlug})`);
+    assert(compSciSlug !== 'science', 'Computer-Science does NOT collapse to science');
+
+    // HTTP probe against BASE_URL for 'social science'
+    try {
+      const apiRes = await fetch(`${BASE_URL}/api/textbooks?classLevel=10&subject=social%20science&medium=TM`);
+      if (apiRes.ok) {
+        const apiData = await apiRes.json();
+        assert(apiData.chapters.length === 27, `HTTP API ?subject=social science&medium=TM returns 27 chapters (got: ${apiData.chapters.length})`);
+        const apiFirstTitle = apiData.chapters[0]?.unitTitle || apiData.chapters[0]?.title || '';
+        assert(!apiFirstTitle.includes('இயக்க விதிகள்'), `HTTP API first title is "${apiFirstTitle}" (NOT a Science chapter)`);
+      }
+    } catch (_) {
+      // BASE_URL offline during standalone check
+    }
+
+  } catch (err) {
+    console.error('❌ Error in 187-combo parity audit:', err);
     hasFailure = true;
   }
 

@@ -41,7 +41,8 @@ async function runTest(test) {
     const child = spawn(process.execPath, [fullPath], {
       env: {
         ...process.env,
-        TARGET_URL: process.env.TARGET_URL || 'http://localhost:3000',
+        TARGET_URL: process.env.TARGET_URL || process.env.TEST_BASE_URL || 'http://localhost:3000',
+        TEST_BASE_URL: process.env.TEST_BASE_URL || process.env.TARGET_URL || 'http://localhost:3000',
       },
       stdio: 'inherit',
     });

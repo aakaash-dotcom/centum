@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { allPapers, detectBilingualPapers, deduplicateBilingualPapers } from '@/lib/data';
+import { allPapers, detectBilingualPapers, deduplicateBilingualPapers, normalizeSubjectName } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +52,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel');
   const medium = searchParams.get('medium');
+  const subject = searchParams.get('subject');
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
@@ -106,6 +107,15 @@ export async function GET(request: Request) {
             } else {
               normalizedPapers = [];
             }
+          }
+
+          // R9.3: Filter by subject when supplied
+          if (subject && subject.toLowerCase() !== 'all') {
+            const targetSubj = normalizeSubjectName(subject).toLowerCase();
+            normalizedPapers = normalizedPapers.filter((p: any) => {
+              const pSubj = normalizeSubjectName(String(p.subject || '')).toLowerCase();
+              return pSubj === targetSubj;
+            });
           }
 
           normalizedPapers = deduplicateBilingualPapers(normalizedPapers);
@@ -181,6 +191,15 @@ export async function GET(request: Request) {
     } else {
       papers = [];
     }
+  }
+
+  // R9.3: Filter by subject when supplied
+  if (subject && subject.toLowerCase() !== 'all') {
+    const targetSubj = normalizeSubjectName(subject).toLowerCase();
+    papers = papers.filter((p: any) => {
+      const pSubj = normalizeSubjectName(String(p.subject || '')).toLowerCase();
+      return pSubj === targetSubj;
+    });
   }
 
   papers = deduplicateBilingualPapers(papers);

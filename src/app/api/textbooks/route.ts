@@ -156,16 +156,117 @@ export function parseRFC4180CSV(text: string): string[][] {
 }
 
 /**
- * Canonical subject resolver (slugs matching papers/pro: maths|science|social|english|tamil)
+ * Canonical subject resolver (exact canonical match first, slug fallback)
+ * Resolves the full canonical string first, then falls back to specific slugs.
+ * - Exact canonical matches first:
+ *   - 'social' | 'social-science' | 'social science' | 'சமூக அறிவியல்' | 'சமூகஅறிவியல்' | 'சமூகவியல்' | 'social-studies' -> 'social'
+ *     (MUST happen before any 'science' check to prevent Class 10 social science returning science books!)
+ *   - 'science' | 'general-science' | 'general science' | 'அறிவியல்' | 'பொது அறிவியல்' -> 'science'
+ *     (must NOT match computer-science, political-science, home-science, etc.)
+ *   - 'maths' | 'mathematics' | 'math' | 'கணிதம்' -> 'maths'
+ *     (must NOT match business-mathematics-and-statistics)
+ *   - 'english' | 'ஆங்கிலம்' -> 'english'
+ *     (must NEVER match any engineering subjects like basic-civil-engineering!)
+ *   - 'tamil' | 'தமிழ்' -> 'tamil'
+ *     (must NOT match advanced-tamil)
+ * - Secondary canonical mappings for higher secondary:
+ *   - computer-science, home-science, political-science, agricultural-science, business-mathematics-and-statistics, communicative-english, advanced-tamil
+ * - Any subject not in the canonical core map keeps its own kebab-cased slug (e.g. basic-civil-engineering)
  */
 export function normalizeSubject(s: string): string {
-  const str = String(s || '').trim().toLowerCase();
-  if (str.includes('math') || str.includes('கணித')) return 'maths';
-  if (str.includes('sci') || str.includes('அறிவிய')) return 'science';
-  if (str.includes('soc') || str.includes('சமூக')) return 'social';
-  if (str.includes('eng') || str.includes('ஆங்கில')) return 'english';
-  if (str.includes('tam') || str.includes('தமிழ்')) return 'tamil';
-  return str;
+  const raw = String(s || '').trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  const slug = lower.replace(/[_\s]+/g, '-');
+
+  // 1. Social Science / Social (BEFORE any science check!)
+  if (
+    slug === 'social' ||
+    slug === 'social-science' ||
+    lower === 'social science' ||
+    lower === 'சமூக அறிவியல்' ||
+    lower === 'சமூகஅறிவியல்' ||
+    lower === 'சமூகவியல்' ||
+    slug === 'social-studies' ||
+    lower === 'social studies'
+  ) {
+    return 'social';
+  }
+
+  // 2. Pure Science (NOT computer-science, NOT political-science, NOT home-science, NOT agricultural-science)
+  if (
+    slug === 'science' ||
+    slug === 'general-science' ||
+    lower === 'science' ||
+    lower === 'general science' ||
+    lower === 'அறிவியல்' ||
+    lower === 'பொது அறிவியல்'
+  ) {
+    return 'science';
+  }
+
+  // 3. Pure Maths (NOT business-mathematics-and-statistics, NOT business-maths)
+  if (
+    slug === 'maths' ||
+    slug === 'mathematics' ||
+    slug === 'math' ||
+    lower === 'maths' ||
+    lower === 'mathematics' ||
+    lower === 'math' ||
+    lower === 'கணிதம்'
+  ) {
+    return 'maths';
+  }
+
+  // 4. Pure English (NOT communicative-english, and NEVER any engineering subject!)
+  if (
+    slug === 'english' ||
+    lower === 'english' ||
+    lower === 'ஆங்கிலம்'
+  ) {
+    return 'english';
+  }
+
+  // 5. Pure Tamil (NOT advanced-tamil)
+  if (
+    slug === 'tamil' ||
+    lower === 'tamil' ||
+    lower === 'தமிழ்'
+  ) {
+    return 'tamil';
+  }
+
+  // Secondary canonical mappings for higher secondary subjects:
+  if (slug === 'computer-science' || lower === 'computer science' || lower === 'கணினி அறிவியல்') {
+    return 'computer-science';
+  }
+  if (slug === 'home-science' || lower === 'home science' || lower === 'மனை அறிவியல்') {
+    return 'home-science';
+  }
+  if (slug === 'political-science' || lower === 'political science' || lower === 'அரசியல் அறிவியல்') {
+    return 'political-science';
+  }
+  if (slug === 'agricultural-science' || lower === 'agricultural science' || lower === 'வேளாண் அறிவியல்') {
+    return 'agricultural-science';
+  }
+  if (
+    slug === 'business-mathematics-and-statistics' ||
+    slug === 'business-maths' ||
+    slug === 'business-mathematics' ||
+    lower === 'business mathematics' ||
+    lower === 'வணிகக் கணிதம்'
+  ) {
+    return 'business-mathematics-and-statistics';
+  }
+  if (slug === 'communicative-english' || lower === 'communicative english' || lower === 'தொடர்பு ஆங்கிலம்') {
+    return 'communicative-english';
+  }
+  if (slug === 'advanced-tamil' || lower === 'advanced tamil' || lower === 'சிறப்புத் தமிழ்') {
+    return 'advanced-tamil';
+  }
+
+  // Any other subject keeps its own normalized slug!
+  return slug;
 }
 
 /**

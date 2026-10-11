@@ -375,7 +375,7 @@ function ClassPageContent() {
 
     const navigateToViewer = () => {
       const query = new URLSearchParams({
-        id: paper.id,
+        id: paper.pdfUrl || paper.driveFileId || paper.id,
         fileId: paper.pdfUrl || paper.driveFileId || '',
         title: paper.title,
         subject: normalizeSubject(paper.subject),
