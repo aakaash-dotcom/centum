@@ -54,6 +54,7 @@ interface ProMaterialItem {
 }
 
 interface TextbookChapter {
+  id?: string;
   unitNo: number;
   title: string;
   taTitle?: string;
@@ -1014,74 +1015,77 @@ function ProHomeContent() {
             </div>
           ) : (
             <div className="space-y-2">
-              {/* FULL-book row at the section top (Task 8) */}
+              {/* FULL-book row + Unit Chapters / Term Volumes (Task 8) */}
               {(() => {
                 const fullBook = textbooks.find((t) => t.isFullBook || t.unitNo === 0);
-                if (!fullBook) return null;
                 return (
-                  <div
-                    key="full-book-top"
-                    className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-[#7C3AED]/10 to-amber-500/15 border-2 border-[#7C3AED]/30 hover:border-[#7C3AED] transition-all flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#7C3AED] to-[#9333EA] text-white flex items-center justify-center shrink-0 shadow-xs text-base">
-                        📚
-                      </div>
-                      <div className="min-w-0">
-                        <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-[#7C3AED] text-white">
-                          FULL BOOK
-                        </span>
-                        <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight mt-0.5">
-                          {fullBook.title}
-                        </h4>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          {fullBook.pages} பக்கங்கள் · TN State Board
-                        </span>
-                      </div>
-                    </div>
+                  <>
+                    {fullBook && (
+                      <div
+                        key="full-book-top"
+                        className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-[#7C3AED]/10 to-amber-500/15 border-2 border-[#7C3AED]/30 hover:border-[#7C3AED] transition-all flex items-center justify-between gap-3"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#7C3AED] to-[#9333EA] text-white flex items-center justify-center shrink-0 shadow-xs text-base">
+                            📚
+                          </div>
+                          <div className="min-w-0">
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-[#7C3AED] text-white">
+                              FULL BOOK
+                            </span>
+                            <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight mt-0.5">
+                              {fullBook.title}
+                            </h4>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                              {fullBook.pages} பக்கங்கள் · TN State Board
+                            </span>
+                          </div>
+                        </div>
 
-                    <Link
-                      href={`/viewer?page=textbooks&id=${encodeURIComponent(fullBook.driveFileId)}&title=${encodeURIComponent(fullBook.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
-                      className="px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shrink-0 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>திறக்க</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </div>
+                        <Link
+                          href={`/viewer?page=textbooks&id=${encodeURIComponent(fullBook.driveFileId)}&title=${encodeURIComponent(fullBook.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
+                          className="px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shrink-0 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>திறக்க</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Unit Chapters / Term Volumes */}
+                    {textbooks
+                      .filter((t) => t !== fullBook)
+                      .map((unit) => (
+                        <div
+                          key={`unit-${unit.id || unit.unitNo || unit.title}`}
+                          className="p-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="w-6 h-6 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black flex items-center justify-center shrink-0">
+                              {unit.unitNo > 0 ? unit.unitNo : '📖'}
+                            </span>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
+                                {unit.title}
+                              </h4>
+                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                {unit.pages} பக்கங்கள்
+                              </span>
+                            </div>
+                          </div>
+
+                          <Link
+                            href={`/viewer?page=textbooks&id=${encodeURIComponent(unit.driveFileId)}&title=${encodeURIComponent(unit.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
+                            className="px-2.5 py-1 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] hover:bg-[#7C3AED] hover:text-white text-xs font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer"
+                          >
+                            <span>View</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </Link>
+                        </div>
+                      ))}
+                  </>
                 );
               })()}
-
-              {/* Unit Chapters */}
-              {textbooks
-                .filter((t) => !t.isFullBook && t.unitNo > 0)
-                .map((unit) => (
-                  <div
-                    key={`unit-${unit.unitNo}`}
-                    className="p-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-6 h-6 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black flex items-center justify-center shrink-0">
-                        {unit.unitNo}
-                      </span>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
-                          {unit.title}
-                        </h4>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          {unit.pages} பக்கங்கள்
-                        </span>
-                      </div>
-                    </div>
-
-                    <Link
-                      href={`/viewer?page=textbooks&id=${encodeURIComponent(unit.driveFileId)}&title=${encodeURIComponent(unit.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
-                      className="px-2.5 py-1 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] hover:bg-[#7C3AED] hover:text-white text-xs font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>View</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-                ))}
             </div>
           )}
         </div>

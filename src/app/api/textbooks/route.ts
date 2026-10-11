@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import textbookSnapshot from '@/data/textbooks-snapshot.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,364 +15,474 @@ export interface TextbookItem {
   driveFileId: string;
   pdfUrl?: string;
   isFullBook?: boolean;
+  type?: string;
+  unitTitle?: string;
+  pageStart?: number;
+  pageEnd?: number;
+  pageCount?: number;
+  sizeMB?: number;
+  sourceUrl?: string;
+  qcNote?: string;
+  updatedAt?: string;
+  reason?: string;
 }
 
-// Built-in official TN Board Class 10 Textbook ledger seed
-const SEED_TEXTBOOKS: TextbookItem[] = [
-  // --- Class 10 Maths (Tamil Medium) ---
-  {
-    id: 'tb-10-maths-tm-full',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 0,
-    title: '10-ஆம் வகுப்பு கணிதம் முழு பாடநூல் (Official Full Textbook PDF)',
-    tamilTitle: 'பத்தாம் வகுப்பு கணிதம் — முழுப் புத்தகம்',
-    pages: 384,
-    driveFileId: '1M-FULL-BOOK-MATHS-TM-2025',
-    isFullBook: true,
-  },
-  {
-    id: 'tb-10-maths-tm-ch1',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 1,
-    title: 'அலகு 1 · உறவுகளும் சார்புகளும் (Relations and Functions)',
-    tamilTitle: 'அலகு 1: உறவுகளும் சார்புகளும்',
-    pages: 36,
-    driveFileId: '1M-TM-CH1-RELATIONS-FUNC',
-  },
-  {
-    id: 'tb-10-maths-tm-ch2',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 2,
-    title: 'அலகு 2 · எண்களும் தொடர்வரிசைகளும் (Numbers and Sequences)',
-    tamilTitle: 'அலகு 2: எண்களும் தொடர்வரிசைகளும்',
-    pages: 48,
-    driveFileId: '1M-TM-CH2-NUMBERS-SEQ',
-  },
-  {
-    id: 'tb-10-maths-tm-ch3',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 3,
-    title: 'அலகு 3 · இயற்கணிதம் (Algebra)',
-    tamilTitle: 'அலகு 3: இயற்கணிதம்',
-    pages: 72,
-    driveFileId: '1M-TM-CH3-ALGEBRA-FULL',
-  },
-  {
-    id: 'tb-10-maths-tm-ch4',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 4,
-    title: 'அலகு 4 · வடிவியல் (Geometry)',
-    tamilTitle: 'அலகு 4: வடிவியல்',
-    pages: 44,
-    driveFileId: '1M-TM-CH4-GEOMETRY-UNIT',
-  },
-  {
-    id: 'tb-10-maths-tm-ch5',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 5,
-    title: 'அலகு 5 · ஆயத்தொலை வடிவியல் (Coordinate Geometry)',
-    tamilTitle: 'அலகு 5: ஆயத்தொலை வடிவியல்',
-    pages: 38,
-    driveFileId: '1M-TM-CH5-COORD-GEOMETRY',
-  },
-  {
-    id: 'tb-10-maths-tm-ch6',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 6,
-    title: 'அலகு 6 · முக்கோணவியல் (Trigonometry)',
-    tamilTitle: 'அலகு 6: முக்கோணவியல்',
-    pages: 32,
-    driveFileId: '1M-TM-CH6-TRIGONOMETRY',
-  },
-  {
-    id: 'tb-10-maths-tm-ch7',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 7,
-    title: 'அலகு 7 · அளவியல் (Mensuration)',
-    tamilTitle: 'அலகு 7: அளவியல்',
-    pages: 40,
-    driveFileId: '1M-TM-CH7-MENSURATION',
-  },
-  {
-    id: 'tb-10-maths-tm-ch8',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'tamil',
-    unitNo: 8,
-    title: 'அலகு 8 · புள்ளியியலும் நிகழ்தகவும் (Statistics & Probability)',
-    tamilTitle: 'அலகு 8: புள்ளியியலும் நிகழ்தகவும்',
-    pages: 42,
-    driveFileId: '1M-TM-CH8-STATS-PROB',
-  },
+export interface RawTextbookRow {
+  classLevel: string;
+  subject: string;
+  medium: string;
+  type: string;
+  unitNo: string;
+  unitTitle: string;
+  pageStart: string;
+  pageEnd: string;
+  pageCount: string;
+  driveFileId: string;
+  fileUrl: string;
+  sizeMB: string;
+  sourceUrl: string;
+  qcNote: string;
+  updatedAt: string;
+  [key: string]: string;
+}
 
-  // --- Class 10 Maths (English Medium) ---
-  {
-    id: 'tb-10-maths-em-full',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 0,
-    title: 'Class 10 Mathematics Complete Official Textbook PDF',
-    pages: 384,
-    driveFileId: '1M-FULL-BOOK-MATHS-EM-2025',
-    isFullBook: true,
-  },
-  {
-    id: 'tb-10-maths-em-ch1',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 1,
-    title: 'Unit 1 · Relations and Functions',
-    pages: 36,
-    driveFileId: '1M-EM-CH1-RELATIONS-FUNC',
-  },
-  {
-    id: 'tb-10-maths-em-ch2',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 2,
-    title: 'Unit 2 · Numbers and Sequences',
-    pages: 48,
-    driveFileId: '1M-EM-CH2-NUMBERS-SEQ',
-  },
-  {
-    id: 'tb-10-maths-em-ch3',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 3,
-    title: 'Unit 3 · Algebra',
-    pages: 72,
-    driveFileId: '1M-EM-CH3-ALGEBRA-FULL',
-  },
-  {
-    id: 'tb-10-maths-em-ch4',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 4,
-    title: 'Unit 4 · Geometry',
-    pages: 44,
-    driveFileId: '1M-EM-CH4-GEOMETRY-UNIT',
-  },
-  {
-    id: 'tb-10-maths-em-ch5',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 5,
-    title: 'Unit 5 · Coordinate Geometry',
-    pages: 38,
-    driveFileId: '1M-EM-CH5-COORD-GEOMETRY',
-  },
-  {
-    id: 'tb-10-maths-em-ch6',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 6,
-    title: 'Unit 6 · Trigonometry',
-    pages: 32,
-    driveFileId: '1M-EM-CH6-TRIGONOMETRY',
-  },
-  {
-    id: 'tb-10-maths-em-ch7',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 7,
-    title: 'Unit 7 · Mensuration',
-    pages: 40,
-    driveFileId: '1M-EM-CH7-MENSURATION',
-  },
-  {
-    id: 'tb-10-maths-em-ch8',
-    classLevel: '10',
-    subject: 'maths',
-    medium: 'english',
-    unitNo: 8,
-    title: 'Unit 8 · Statistics and Probability',
-    pages: 42,
-    driveFileId: '1M-EM-CH8-STATS-PROB',
-  },
+const SHEET_ID = process.env.TEXTBOOKS_SHEET_ID || '1yt1zRi6LZC2HMtrBvRJWflR86BfYoHPsG0VzxPTtGJ0';
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=Textbooks`;
 
-  // --- Class 10 Science (Tamil & English) ---
-  {
-    id: 'tb-10-science-tm-full',
-    classLevel: '10',
-    subject: 'science',
-    medium: 'tamil',
-    unitNo: 0,
-    title: '10-ஆம் வகுப்பு அறிவியல் முழு பாடநூல்',
-    tamilTitle: 'பத்தாம் வகுப்பு அறிவியல் — முழுப் புத்தகம்',
-    pages: 352,
-    driveFileId: '1S-FULL-BOOK-SCI-TM',
-    isFullBook: true,
-  },
-  {
-    id: 'tb-10-science-tm-ch1',
-    classLevel: '10',
-    subject: 'science',
-    medium: 'tamil',
-    unitNo: 1,
-    title: 'அலகு 1 · இயக்க விதிகள் (Laws of Motion)',
-    pages: 18,
-    driveFileId: '1S-TM-CH1-LAWS-MOTION',
-  },
-  {
-    id: 'tb-10-science-tm-ch2',
-    classLevel: '10',
-    subject: 'science',
-    medium: 'tamil',
-    unitNo: 2,
-    title: 'அலகு 2 · ஒளியியல் (Optics)',
-    pages: 20,
-    driveFileId: '1S-TM-CH2-OPTICS',
-  },
-  {
-    id: 'tb-10-science-em-full',
-    classLevel: '10',
-    subject: 'science',
-    medium: 'english',
-    unitNo: 0,
-    title: 'Class 10 Science Complete Official Textbook PDF',
-    pages: 352,
-    driveFileId: '1S-FULL-BOOK-SCI-EM',
-    isFullBook: true,
-  },
-  {
-    id: 'tb-10-science-em-ch1',
-    classLevel: '10',
-    subject: 'science',
-    medium: 'english',
-    unitNo: 1,
-    title: 'Unit 1 · Laws of Motion',
-    pages: 18,
-    driveFileId: '1S-EM-CH1-LAWS-MOTION',
-  },
+export const EXPECTED_HEADERS = [
+  'classLevel',
+  'subject',
+  'medium',
+  'type',
+  'unitNo',
+  'unitTitle',
+  'pageStart',
+  'pageEnd',
+  'pageCount',
+  'driveFileId',
+  'fileUrl',
+  'sizeMB',
+  'sourceUrl',
+  'qcNote',
+  'updatedAt',
 ];
+
+export const DRIVE_ID_REGEX = /^[A-Za-z0-9_-]{25,}$/;
+const CACHE_TTL_MS = 600000; // 10 minutes
+
+// In-memory cache for live tracker data
+interface CachedTrackerData {
+  timestamp: number;
+  rawRows: RawTextbookRow[];
+}
+
+let inMemoryCache: CachedTrackerData | null = null;
+
+/**
+ * RFC-4180 compliant CSV parser.
+ * Correctly handles:
+ *  - Commas within quoted fields
+ *  - Escaped quotes ("")
+ *  - CRLF and LF newlines
+ *  - Multiline fields inside quotes
+ */
+export function parseRFC4180CSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = '';
+  let inQuotes = false;
+  let i = 0;
+  const len = text.length;
+
+  while (i < len) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (nextChar === '"') {
+          currentField += '"';
+          i += 2;
+          continue;
+        } else {
+          inQuotes = false;
+          i++;
+          continue;
+        }
+      } else {
+        currentField += char;
+        i++;
+        continue;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+        i++;
+        continue;
+      } else if (char === ',') {
+        currentRow.push(currentField);
+        currentField = '';
+        i++;
+        continue;
+      } else if (char === '\r') {
+        if (nextChar === '\n') i++;
+        currentRow.push(currentField);
+        currentField = '';
+        rows.push(currentRow);
+        currentRow = [];
+        i++;
+        continue;
+      } else if (char === '\n') {
+        currentRow.push(currentField);
+        currentField = '';
+        rows.push(currentRow);
+        currentRow = [];
+        i++;
+        continue;
+      } else {
+        currentField += char;
+        i++;
+        continue;
+      }
+    }
+  }
+
+  if (currentField !== '' || currentRow.length > 0) {
+    currentRow.push(currentField);
+    rows.push(currentRow);
+  }
+
+  return rows;
+}
+
+/**
+ * Canonical subject resolver (slugs matching papers/pro: maths|science|social|english|tamil)
+ */
+export function normalizeSubject(s: string): string {
+  const str = String(s || '').trim().toLowerCase();
+  if (str.includes('math') || str.includes('கணித')) return 'maths';
+  if (str.includes('sci') || str.includes('அறிவிய')) return 'science';
+  if (str.includes('soc') || str.includes('சமூக')) return 'social';
+  if (str.includes('eng') || str.includes('ஆங்கில')) return 'english';
+  if (str.includes('tam') || str.includes('தமிழ்')) return 'tamil';
+  return str;
+}
+
+/**
+ * Canonical medium resolver:
+ * EM | english | en | ஆங்கிலம் -> EM
+ * TM | tamil | ta | தமிழ் -> TM
+ */
+export function normalizeMedium(m: string): 'EM' | 'TM' | string {
+  const str = String(m || '').trim().toLowerCase();
+  if (str === 'em' || str.startsWith('eng') || str === 'en' || str === 'ஆங்கிலம்') return 'EM';
+  if (str === 'tm' || str.startsWith('tam') || str === 'ta' || str === 'தமிழ்') return 'TM';
+  return str.toUpperCase();
+}
+
+/**
+ * Deduplication key builder:
+ * (classLevel, subjectSlug, mediumCanonical, unitNo, unitTitleSlug, typeSlug)
+ * Includes unitTitle so term-wise Class 6/7 rows (where unitNo is blank) are not dropped!
+ */
+export function getDedupeKey(row: RawTextbookRow): string {
+  const c = String(row.classLevel || '').replace(/\D/g, '');
+  const s = normalizeSubject(row.subject);
+  const m = normalizeMedium(row.medium);
+  const u = String(row.unitNo ?? '').trim();
+  const t = String(row.unitTitle || '').trim().toLowerCase();
+  const typ = String(row.type || '').trim().toLowerCase();
+  return `${c}|${s}|${m}|${u}|${t}|${typ}`;
+}
+
+/**
+ * Select the winning row on duplicate key:
+ * Prefer row with valid driveFileId (/^[A-Za-z0-9_-]{25,}$/) over placeholder.
+ * If both valid or both invalid, prefer later updatedAt (stable choice).
+ */
+export function selectWinner(existing: RawTextbookRow, incoming: RawTextbookRow): RawTextbookRow {
+  const existingValid = DRIVE_ID_REGEX.test(existing.driveFileId);
+  const incomingValid = DRIVE_ID_REGEX.test(incoming.driveFileId);
+
+  if (!existingValid && incomingValid) return incoming;
+  if (existingValid && !incomingValid) return existing;
+
+  const exTime = existing.updatedAt ? new Date(existing.updatedAt).getTime() : 0;
+  const inTime = incoming.updatedAt ? new Date(incoming.updatedAt).getTime() : 0;
+  if (inTime >= exTime) return incoming;
+  return existing;
+}
+
+/**
+ * Sorts textbook rows:
+ * 1. Full books (type === 'full' or unitNo === 0) first
+ * 2. Numeric unitNo ascending (1, 2, 3...)
+ * 3. Fallback to pageStart numerically ascending for blank unitNo rows (e.g. Class 6/7 terms)
+ * 4. Stable tie-break by title
+ */
+export function sortTextbookRows<T extends { type?: string; unitNo?: number | string; pageStart?: number | string; unitTitle?: string; title?: string }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const aIsFull = a.type?.toLowerCase() === 'full' || (a.unitNo === '0' && a.type?.toLowerCase() !== 'chapter') || (a.unitNo === 0 && a.type?.toLowerCase() !== 'chapter');
+    const bIsFull = b.type?.toLowerCase() === 'full' || (b.unitNo === '0' && b.type?.toLowerCase() !== 'chapter') || (b.unitNo === 0 && b.type?.toLowerCase() !== 'chapter');
+
+    if (aIsFull && !bIsFull) return -1;
+    if (!aIsFull && bIsFull) return 1;
+
+    if (aIsFull && bIsFull) {
+      const pA = parseInt(String(a.pageStart || '0'), 10);
+      const pB = parseInt(String(b.pageStart || '0'), 10);
+      if (!isNaN(pA) && !isNaN(pB) && pA !== pB) return pA - pB;
+      return (a.unitTitle || a.title || '').localeCompare(b.unitTitle || b.title || '');
+    }
+
+    const uA = parseInt(String(a.unitNo ?? ''), 10);
+    const uB = parseInt(String(b.unitNo ?? ''), 10);
+    const hasNumA = !isNaN(uA) && uA > 0;
+    const hasNumB = !isNaN(uB) && uB > 0;
+
+    if (hasNumA && hasNumB) return uA - uB;
+    if (hasNumA && !hasNumB) return -1;
+    if (!hasNumA && hasNumB) return 1;
+
+    // Both have blank or non-numeric unitNo: sort by pageStart numerically
+    const pA = parseInt(String(a.pageStart || '0'), 10);
+    const pB = parseInt(String(b.pageStart || '0'), 10);
+    if (!isNaN(pA) && !isNaN(pB) && pA !== pB) return pA - pB;
+
+    return (a.unitTitle || a.title || '').localeCompare(b.unitTitle || b.title || '');
+  });
+}
+
+/**
+ * Maps raw sheet row to public TextbookItem
+ */
+export function mapRawToItem(row: RawTextbookRow, idx: number, isGap = false): TextbookItem {
+  const classLevel = row.classLevel.replace(/\D/g, '') || row.classLevel;
+  const subject = normalizeSubject(row.subject);
+  const medium = normalizeMedium(row.medium);
+  const unitNo = parseInt(row.unitNo, 10) || 0;
+  const pageStart = parseInt(row.pageStart, 10) || 0;
+  const pageEnd = parseInt(row.pageEnd, 10) || 0;
+  const pageCount = parseInt(row.pageCount, 10) || (pageEnd >= pageStart && pageStart > 0 ? pageEnd - pageStart + 1 : 0);
+  const isFullBook = Boolean(row.type?.toLowerCase() === 'full' || (row.unitNo === '0' && row.type?.toLowerCase() !== 'chapter'));
+
+  const item: TextbookItem = {
+    id: `tb-${classLevel}-${subject}-${medium.toLowerCase()}-${row.unitNo || (isFullBook ? 'full' : idx)}`,
+    classLevel,
+    subject,
+    medium,
+    unitNo,
+    title: row.unitTitle || (isFullBook ? `${subject.toUpperCase()} Complete Textbook` : `Unit ${unitNo}`),
+    pages: pageCount,
+    driveFileId: row.driveFileId,
+    pdfUrl: row.fileUrl,
+    isFullBook,
+    type: row.type,
+    unitTitle: row.unitTitle,
+    pageStart,
+    pageEnd,
+    pageCount,
+    sizeMB: parseFloat(row.sizeMB) || 0,
+    sourceUrl: row.sourceUrl,
+    qcNote: row.qcNote,
+    updatedAt: row.updatedAt,
+  };
+
+  if (medium === 'TM') {
+    item.tamilTitle = row.unitTitle;
+  }
+
+  if (isGap) {
+    item.reason = row.driveFileId || 'INVALID_DRIVE_ID';
+  }
+
+  return item;
+}
+
+/**
+ * Dedupes raw rows and splits into served (valid Drive IDs) and gaps (placeholders)
+ */
+export function processRawRows(rawRows: RawTextbookRow[]): {
+  dedupedRows: RawTextbookRow[];
+  servedRows: RawTextbookRow[];
+  gapRows: RawTextbookRow[];
+} {
+  const dedupeMap = new Map<string, RawTextbookRow>();
+  for (const row of rawRows) {
+    const key = getDedupeKey(row);
+    if (!dedupeMap.has(key)) {
+      dedupeMap.set(key, row);
+    } else {
+      const existing = dedupeMap.get(key)!;
+      dedupeMap.set(key, selectWinner(existing, row));
+    }
+  }
+
+  const dedupedRows = Array.from(dedupeMap.values());
+  const servedRows: RawTextbookRow[] = [];
+  const gapRows: RawTextbookRow[] = [];
+
+  for (const row of dedupedRows) {
+    if (DRIVE_ID_REGEX.test(row.driveFileId)) {
+      servedRows.push(row);
+    } else {
+      gapRows.push(row);
+    }
+  }
+
+  return {
+    dedupedRows,
+    servedRows,
+    gapRows,
+  };
+}
+
+/**
+ * Fetches data from Google Sheets gviz CSV export with:
+ *  - Trap 1 validation: strict header match or fallback to snapshot-stale
+ *  - 10-minute in-memory caching
+ */
+async function fetchTrackerData(
+  forceRefresh = false,
+  mockBadHeader = false
+): Promise<{
+  rawRows: RawTextbookRow[];
+  source: 'tracker-live' | 'snapshot-stale';
+  stale?: boolean;
+}> {
+  const now = Date.now();
+  if (!forceRefresh && inMemoryCache && now - inMemoryCache.timestamp < CACHE_TTL_MS) {
+    return {
+      rawRows: inMemoryCache.rawRows,
+      source: 'tracker-live',
+    };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(GVIZ_URL, {
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      throw new Error(`gviz returned HTTP ${res.status}`);
+    }
+
+    const csvText = await res.text();
+    const grid = parseRFC4180CSV(csvText);
+
+    if (grid.length < 2) {
+      throw new Error('gviz returned empty or truncated CSV');
+    }
+
+    const header = grid[0].map((h) => h.trim());
+
+    // Trap 1 validation: Header must match exactly
+    const headerMatches =
+      !mockBadHeader &&
+      header.length === EXPECTED_HEADERS.length &&
+      EXPECTED_HEADERS.every((col, i) => header[i] === col);
+
+    if (!headerMatches) {
+      console.warn(
+        `[Textbooks] Trap 1 alert: Header mismatch! Expected: ${EXPECTED_HEADERS.join(',')}. Got: ${header.join(',')}. Falling back to snapshot-stale.`
+      );
+      return {
+        rawRows: textbookSnapshot as RawTextbookRow[],
+        source: 'snapshot-stale',
+        stale: true,
+      };
+    }
+
+    const dataRows = grid.slice(1).filter((r) => r.length > 1 && r.some((c) => c.trim() !== ''));
+    const rawRows: RawTextbookRow[] = dataRows.map((r) => {
+      const o: any = {};
+      EXPECTED_HEADERS.forEach((h, i) => {
+        o[h] = (r[i] || '').trim();
+      });
+      return o;
+    });
+
+    inMemoryCache = {
+      timestamp: now,
+      rawRows,
+    };
+
+    return {
+      rawRows,
+      source: 'tracker-live',
+    };
+  } catch (err: any) {
+    console.warn('[Textbooks] Live gviz read failed, falling back to committed snapshot:', err?.message || err);
+    return {
+      rawRows: textbookSnapshot as RawTextbookRow[],
+      source: 'snapshot-stale',
+      stale: true,
+    };
+  }
+}
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const classLevel = (searchParams.get('classLevel') || searchParams.get('class') || '10').replace(/\D/g, '');
-    const rawSubject = (searchParams.get('subject') || 'maths').toLowerCase().trim();
-    const rawMedium = (searchParams.get('medium') || 'tamil').toLowerCase().trim();
+    const rawClass = searchParams.get('classLevel') || searchParams.get('class');
+    const classLevel = rawClass && rawClass.toLowerCase() !== 'all' ? rawClass.replace(/\D/g, '') : '';
+    const rawSubject = (searchParams.get('subject') || '').trim();
+    const rawMedium = (searchParams.get('medium') || '').trim();
 
-    const scriptUrl = process.env.APPS_SCRIPT_URL;
-    const secretKey = process.env.APPS_SCRIPT_SECRET;
+    const mockBadHeader =
+      searchParams.get('mockBadHeader') === 'true' || searchParams.get('testHeaderMismatch') === 'true';
+    const forceRefresh = searchParams.get('refresh') === 'true' || mockBadHeader;
 
-    // 1. Attempt server-side read of tracker ledger via bridge (tab Textbooks)
-    if (scriptUrl && secretKey) {
-      try {
-        const targetUrl = new URL(scriptUrl);
-        targetUrl.searchParams.set('action', 'ops-rows');
-        targetUrl.searchParams.set('tab', 'Textbooks');
-        targetUrl.searchParams.set('sheetId', '1yt1zRi6LZC2HMtrBvRJWflR86BfYoHPsG0VzxPTtGJ0');
-        targetUrl.searchParams.set('key', secretKey);
+    const { rawRows, source, stale } = await fetchTrackerData(forceRefresh, mockBadHeader);
+    const { servedRows, gapRows } = processRawRows(rawRows);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const res = await fetch(targetUrl.toString(), {
-          signal: controller.signal,
-          cache: 'no-store',
-        });
-        clearTimeout(timeoutId);
+    const targetSubject = rawSubject && rawSubject.toLowerCase() !== 'all' ? normalizeSubject(rawSubject) : '';
+    const targetMedium = rawMedium && rawMedium.toLowerCase() !== 'all' ? normalizeMedium(rawMedium) : '';
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.ok && Array.isArray(data.rows) && data.rows.length > 0) {
-            const parsedRows: TextbookItem[] = data.rows
-              .filter((r: any) => {
-                const c = String(r.classLevel || r.class || '').replace(/\D/g, '');
-                const s = String(r.subject || '').toLowerCase().trim();
-                const m = String(r.medium || '').toLowerCase().trim();
-                const matchClass = !c || c === classLevel;
-                const matchSubj = !s || s.includes(rawSubject) || rawSubject.includes(s);
-                const matchMed = !m || m.startsWith(rawMedium[0]);
-                return matchClass && matchSubj && matchMed;
-              })
-              .map((r: any, idx: number) => ({
-                id: r.id || `tb-${idx}`,
-                classLevel: String(r.classLevel || classLevel),
-                subject: String(r.subject || rawSubject),
-                medium: String(r.medium || rawMedium),
-                unitNo: parseInt(r.unitNo || r.unit || String(idx), 10),
-                title: r.title || r.unitName || `Unit ${idx}`,
-                tamilTitle: r.tamilTitle,
-                pages: parseInt(r.pages || r.pageCount || '0', 10),
-                driveFileId: r.driveFileId || r.driveId || r.fileId || '',
-                isFullBook: Boolean(r.isFullBook || r.unitNo === 0),
-              }))
-              .sort((a: TextbookItem, b: TextbookItem) => a.unitNo - b.unitNo);
+    const filterFn = (r: RawTextbookRow) => {
+      const rowClass = r.classLevel.replace(/\D/g, '');
+      const rowSubject = normalizeSubject(r.subject);
+      const rowMedium = normalizeMedium(r.medium);
 
-            if (parsedRows.length > 0) {
-              return NextResponse.json(
-                {
-                  ok: true,
-                  classLevel,
-                  subject: rawSubject,
-                  medium: rawMedium,
-                  count: parsedRows.length,
-                  chapters: parsedRows,
-                  source: 'live-ledger',
-                },
-                {
-                  headers: {
-                    'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
-                  },
-                }
-              );
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Apps Script Textbooks tab read failed, falling back to committed ledger', err);
-      }
+      if (classLevel && rowClass !== classLevel) return false;
+      if (targetSubject && rowSubject !== targetSubject) return false;
+      if (targetMedium && rowMedium !== targetMedium) return false;
+
+      return true;
+    };
+
+    const filteredServed = servedRows.filter(filterFn);
+    const filteredGaps = gapRows.filter(filterFn);
+
+    const chapters = sortTextbookRows(filteredServed.map((r, idx) => mapRawToItem(r, idx, false)));
+    const gaps = sortTextbookRows(filteredGaps.map((r, idx) => mapRawToItem(r, idx, true)));
+
+    const responsePayload: any = {
+      ok: true,
+      classLevel: classLevel || 'all',
+      subject: targetSubject || rawSubject || 'all',
+      medium: targetMedium || rawMedium || 'all',
+      count: chapters.length,
+      chapters,
+      gaps,
+      source,
+      ledgerRows: rawRows.length,
+      servedRows: servedRows.length,
+    };
+
+    if (stale) {
+      responsePayload.stale = true;
     }
 
-    // 2. High-fidelity Committed Seed Fallback (guaranteed ≥8 chapters for Maths Tamil + English)
-    const filtered = SEED_TEXTBOOKS.filter((t) => {
-      const matchClass = t.classLevel === classLevel;
-      const matchSubj = t.subject.toLowerCase() === rawSubject || rawSubject.includes(t.subject.toLowerCase());
-      const matchMed = t.medium.toLowerCase().startsWith(rawMedium[0]);
-      return matchClass && matchSubj && matchMed;
-    }).sort((a, b) => a.unitNo - b.unitNo);
-
-    return NextResponse.json(
-      {
-        ok: true,
-        classLevel,
-        subject: rawSubject,
-        medium: rawMedium,
-        count: filtered.length,
-        chapters: filtered,
-        source: 'committed-ledger',
+    return NextResponse.json(responsePayload, {
+      headers: {
+        'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
       },
-      {
-        headers: {
-          'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200',
-        },
-      }
-    );
+    });
   } catch (error: any) {
     return NextResponse.json(
       { ok: false, error: error?.message || 'Failed to load textbooks' },
