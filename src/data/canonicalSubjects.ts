@@ -65,7 +65,15 @@ export const SUBJECT_ALIASES: Record<string, string> = {
 export function normalizeSubject(subj: string): string {
   if (!subj) return '';
   const clean = subj.trim().toLowerCase();
-  return SUBJECT_ALIASES[clean] || subj.trim();
+  if (SUBJECT_ALIASES[clean]) return SUBJECT_ALIASES[clean];
+  // Match on canonical key (stripping spaces, hyphens, and non-alphanumerics)
+  const key = clean.replace(/[^a-z0-9]/g, '');
+  for (const [alias, canonical] of Object.entries(SUBJECT_ALIASES)) {
+    if (alias.replace(/[^a-z0-9]/g, '') === key) {
+      return canonical;
+    }
+  }
+  return subj.trim();
 }
 
 export function isLanguageSubject(subj: string): boolean {
@@ -84,13 +92,14 @@ export function isLanguageSubject(subj: string): boolean {
 export type StreamKey = 'maths' | 'bio' | 'commerce' | 'arts' | 'general';
 
 export function normalizeStream(rawStream?: string): StreamKey {
-  if (!rawStream) return 'maths';
-  const s = rawStream.toLowerCase();
+  if (!rawStream || !rawStream.trim()) return 'maths';
+  const s = rawStream.toLowerCase().trim();
   if (s.includes('bio')) return 'bio';
   if (s.includes('comm') || s.includes('acc')) return 'commerce';
   if (s.includes('art') || s.includes('hist')) return 'arts';
   if (s.includes('math')) return 'maths';
-  return 'general';
+  // Default unassigned, unknown, or empty stream to 'maths' for Class 11/12
+  return 'maths';
 }
 
 // Canonical subject lists by class and stream
@@ -112,10 +121,29 @@ export const CANONICAL_MAP = {
     // Arts stream: History, Economics, Political Science, Tamil, English
     arts: ['Economics', 'Tamil', 'English'],
 
-    // General fallback: core languages
-    general: ['Tamil', 'English'],
+    // General fallback: default to maths stream instead of silently narrowing to 2 subjects
+    general: ['Maths', 'Physics', 'Chemistry', 'Computer Science', 'Tamil', 'English'],
   },
 };
+
+// Subjects that currently have active question banks in the live sheet
+export const SUBJECTS_WITH_LIVE_QUESTIONS = new Set([
+  'maths',
+  'science',
+  'social science',
+  'social',
+  'physics',
+  'chemistry',
+  'computer science',
+  'tamil',
+  'english',
+]);
+
+export function hasSubjectContent(subject: string): boolean {
+  if (!subject) return false;
+  const norm = normalizeSubject(subject).toLowerCase();
+  return SUBJECTS_WITH_LIVE_QUESTIONS.has(norm);
+}
 
 /**
  * Returns allowed canonical subjects for a given class level and optional stream.

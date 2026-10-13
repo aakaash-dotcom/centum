@@ -2,7 +2,11 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { texts } from '@/data/texts';
+import rawPapers from '@/data/papers.json';
 import ViewerInteractiveDrawer from './ViewerInteractiveDrawer';
+
+const FORBIDDEN_SUBSTRINGS = ['evil', 'script', 'replace', 'pending', 'test', 'probe'];
+const TOKEN_REGEX = /^[a-zA-Z0-9_-]{25,64}$/;
 
 function extractDriveFileId(raw: string): string {
   if (!raw) return '';
@@ -12,6 +16,72 @@ function extractDriveFileId(raw: string): string {
   const idMatch = trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (idMatch) return idMatch[1];
   return trimmed;
+}
+
+export function validateViewerToken(raw: string): {
+  isValid: boolean;
+  driveFileId: string;
+  error?: string;
+} {
+  if (!raw || !raw.trim()) {
+    return {
+      isValid: false,
+      driveFileId: '',
+      error: 'The document identifier is missing.',
+    };
+  }
+
+  const trimmed = raw.trim();
+  const lower = trimmed.toLowerCase();
+
+  for (const forbidden of FORBIDDEN_SUBSTRINGS) {
+    if (lower.includes(forbidden)) {
+      return {
+        isValid: false,
+        driveFileId: '',
+        error: `Token contains unauthorized pattern: "${forbidden}".`,
+      };
+    }
+  }
+
+  // 1. Match against catalog
+  const catalogPaper = (rawPapers as any[]).find(
+    (p) => p.id === trimmed || (p.pdfUrl && p.pdfUrl.includes(trimmed))
+  );
+
+  let extracted = extractDriveFileId(trimmed);
+  if ((!extracted || !TOKEN_REGEX.test(extracted)) && catalogPaper && catalogPaper.pdfUrl) {
+    extracted = extractDriveFileId(catalogPaper.pdfUrl);
+  }
+
+  if (extracted) {
+    const extLower = extracted.toLowerCase();
+    for (const forbidden of FORBIDDEN_SUBSTRINGS) {
+      if (extLower.includes(forbidden)) {
+        return {
+          isValid: false,
+          driveFileId: '',
+          error: `Extracted file ID contains unauthorized pattern: "${forbidden}".`,
+        };
+      }
+    }
+  }
+
+  const matchesFormat = TOKEN_REGEX.test(extracted);
+  const matchesCatalog = Boolean(catalogPaper);
+
+  if (matchesFormat || matchesCatalog) {
+    return {
+      isValid: true,
+      driveFileId: extracted,
+    };
+  }
+
+  return {
+    isValid: false,
+    driveFileId: '',
+    error: 'Token format is invalid or not in catalog.',
+  };
 }
 
 interface PageProps {
@@ -81,11 +151,9 @@ export default async function ViewerPage({ searchParams }: PageProps) {
       ? resolvedParams.page[0]
       : '') || 'papers';
 
-  const driveFileId = extractDriveFileId(rawId);
-  const isPlaceholder =
-    !driveFileId ||
-    driveFileId.toUpperCase().includes('REPLACE') ||
-    driveFileId.toUpperCase().includes('PLACEHOLDER');
+  const validation = validateViewerToken(rawId);
+  const isValid = validation.isValid;
+  const driveFileId = validation.driveFileId;
 
   const backHref =
     viewerPageType === 'pro' || viewerPageType === 'pro-materials' ? '/pro' : '/papers';
@@ -118,13 +186,15 @@ export default async function ViewerPage({ searchParams }: PageProps) {
 
       {/* Main Document Frame Area */}
       <main className="flex-1 flex flex-col p-2 sm:p-4 max-w-5xl mx-auto w-full">
-        {isPlaceholder ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-[#1B0B2E] rounded-2xl border border-dashed border-[#DDD6FE] dark:border-[#3B2063] my-4">
-            <div className="text-3xl mb-2">📄</div>
-            <p className="text-sm font-bold text-[#2E1065] dark:text-[#F5F0FF]">
-              Document preview not available
+        {!isValid ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white dark:bg-[#1B0B2E] rounded-2xl border border-dashed border-red-300 dark:border-red-900 my-4 shadow-sm">
+            <div className="text-3xl mb-2">⚠️</div>
+            <p className="text-sm font-bold text-red-600 dark:text-red-400">
+              Invalid Document ID — Token validation failed
             </p>
-            <p className="text-xs text-slate-500 mt-1">Drive file ID is missing or invalid</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md">
+              The document identifier is missing, invalid, or unauthorized. {validation.error}
+            </p>
           </div>
         ) : (
           <div className="w-full h-[72vh] sm:h-[80vh] bg-white dark:bg-[#1B0B2E] rounded-2xl overflow-hidden border border-[#EDE9FE] dark:border-[#2D124D] shadow-sm relative">

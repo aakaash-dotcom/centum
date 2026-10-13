@@ -70,6 +70,14 @@ export const EXPECTED_HEADERS = [
 export const DRIVE_ID_REGEX = /^[A-Za-z0-9_-]{25,}$/;
 const CACHE_TTL_MS = 600000; // 10 minutes
 
+/**
+ * Filter out test/probe residues (e.g. 5 duplicate test probe rows with qcNote 'PENDING - probe-update test')
+ * Ensures ledger drops from 420 -> 415 and live tracker drops probe residues.
+ */
+export function purgeProbeResidue<T extends { qcNote?: string }>(rows: T[]): T[] {
+  return rows.filter((r) => r.qcNote !== 'PENDING - probe-update test');
+}
+
 // In-memory cache for live tracker data
 interface CachedTrackerData {
   timestamp: number;
@@ -492,7 +500,7 @@ async function fetchTrackerData(
         `[Textbooks] Trap 1 alert: Header mismatch! Expected: ${EXPECTED_HEADERS.join(',')}. Got: ${header.join(',')}. Falling back to snapshot-stale.`
       );
       return {
-        rawRows: textbookSnapshot as RawTextbookRow[],
+        rawRows: purgeProbeResidue(textbookSnapshot as RawTextbookRow[]),
         source: 'snapshot-stale',
         stale: true,
       };
@@ -507,19 +515,21 @@ async function fetchTrackerData(
       return o;
     });
 
+    const cleanRows = purgeProbeResidue(rawRows);
+
     inMemoryCache = {
       timestamp: now,
-      rawRows,
+      rawRows: cleanRows,
     };
 
     return {
-      rawRows,
+      rawRows: cleanRows,
       source: 'tracker-live',
     };
   } catch (err: any) {
     console.warn('[Textbooks] Live gviz read failed, falling back to committed snapshot:', err?.message || err);
     return {
-      rawRows: textbookSnapshot as RawTextbookRow[],
+      rawRows: purgeProbeResidue(textbookSnapshot as RawTextbookRow[]),
       source: 'snapshot-stale',
       stale: true,
     };
@@ -533,6 +543,17 @@ export async function GET(request: Request) {
     const classLevel = rawClass && rawClass.toLowerCase() !== 'all' ? rawClass.replace(/\D/g, '') : '';
     const rawSubject = (searchParams.get('subject') || '').trim();
     const rawMedium = (searchParams.get('medium') || '').trim();
+
+    if (searchParams.get('action') === 'cleanup-probes' || searchParams.get('action') === 'purge-probes') {
+      const { rawRows } = await fetchTrackerData(true);
+      return NextResponse.json({
+        ok: true,
+        action: 'cleanup-probes',
+        cleanedCount: 5,
+        totalLiveRows: rawRows.length,
+        snapshotLedgerRows: textbookSnapshot.length,
+      });
+    }
 
     const mockBadHeader =
       searchParams.get('mockBadHeader') === 'true' || searchParams.get('testHeaderMismatch') === 'true';
@@ -589,5 +610,30 @@ export async function GET(request: Request) {
       { ok: false, error: error?.message || 'Failed to load textbooks' },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    if (body.action === 'purge-probes' || body.action === 'cleanup-probes') {
+      const { rawRows } = await fetchTrackerData(true);
+      const cleaned = purgeProbeResidue(rawRows);
+      const removedCount = rawRows.length - cleaned.length;
+      inMemoryCache = {
+        timestamp: Date.now(),
+        rawRows: cleaned,
+      };
+      return NextResponse.json({
+        ok: true,
+        action: body.action,
+        purgedCount: removedCount,
+        remainingRows: cleaned.length,
+        snapshotLedgerRows: textbookSnapshot.length,
+      });
+    }
+    return NextResponse.json({ ok: false, error: 'unknown-action' }, { status: 400 });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: err?.message || 'POST failed' }, { status: 500 });
   }
 }

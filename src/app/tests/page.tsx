@@ -21,6 +21,8 @@ import {
 import {
   getCanonicalSubjects,
   normalizeSubject,
+  hasSubjectContent,
+  normalizeStream,
 } from '@/data/canonicalSubjects';
 import { ProUpsellModal, ProUpsellContext } from '@/components/ProUpsellModal';
 
@@ -204,6 +206,8 @@ function TestsContent() {
   // 2. Select-subject expander state & selected subject
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<string>('');
+  // Stream selection override for Class 11/12
+  const [selectedStream, setSelectedStream] = useState<string>('');
   // 3. Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<ConfirmationModalState | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -217,6 +221,8 @@ function TestsContent() {
     conceptCount: 18,
     paperCount: 12,
   });
+
+  const effectiveStream = selectedStream || student?.stream;
 
   useEffect(() => {
     setMounted(true);
@@ -245,7 +251,7 @@ function TestsContent() {
     setIsLoading(true);
     setIsError(false);
 
-    const streamParam = student?.stream ? `&stream=${encodeURIComponent(student.stream)}` : '';
+    const streamParam = effectiveStream ? `&stream=${encodeURIComponent(effectiveStream)}` : '';
     const base = `/api/questions?classLevel=${encodeURIComponent(effectiveStandard)}&subject=${encodeURIComponent(subj)}&medium=${encodeURIComponent(medium || 'english')}&count=all${streamParam}`;
 
     Promise.all([
@@ -303,8 +309,8 @@ function TestsContent() {
   }, [medium, effectiveStandard]);
 
   const availableSubjects = useMemo(() => {
-    return getCanonicalSubjects(effectiveStandard, student?.stream);
-  }, [effectiveStandard, student?.stream]);
+    return getCanonicalSubjects(effectiveStandard, effectiveStream);
+  }, [effectiveStandard, effectiveStream]);
 
   useEffect(() => {
     if (
@@ -664,6 +670,39 @@ function TestsContent() {
             </div>
           </button>
 
+          {/* Stream Selector for Class 11 & 12 (Items 3 & 4) */}
+          {parseInt(effectiveStandard.replace(/\D/g, ''), 10) >= 11 && (
+            <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs">
+              <span className="text-[10px] font-black uppercase text-[#7C3AED] dark:text-[#A78BFA] px-2 shrink-0">
+                பிரிவு:
+              </span>
+              <div className="flex items-center gap-1 overflow-x-auto w-full scrollbar-none">
+                {(['maths', 'bio', 'commerce'] as const).map((st) => {
+                  const activeStream = normalizeStream(effectiveStream);
+                  const isActive = activeStream === st;
+                  const label = st === 'maths' ? 'கணிதம்' : st === 'bio' ? 'உயிரியல்' : 'வணிகவியல்';
+                  return (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => {
+                        setSelectedStream(st);
+                        setSelectedSubject('');
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all whitespace-nowrap cursor-pointer ${
+                        isActive
+                          ? 'bg-[#7C3AED] text-white shadow-xs'
+                          : 'text-[#6D28D9] dark:text-[#DDD6FE] hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Row 3: SELECT SUBJECT CTA */}
           <div className="w-full bg-white dark:bg-[#1B0B2E] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs overflow-hidden transition-all">
             <button
@@ -689,6 +728,7 @@ function TestsContent() {
               <div className="p-2 border-t border-[#EDE9FE] dark:border-[#3B2063] space-y-1 animate-fade-in bg-white dark:bg-[#1B0B2E]">
                 {availableSubjects.map((subj) => {
                   const isSelected = selectedSubject === subj;
+                  const hasContent = hasSubjectContent(subj);
                   return (
                     <button
                       key={subj}
@@ -703,7 +743,14 @@ function TestsContent() {
                           : 'text-[#2E1065] dark:text-[#F5F0FF] hover:bg-[#FAF5FF] dark:hover:bg-[#2A1247]'
                       }`}
                     >
-                      <span>{subj}</span>
+                      <span className="flex items-center gap-1.5">
+                        <span>{subj}</span>
+                        {!hasContent && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                            விரைவில் 🌱
+                          </span>
+                        )}
+                      </span>
                       {isSelected && (
                         <Check className="w-3.5 h-3.5 text-[#A3E635] stroke-[3]" />
                       )}
@@ -740,9 +787,17 @@ function TestsContent() {
           ) : (
             <div className="pt-1">
               {megaSets.length === 0 && chapterCards.length === 0 ? (
-                <div className="bg-white dark:bg-[#1B0B2E] rounded-2xl p-8 text-center border border-[#EDE9FE] dark:border-[#3B2063]">
-                  <p className="text-xs font-bold text-[#6D28D9]/70 dark:text-[#B9A6D9]">
-                    {texts.tests.noChaptersYet}
+                <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-8 text-center border border-dashed border-[#DDD6FE] dark:border-[#3B2063] space-y-2">
+                  <span className="text-4xl block mb-2">🌱</span>
+                  <h3 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF]">
+                    {!hasSubjectContent(selectedSubject)
+                      ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன`
+                      : texts.tests.noChaptersYet}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
+                    {!hasSubjectContent(selectedSubject)
+                      ? `${selectedSubject} பாடத்திற்கான வினாக்கள் தயாரிப்பில் உள்ளன. எங்கள் ஆசிரியர் குழு வினாக்களைத் தொகுத்து வருகிறது 🌱`
+                      : 'இப்பாடத்திற்கான வினாக்கள் விரைவில் சேர்க்கப்படும்'}
                   </p>
                 </div>
               ) : (

@@ -74,7 +74,9 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
   const { classLevel, subject, chapter, type, medium, stream } = params;
   const targetClass = classLevel ? normClass(classLevel) : null;
   const targetClassNum = targetClass ? targetClass.replace(/\D/g, '') : null;
+  const toCanonicalSubjKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
   const targetSubj = subject ? normalizeSubject(subject).toLowerCase() : null;
+  const targetSubjKey = subject ? toCanonicalSubjKey(normalizeSubject(subject)) : null;
   const targetMed = medium ? normMedium(medium) : null;
   const targetType = type ? String(type).trim().toLowerCase() : null;
   const targetChap = chapter ? String(chapter).trim().toLowerCase() : null;
@@ -103,7 +105,16 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
       continue;
     }
 
-    if (targetSubj && qSubj.toLowerCase() !== targetSubj && qRawSubj.toLowerCase() !== targetSubj) {
+    const qSubjKey = toCanonicalSubjKey(qSubj);
+    const qRawSubjKey = toCanonicalSubjKey(qRawSubj);
+    if (
+      targetSubjKey &&
+      qSubjKey !== targetSubjKey &&
+      qRawSubjKey !== targetSubjKey &&
+      targetSubj &&
+      qSubj.toLowerCase() !== targetSubj &&
+      qRawSubj.toLowerCase() !== targetSubj
+    ) {
       continue;
     }
 
@@ -220,7 +231,7 @@ export async function GET(request: Request) {
       externalUrl.searchParams.set('action', 'questions');
       externalUrl.searchParams.set('key', secretKey);
       if (classLevel) externalUrl.searchParams.set('classLevel', classLevel);
-      if (subject) externalUrl.searchParams.set('subject', subject);
+      if (subject) externalUrl.searchParams.set('subject', normalizeSubject(subject));
       if (chapter) externalUrl.searchParams.set('chapter', chapter);
       if (type) externalUrl.searchParams.set('type', type);
       if (medium) externalUrl.searchParams.set('medium', medium);
@@ -252,7 +263,7 @@ export async function GET(request: Request) {
     try {
       const prodUrl = new URL('https://centum-omega.vercel.app/api/questions');
       if (classLevel) prodUrl.searchParams.set('classLevel', classLevel);
-      if (subject) prodUrl.searchParams.set('subject', subject);
+      if (subject) prodUrl.searchParams.set('subject', normalizeSubject(subject));
       if (chapter) prodUrl.searchParams.set('chapter', chapter);
       if (type) prodUrl.searchParams.set('type', type);
       if (medium) prodUrl.searchParams.set('medium', medium);

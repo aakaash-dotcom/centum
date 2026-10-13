@@ -26,11 +26,14 @@ export async function GET(request: Request) {
       const res = await fetch(externalUrl.toString(), { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        return NextResponse.json({
-          ...data,
-          source: 'live',
-          servedFrom: 'gas',
-        });
+        if (data && data.ok && Array.isArray(data.videos) && data.videos.length > 0) {
+          return NextResponse.json({
+            ...data,
+            source: 'live',
+            servedFrom: 'gas',
+            totalLiveVideos: data.videos.length,
+          });
+        }
       }
     } catch (e) {
       console.warn('Apps Script proVideos GET failed, falling back to mock store', e);

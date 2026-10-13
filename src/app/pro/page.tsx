@@ -32,7 +32,12 @@ import {
 import { ProVideoPlayer } from '@/components/ProVideoPlayer';
 import { ProUpsellModal, ProUpsellContext } from '@/components/ProUpsellModal';
 import { ProVideoItem } from '@/lib/server-mock-store';
-import { getCanonicalSubjects, normalizeSubject } from '@/data/canonicalSubjects';
+import {
+  getCanonicalSubjects,
+  normalizeSubject,
+  hasSubjectContent,
+  normalizeStream,
+} from '@/data/canonicalSubjects';
 import { isLanguageSubject } from '@/lib/data';
 import rawPapers from '@/data/papers.json';
 import { Paper, Question } from '@/types';
@@ -98,9 +103,12 @@ function ProHomeContent() {
     student?.plan === 'pro' ||
     student?.plan === 'live';
 
+  const [streamOverride, setStreamOverride] = useState<string>('');
+  const effectiveStream = streamOverride || student?.stream;
+
   const canonicalSubjects = useMemo(() => {
-    return getCanonicalSubjects(effectiveClass, student?.stream);
-  }, [effectiveClass, student?.stream]);
+    return getCanonicalSubjects(effectiveClass, effectiveStream);
+  }, [effectiveClass, effectiveStream]);
 
   const [selectedSubject, setSelectedSubject] = useState<string>(() => {
     const qSubj = searchParams.get('subject');
@@ -255,11 +263,10 @@ function ProHomeContent() {
               (v: ProVideoItem) => String(v.classLevel).replace(/\D/g, '') === effectiveClass
             );
             setVideos(scopedVids);
-            if (vData.totalLiveVideos || vData.videos.length) {
-              setAllVideosCount(vData.totalLiveVideos || vData.videos.length);
-            }
+            setAllVideosCount(scopedVids.length);
           } else {
             setVideos([]);
+            setAllVideosCount(0);
           }
         }
 
@@ -695,24 +702,57 @@ function ProHomeContent() {
 
       {/* Subject Chips Row */}
       <div className="mb-2.5">
-        <span className="text-[10px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA] block px-0.5 mb-1.5">
-          பாடங்கள் ({effectiveClass}th)
-        </span>
+        <div className="flex items-center justify-between mb-1.5 px-0.5">
+          <span className="text-[10px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA]">
+            பாடங்கள் ({effectiveClass}th)
+          </span>
+          {parseInt(effectiveClass, 10) >= 11 && (
+            <div className="flex items-center gap-1">
+              {(['maths', 'bio', 'commerce'] as const).map((st) => {
+                const activeStream = normalizeStream(effectiveStream);
+                const isStActive = activeStream === st;
+                const label = st === 'maths' ? 'கணிதம்' : st === 'bio' ? 'உயிரியல்' : 'வணிகவியல்';
+                return (
+                  <button
+                    key={st}
+                    type="button"
+                    onClick={() => {
+                      setStreamOverride(st);
+                    }}
+                    className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all border ${
+                      isStActive
+                        ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
+                        : 'bg-white dark:bg-[#1B0B2E] text-slate-500 border-[#DDD6FE] dark:border-[#3B2063]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           {canonicalSubjects.map((sub) => {
             const isSelected = selectedSubject.toLowerCase() === sub.toLowerCase();
+            const hasContent = hasSubjectContent(sub);
             return (
               <button
                 key={sub}
                 type="button"
                 onClick={() => setSelectedSubject(sub)}
-                className={`min-h-[36px] px-3.5 rounded-full text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 border ${
+                className={`min-h-[36px] px-3.5 rounded-full text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 border flex items-center gap-1 ${
                   isSelected
                     ? 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white border-[#7C3AED] shadow-sm'
                     : 'bg-white dark:bg-[#1B0B2E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#DDD6FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40'
                 }`}
               >
-                {sub}
+                <span>{sub}</span>
+                {!hasContent && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-400">
+                    விரைவில் 🌱
+                  </span>
+                )}
               </button>
             );
           })}
@@ -846,9 +886,15 @@ function ProHomeContent() {
           </div>
 
           {videos.length === 0 ? (
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center">
-              <p className="text-xs font-bold text-slate-500">
-                டிசம்பர் முதல் வாரம் — {selectedSubject} வீடியோக்கள் பதிவேற்றப்படும் 🌱
+            <div className="p-6 rounded-2xl bg-[#FAF5FF] dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center space-y-2">
+              <div className="w-10 h-10 rounded-full bg-[#EDE9FE] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] mx-auto flex items-center justify-center">
+                <Video className="w-5 h-5" />
+              </div>
+              <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF]">
+                {selectedSubject} வீடியோக்கள் தயாரிப்பில் உள்ளன
+              </h4>
+              <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                தற்போது நேரடி வீடியோக்கள்: 0 · டிசம்பர் முதல் வாரம் நேரலையாகும் 🌱
               </p>
             </div>
           ) : (
