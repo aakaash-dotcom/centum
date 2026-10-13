@@ -529,22 +529,6 @@ function fsEnsureProMaterialsTab_(ss) {
     sh.getRange(1, 1, 1, headers.length).setValues([headers]);
     sh.setFrozenRows(1);
     sh.getRange(1, 1, 1, headers.length).setFontWeight("bold");
-
-    // Seed dummy live row
-    sh.appendRow([
-      "pm-10-maths-ch1",
-      "10",
-      "Maths",
-      "Chapter 1: Relations and Functions",
-      "Relations and Functions (உறவுகளும் சார்புகளும்)",
-      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
-      "https://dge.tn.gov.in/docs/10th_maths_ch1.pdf",
-      "https://centum.in/quiz?class=10&subject=maths&chapter=Relations%20and%20Functions&type=concept",
-      "https://centum.in/quiz?class=10&subject=maths&chapter=Relations%20and%20Functions&type=oneword",
-      "https://centum.in/quiz?class=10&subject=maths&chapter=Relations%20and%20Functions&type=important",
-      "live",
-      new Date().toISOString(),
-    ]);
   }
   return sh;
 }

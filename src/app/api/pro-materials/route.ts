@@ -3,6 +3,15 @@ import { listMockProMaterials } from '@/lib/server-mock-store';
 
 export const dynamic = 'force-dynamic';
 
+function sanitizeMaterial(m: any) {
+  if (!m || typeof m !== 'object') return m;
+  const copy = { ...m };
+  if (copy.videoEmbedUrl && (copy.videoEmbedUrl.includes('dQw4w9WgXcQ') || copy.videoEmbedUrl.includes('sample') || copy.videoEmbedUrl.includes('test'))) {
+    copy.videoEmbedUrl = '';
+  }
+  return copy;
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel') || '10';
@@ -23,7 +32,8 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.materials) && data.materials.length > 0) {
-          return NextResponse.json(data);
+          const sanitized = data.materials.map(sanitizeMaterial);
+          return NextResponse.json({ ...data, materials: sanitized });
         }
       }
     } catch (e) {
@@ -31,7 +41,7 @@ export async function GET(request: Request) {
     }
   }
 
-  const materials = listMockProMaterials(classLevel, subject);
+  const materials = listMockProMaterials(classLevel, subject).map(sanitizeMaterial);
   return NextResponse.json(
     { ok: true, classLevel, subject, materials },
     { headers: { 'Cache-Control': 'public, max-age=60', 'x-data-source': 'mock' } }
