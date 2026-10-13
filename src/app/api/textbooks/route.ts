@@ -613,6 +613,26 @@ export async function GET(request: Request) {
   }
 }
 
+export async function copyDriveFileViaBridge(sourceId: string, name?: string, targetFolderId?: string) {
+  const scriptUrl = process.env.APPS_SCRIPT_URL;
+  const secretKey = process.env.APPS_SCRIPT_SECRET;
+  if (!scriptUrl || !secretKey) {
+    return { ok: false, error: 'bridge-not-configured' };
+  }
+  const res = await fetch(scriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'drive-copy',
+      key: secretKey,
+      sourceId,
+      name,
+      targetFolderId: targetFolderId || '1_hqisSezs0-4qvZT6i6301QVDawACB5b'
+    })
+  });
+  return res.json();
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
@@ -631,6 +651,10 @@ export async function POST(request: Request) {
         remainingRows: cleaned.length,
         snapshotLedgerRows: textbookSnapshot.length,
       });
+    }
+    if (body.action === 'drive-copy' || body.action === 'ops-copy-drive') {
+      const copyRes = await copyDriveFileViaBridge(body.sourceId, body.name, body.targetFolderId);
+      return NextResponse.json(copyRes);
     }
     return NextResponse.json({ ok: false, error: 'unknown-action' }, { status: 400 });
   } catch (err: any) {

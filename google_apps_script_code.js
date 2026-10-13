@@ -75,7 +75,8 @@ const SCHEMA = {
   Admins:        ["phone","name","passwordHash","active"],
   CoinLedger:    ["timestamp","phone","delta","balance","reason","ref","note"],
   QuizSchedule:  ["date","classLevel","medium","subject","chapter","type","count"],
-  Import:        ["help","json"]
+  Import:        ["help","json"],
+  Textbooks:     ["classLevel","subject","medium","type","unitNo","unitTitle","pageStart","pageEnd","pageCount","driveFileId","fileUrl","sizeMB","sourceUrl","qcNote","updatedAt"]
 };
 
 function setupCentum() {
@@ -258,6 +259,12 @@ function doGet(e) {
     if (a === "ownerDiary") { const _out = typeof ownerDiary === 'function' ? ownerDiary(e) : null; if (_out) return json_(_out); }
     if (a === "ownerAttendance") { const _out = typeof ownerAttendance === 'function' ? ownerAttendance(e) : null; if (_out) return json_(_out); }
 
+    // ==== TEXTBOOKS DRIVE-TO-DRIVE REHOST & PURGE DISPATCH ====
+    if (a === "drive-copy" || a === "ops-copy-drive" || a === "ops-textbooks-purge-probes" || a === "textbooks-audit-owners" || a === "textbooks-batch-rehost") {
+      const _out = typeof textbooksDriveRouteGet === 'function' ? textbooksDriveRouteGet(e.parameter) : driveCopy_(e.parameter);
+      if (_out) return json_(_out);
+    }
+
     return json_({ ok: false, error: "unknown action" });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
 }
@@ -343,6 +350,9 @@ function doPost(e) {
       const _out = typeof classroomRoutePost === 'function' ? classroomRoutePost(body) : null;
       if (_out) return json_(_out);
       return json_({ ok: false, error: "unknown type" });
+    } else if (body.type === "drive-copy" || body.action === "drive-copy" || body.action === "ops-copy-drive" || body.action === "ops-textbooks-purge-probes" || body.action === "textbooks-batch-rehost") {
+      const _out = typeof textbooksDriveRoutePost === 'function' ? textbooksDriveRoutePost(body) : driveCopy_(body);
+      if (_out) return json_(_out);
     } else {
       return json_({ ok: false, error: "unknown type" });
     }
@@ -896,3 +906,33 @@ function referralsFor_(phone) {
   const pending = out.filter(function (r) { return String(r.payoutStatus) !== "paid"; }).reduce(function (s, r) { return s + r.referrerShare; }, 0);
   return { ok: true, referrals: out, totalEarned: total, pendingPayout: pending };
 }
+
+function driveCopy_(params) {
+  try {
+    const sourceId = params.sourceId || params.driveFileId || params.fileId;
+    if (!sourceId) return { ok: false, error: "sourceId-required" };
+    const sourceFile = DriveApp.getFileById(sourceId);
+    const targetFolderId = params.targetFolderId || params.folderId || "1_hqisSezs0-4qvZT6i6301QVDawACB5b";
+    let targetFolder = null;
+    try {
+      if (targetFolderId) targetFolder = DriveApp.getFolderById(targetFolderId);
+    } catch (e) {}
+    const name = params.name || sourceFile.getName();
+    const copy = targetFolder ? sourceFile.makeCopy(name, targetFolder) : sourceFile.makeCopy(name);
+    copy.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return {
+      ok: true,
+      sourceId: sourceId,
+      newFileId: copy.getId(),
+      fileId: copy.getId(),
+      name: copy.getName(),
+      url: copy.getUrl(),
+      previewUrl: "https://drive.google.com/file/d/" + copy.getId() + "/preview",
+      downloadUrl: "https://drive.google.com/uc?id=" + copy.getId() + "&export=download",
+      sizeBytes: copy.getSize()
+    };
+  } catch (err) {
+    return { ok: false, error: String(err && err.message ? err.message : err) };
+  }
+}
+
