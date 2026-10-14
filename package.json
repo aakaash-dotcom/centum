@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/sync-papers.mjs",
+    "prebuild": "node scripts/sync-papers.mjs && node scripts/verify-live-resources.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

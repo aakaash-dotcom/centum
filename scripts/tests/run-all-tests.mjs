@@ -33,6 +33,7 @@ const testFiles = [
   { ref: 'paywall-server-side', script: 'paywall-server-side.mjs' },
   { ref: 'papers-medium-filter', script: 'papers-medium-filter.mjs' },
   { ref: 'textbooks-live-ledger', script: 'textbooks-live-ledger.mjs' },
+  { ref: 'verify-live-resources', script: 'verify-live-resources.mjs' },
 ];
 
 async function runTest(test) {
