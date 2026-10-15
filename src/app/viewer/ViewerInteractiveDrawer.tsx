@@ -63,7 +63,7 @@ export default function ViewerInteractiveDrawer({
   }, [subject, classLevel, medium, cleanCurrentId]);
 
   const handleDownload = () => {
-    const downloadUrl = `https://drive.google.com/uc?export=download&id=${cleanCurrentId}`;
+    const downloadUrl = `/api/drive/download?id=${cleanCurrentId}`;
     const triggerDownload = () => {
       try {
         const link = document.createElement('a');

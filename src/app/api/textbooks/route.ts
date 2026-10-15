@@ -14,6 +14,9 @@ export interface TextbookItem {
   pages: number;
   driveFileId: string;
   pdfUrl?: string;
+  fileUrl?: string;
+  previewUrl?: string;
+  downloadUrl?: string;
   isFullBook?: boolean;
   type?: string;
   unitTitle?: string;
@@ -375,6 +378,9 @@ export function mapRawToItem(row: RawTextbookRow, idx: number, isGap = false): T
   const pageCount = parseInt(row.pageCount, 10) || (pageEnd >= pageStart && pageStart > 0 ? pageEnd - pageStart + 1 : 0);
   const isFullBook = Boolean(row.type?.toLowerCase() === 'full' || (row.unitNo === '0' && row.type?.toLowerCase() !== 'chapter'));
 
+  const previewUrl = row.driveFileId ? `https://drive.google.com/file/d/${row.driveFileId}/preview` : row.fileUrl;
+  const downloadUrl = row.driveFileId ? `/api/drive/download?id=${row.driveFileId}` : (row.fileUrl || '');
+
   const item: TextbookItem = {
     id: `tb-${classLevel}-${subject}-${medium.toLowerCase()}-${row.unitNo || (isFullBook ? 'full' : idx)}`,
     classLevel,
@@ -384,7 +390,10 @@ export function mapRawToItem(row: RawTextbookRow, idx: number, isGap = false): T
     title: row.unitTitle || (isFullBook ? `${subject.toUpperCase()} Complete Textbook` : `Unit ${unitNo}`),
     pages: pageCount,
     driveFileId: row.driveFileId,
-    pdfUrl: row.fileUrl,
+    pdfUrl: previewUrl,
+    fileUrl: previewUrl,
+    previewUrl,
+    downloadUrl,
     isFullBook,
     type: row.type,
     unitTitle: row.unitTitle,
