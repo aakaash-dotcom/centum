@@ -265,6 +265,12 @@ function doGet(e) {
       if (_out) return json_(_out);
     }
 
+    if (a === "ops-papers-batch-swap") {
+      let swapsObj;
+      try { swapsObj = JSON.parse(e.parameter.swaps || "{}"); } catch (err) { return json_({ ok: false, error: "swaps-json-parse" }); }
+      return json_(papersBatchSwap_({ swaps: swapsObj }));
+    }
+
     return json_({ ok: false, error: "unknown action" });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
 }
@@ -353,6 +359,8 @@ function doPost(e) {
     } else if (body.type === "drive-copy" || body.action === "drive-copy" || body.action === "ops-copy-drive" || body.action === "ops-textbooks-purge-probes" || body.action === "textbooks-batch-rehost") {
       const _out = typeof textbooksDriveRoutePost === 'function' ? textbooksDriveRoutePost(body) : driveCopy_(body);
       if (_out) return json_(_out);
+    } else if (body.action === "ops-papers-batch-swap" || body.type === "ops-papers-batch-swap") {
+      return json_(papersBatchSwap_(body));
     } else {
       return json_({ ok: false, error: "unknown type" });
     }
@@ -434,6 +442,29 @@ function opsSet_(body) {
     }
   }
   return json_({ ok: true, updated: updated });
+}
+
+function papersBatchSwap_(body) {
+  const sh = sheet_("Papers");
+  const data = sh.getDataRange().getValues();
+  if (data.length < 2) return { ok: false, error: "no-data" };
+  const h = data[0].map(String);
+  const idCol = h.indexOf("id");
+  const driveCol = h.indexOf("driveFileId");
+  if (idCol === -1 || driveCol === -1) return { ok: false, error: "missing-col" };
+  const swaps = body.swaps || {};
+  let updated = 0;
+  for (let r = 1; r < data.length; r++) {
+    const rowId = String(data[r][idCol]);
+    if (swaps[rowId] && swaps[rowId] !== String(data[r][driveCol])) {
+      data[r][driveCol] = swaps[rowId];
+      updated++;
+    }
+  }
+  if (updated > 0) {
+    sh.getDataRange().setValues(data);
+  }
+  return { ok: true, updated: updated, totalRows: data.length - 1 };
 }
 
 // =================== v5 coins + referral codes ===================

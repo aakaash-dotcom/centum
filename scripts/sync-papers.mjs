@@ -57,6 +57,9 @@ loadEnvFile(path.join(rootDir, '.env'));
 const appScriptUrl = process.env.APPS_SCRIPT_URL;
 const appScriptSecret = process.env.APPS_SCRIPT_SECRET;
 
+const swapsPath = path.join(rootDir, 'src', 'data', 'paper-swaps.json');
+const paperSwaps = fs.existsSync(swapsPath) ? JSON.parse(fs.readFileSync(swapsPath, 'utf8')) : {};
+
 const ALLOWED_CLASSES = new Set([6, 7, 8, 9, 10, 11, 12]);
 const ALLOWED_YEARS = new Set([2022, 2023, 2024, 2025]);
 
@@ -90,22 +93,35 @@ function processAndSaveRows(rawRows) {
       continue;
     }
 
-    const driveFileId = String(row.driveFileId || '').trim();
-    const pdfUrl = row.pdfUrl || `https://drive.google.com/uc?id=${driveFileId}&export=download`;
+    const rowId = String(row.id || `p-${classDigits}-${row.subject}-${row.exam}-${yearNum}-${(String(row.medium || '').trim().toLowerCase().startsWith('t') ? 'ta' : 'en')}`).trim();
+    let existingDriveId = String(row.driveFileId || '').trim();
+    if (!existingDriveId || existingDriveId === 'REPLACE_DRIVE_ID') {
+      const m = String(row.pdfUrl || '').match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) existingDriveId = m[1];
+    }
+    const swappedDriveId = paperSwaps[rowId];
+    const driveFileId = swappedDriveId || existingDriveId;
+    const pdfUrl = driveFileId
+      ? `https://drive.google.com/uc?id=${driveFileId}&export=download`
+      : (row.pdfUrl || '');
     const mediumStr = String(row.medium || '').trim().toLowerCase();
     const medium = mediumStr.startsWith('t') ? 'Tamil' : 'English';
     const featured = row.featured === 'TRUE' || row.featured === true;
 
     validRows.push({
-      id: String(row.id || `p-${classDigits}-${row.subject}-${row.exam}-${yearNum}-${medium.toLowerCase().slice(0, 2)}`).trim(),
+      id: rowId,
       classLevel: `${classDigits}th`,
+      category: 'pyq',
       subject: String(row.subject || '').trim(),
       exam: String(row.exam || '').trim(),
       year: yearNum,
       medium: medium,
       title: String(row.title || `${classDigits}th ${row.subject} ${row.exam} ${yearNum}`).trim(),
+      driveFileId: driveFileId,
       pdfUrl: pdfUrl,
       featured: featured,
+      plan: String(row.plan || 'free').trim().toLowerCase(),
+      isBilingual: Boolean(row.isBilingual),
       sourceName: 'CENTUM',
       sourceUrl: String(row.sourceUrl || 'https://centum.app/pyq').trim(),
     });

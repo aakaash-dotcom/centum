@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { allPapers, detectBilingualPapers, deduplicateBilingualPapers, normalizeSubjectName } from '@/lib/data';
+import paperSwaps from '@/data/paper-swaps.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,14 +80,21 @@ export async function GET(request: Request) {
                 if (yr && (yr < 2022 || yr > 2025)) return false;
                 return true;
               })
-              .map((p: any) => ({
-                ...p,
-                classLevel: normClass(p.classLevel),
-                medium: normMedium(p.medium),
-                category: normCategory(p.category),
-                plan: normPlan(p.plan),
-                driveFileId: extractDriveId(p),
-              }))
+              .map((p: any) => {
+                const swapDriveId = (paperSwaps as Record<string, string>)[p.id];
+                const resolvedDriveId = swapDriveId || extractDriveId(p);
+                return {
+                  ...p,
+                  classLevel: normClass(p.classLevel),
+                  medium: normMedium(p.medium),
+                  category: normCategory(p.category),
+                  plan: normPlan(p.plan),
+                  driveFileId: resolvedDriveId,
+                  pdfUrl: swapDriveId
+                    ? `https://drive.google.com/uc?id=${swapDriveId}&export=download`
+                    : (p.pdfUrl || (resolvedDriveId ? `https://drive.google.com/uc?id=${resolvedDriveId}&export=download` : '')),
+                };
+              })
           );
 
           if (classLevel) {
@@ -164,14 +172,21 @@ export async function GET(request: Request) {
 
   // Fallback to committed catalog in papers.json when env vars are missing or upstream is unreachable
   let papers = detectBilingualPapers(
-    (allPapers as any[]).map((p) => ({
-      ...p,
-      classLevel: normClass(p.classLevel),
-      medium: normMedium(p.medium),
-      category: normCategory(p.category),
-      plan: normPlan(p.plan),
-      driveFileId: extractDriveId(p),
-    }))
+    (allPapers as any[]).map((p) => {
+      const swapDriveId = (paperSwaps as Record<string, string>)[p.id];
+      const resolvedDriveId = swapDriveId || extractDriveId(p);
+      return {
+        ...p,
+        classLevel: normClass(p.classLevel),
+        medium: normMedium(p.medium),
+        category: normCategory(p.category),
+        plan: normPlan(p.plan),
+        driveFileId: resolvedDriveId,
+        pdfUrl: swapDriveId
+          ? `https://drive.google.com/uc?id=${swapDriveId}&export=download`
+          : (p.pdfUrl || (resolvedDriveId ? `https://drive.google.com/uc?id=${resolvedDriveId}&export=download` : '')),
+      };
+    })
   );
 
   if (classLevel) {
@@ -221,4 +236,33 @@ export async function GET(request: Request) {
       },
     }
   );
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const scriptUrl = process.env.APPS_SCRIPT_URL;
+    const secretKey = process.env.APPS_SCRIPT_SECRET;
+
+    if (!scriptUrl || !secretKey) {
+      return NextResponse.json({ ok: false, error: 'bridge-not-configured' }, { status: 503 });
+    }
+
+    if (body.action === 'sync-sheet-swaps' || body.action === 'ops-papers-batch-swap') {
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ops-papers-batch-swap',
+          key: secretKey,
+          swaps: paperSwaps,
+        }),
+      });
+      const data = await res.json();
+      return NextResponse.json(data);
+    }
+    return NextResponse.json({ ok: false, error: 'unknown-action' }, { status: 400 });
+  } catch (err: any) {
+    return NextResponse.json({ ok: false, error: err?.message || 'POST failed' }, { status: 500 });
+  }
 }
