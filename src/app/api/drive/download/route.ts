@@ -20,32 +20,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: 'invalid-id' }, { status: 400 });
   }
 
-  const ucUrl = `https://drive.google.com/uc?id=${encodeURIComponent(id)}&export=download`;
+  const directUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download`;
 
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
 
-    const res = await fetch(ucUrl, {
+    const res = await fetch(directUrl, {
       signal: controller.signal,
-      redirect: 'manual',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) CENTUM-Downloader/1.0',
       },
     });
     clearTimeout(timeout);
 
-    // If Google Drive immediately redirected to download CDN
-    if (res.status === 302 || res.status === 303) {
-      const loc = res.headers.get('location');
-      if (loc) {
-        return NextResponse.redirect(loc);
-      }
-    }
-
     const contentType = res.headers.get('content-type') || '';
     if (contentType.includes('application/pdf') || contentType.includes('application/octet-stream')) {
-      return NextResponse.redirect(ucUrl);
+      return NextResponse.redirect(directUrl);
     }
 
     // Read interstitial HTML and extract confirmation tokens (id + confirm + uuid)
@@ -54,14 +45,13 @@ export async function GET(request: Request) {
     const confirmMatch = html.match(/name="confirm"\s+value="([^"]+)"/i);
 
     if (uuidMatch && confirmMatch) {
-      const confirmedUrl = `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=${encodeURIComponent(confirmMatch[1])}&uuid=${encodeURIComponent(uuidMatch[1])}`;
+      const confirmedUrl = `${directUrl}&confirm=${encodeURIComponent(confirmMatch[1])}&uuid=${encodeURIComponent(uuidMatch[1])}`;
       return NextResponse.redirect(confirmedUrl);
     }
 
-    // Default fallback to direct ucUrl
-    return NextResponse.redirect(ucUrl);
+    return NextResponse.redirect(directUrl);
   } catch (err: any) {
     console.warn(`[DriveDownload] Error handling confirm-token for ${id}:`, err?.message || err);
-    return NextResponse.redirect(ucUrl);
+    return NextResponse.redirect(directUrl);
   }
 }
