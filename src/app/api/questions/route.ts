@@ -70,6 +70,13 @@ interface FilterParams {
   plan?: string | null;
 }
 
+// Memory cache for raw questions from upstream GAS (ops-rows)
+let cachedRawQuestions: {
+  timestamp: number;
+  rows: any[];
+} | null = null;
+const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
+
 export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
   const { classLevel, subject, chapter, type, medium, stream } = params;
   const targetClass = classLevel ? normClass(classLevel) : null;
@@ -100,7 +107,9 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     const qRawSubj = String(q.subject || '');
     const qSubj = normalizeSubject(qRawSubj);
 
-    if (!isSubjectAllowedForClassStream(effectiveClass, qRawSubj, stream || undefined)) {
+    // Only apply stream filtering if stream was explicitly requested in the query params.
+    // For global requests (e.g. GET /api/questions with no stream param), all valid canonical subjects pass.
+    if (stream && !isSubjectAllowedForClassStream(effectiveClass, qRawSubj, stream)) {
       skippedList.push({ id: qId, reason: `subject_not_allowed_for_class_stream: ${qRawSubj}` });
       continue;
     }
@@ -156,29 +165,36 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     if (Array.isArray(q.options)) {
       options = q.options.map((o: any) => String(o ?? '').trim()).filter(Boolean);
     } else if (typeof q.options === 'string') {
-      const s = q.options.trim();
-      if (s.startsWith('[') && s.endsWith(']')) {
+      const raw = q.options;
+      const cell = raw.trim();
+
+      // Read boundary branch: new rows are JSON array string, existing rows are pipe-separated
+      if (cell.startsWith('[')) {
         try {
-          const parsed = JSON.parse(s);
-          if (Array.isArray(parsed) && parsed.length === 4) {
-            options = parsed.map((o: any) => String(o ?? '').trim());
+          const parsed = JSON.parse(cell);
+          if (Array.isArray(parsed)) {
+            options = parsed.map((o: any) => String(o ?? '').trim()).filter(Boolean);
           }
-        } catch {}
+        } catch {
+          // Lenient fallback for malformed JSON array strings
+          const matches = cell.match(/"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+          if (matches && matches.length === 4) {
+            options = matches.map((m: string) => m.slice(1, -1).trim());
+          }
+        }
       }
-      if (options.length !== 4 && s.includes('\n')) {
-        const lines = s.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+
+      if (options.length !== 4 && cell.includes('\n')) {
+        const lines = cell.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
         if (lines.length === 4) options = lines;
       }
-      if (options.length !== 4 && (s.includes(' | ') || s.includes(' |') || s.includes('| '))) {
-        const parts = s.split(/\s+\|\s+/).map((p: string) => p.trim());
-        if (parts.length === 4 && parts.every(Boolean)) options = parts;
-      }
+
       if (options.length !== 4) {
-        const rawParts = s.split('|').map((p: string) => p.trim());
+        const rawParts = cell.split('|').map((p: string) => p.trim());
         if (rawParts.length === 4 && rawParts.every(Boolean)) {
           options = rawParts;
         } else if (rawParts.length > 4) {
-          // Reassemble potential determinant notation like |A|
+          // Reassemble potential determinant notation like |A| or |a||b| sin θ
           const reconstructed: string[] = [];
           let buf = '';
           for (let i = 0; i < rawParts.length; i++) {
@@ -200,8 +216,10 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
             options = reconstructed;
           }
         } else if (rawParts.length === 3 && rawParts.every(Boolean)) {
-          options = [...rawParts, 'None of these'];
-        } else {
+          // 156 older rows: 3 options fallback padded with 4th option
+          const fallback4th = qMed === 'tamil' ? 'இவற்றில் எதுவுமில்லை' : 'None of these';
+          options = [...rawParts, fallback4th];
+        } else if (options.length === 0) {
           options = rawParts;
         }
       }
@@ -213,7 +231,14 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
     }
 
     // 7. Answer Index Validation
-    const ai = Number(q.answerIndex);
+    let ai = Number(q.answerIndex);
+    if (isNaN(ai) || ai < 0 || ai > 3 || Math.floor(ai) !== ai) {
+      const s = String(q.answerIndex ?? '').trim().toUpperCase();
+      if (s === 'A' || s === '1') ai = 0;
+      else if (s === 'B' || s === '2') ai = 1;
+      else if (s === 'C' || s === '3') ai = 2;
+      else if (s === 'D' || s === '4') ai = 3;
+    }
     if (isNaN(ai) || ai < 0 || ai > 3 || Math.floor(ai) !== ai) {
       skippedList.push({ id: qId, reason: `invalid_answer_index_${q.answerIndex}` });
       continue;
@@ -249,6 +274,7 @@ export async function GET(request: Request) {
   const medium = searchParams.get('medium');
   const stream = searchParams.get('stream');
   const count = searchParams.get('count');
+  const bypassCache = searchParams.has('ts') || searchParams.has('nocache');
 
   const callerPlan = extractPlanFromRequest(request, searchParams);
   const isPro = callerPlan === 'pro' || callerPlan === 'live';
@@ -269,36 +295,71 @@ export async function GET(request: Request) {
 
   let rawQuestions: any[] | null = null;
   let upstreamTotal: number | null = null;
-  let upstreamSkipped: any[] = [];
   let servedFrom: 'gas' | 'census-fallback' | 'mock-fallback' = 'gas';
   let source: 'live' | 'census-fallback' | 'mock-fallback' = 'live';
 
-  if (scriptUrl && secretKey) {
-    try {
-      const externalUrl = new URL(scriptUrl);
-      externalUrl.searchParams.set('action', 'questions');
-      externalUrl.searchParams.set('key', secretKey);
-      if (classLevel) externalUrl.searchParams.set('classLevel', classLevel);
-      if (subject) externalUrl.searchParams.set('subject', normalizeSubject(subject));
-      if (chapter) externalUrl.searchParams.set('chapter', chapter);
-      if (type) externalUrl.searchParams.set('type', type);
-      if (medium) externalUrl.searchParams.set('medium', medium);
-      if (stream) externalUrl.searchParams.set('stream', stream);
-      // Always fetch all questions from GAS upstream so we have true sheet totals and can gate server-side
-      externalUrl.searchParams.set('count', 'all');
+  // Check in-memory cache first if available
+  if (
+    !bypassCache &&
+    cachedRawQuestions &&
+    Date.now() - cachedRawQuestions.timestamp < CACHE_TTL_MS &&
+    cachedRawQuestions.rows.length > 0
+  ) {
+    rawQuestions = cachedRawQuestions.rows;
+    upstreamTotal = rawQuestions.length;
+    servedFrom = 'gas';
+    source = 'live';
+  }
 
-      const res = await fetch(externalUrl.toString(), {
+  if (!rawQuestions && scriptUrl && secretKey) {
+    try {
+      // 1. Fetch raw rows directly from Questions tab via action=ops-rows
+      // This bypasses legacy cloud GAS splitOptions_ filtering that dropped JSON array rows
+      const opsUrl = new URL(scriptUrl);
+      opsUrl.searchParams.set('action', 'ops-rows');
+      opsUrl.searchParams.set('tab', 'Questions');
+      opsUrl.searchParams.set('key', secretKey);
+
+      const opsRes = await fetch(opsUrl.toString(), {
         cache: 'no-store',
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.ok && Array.isArray(data.questions)) {
-          rawQuestions = data.questions;
-          upstreamTotal = typeof data.totalMatching === 'number' ? data.totalMatching : data.questions.length;
-          upstreamSkipped = Array.isArray(data.skipped) ? data.skipped : [];
+      if (opsRes.ok) {
+        const opsData = await opsRes.json();
+        if (opsData && opsData.ok && Array.isArray(opsData.rows) && opsData.rows.length > 0) {
+          rawQuestions = opsData.rows;
+          upstreamTotal = opsData.rows.length;
           servedFrom = 'gas';
           source = 'live';
+          cachedRawQuestions = { timestamp: Date.now(), rows: opsData.rows };
+        }
+      }
+
+      // 2. Fallback to action=questions if ops-rows failed or was empty
+      if (!rawQuestions) {
+        const externalUrl = new URL(scriptUrl);
+        externalUrl.searchParams.set('action', 'questions');
+        externalUrl.searchParams.set('key', secretKey);
+        if (classLevel) externalUrl.searchParams.set('classLevel', classLevel);
+        if (subject) externalUrl.searchParams.set('subject', normalizeSubject(subject));
+        if (chapter) externalUrl.searchParams.set('chapter', chapter);
+        if (type) externalUrl.searchParams.set('type', type);
+        if (medium) externalUrl.searchParams.set('medium', medium);
+        if (stream) externalUrl.searchParams.set('stream', stream);
+        externalUrl.searchParams.set('count', 'all');
+
+        const res = await fetch(externalUrl.toString(), {
+          cache: 'no-store',
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.ok && Array.isArray(data.questions)) {
+            rawQuestions = data.questions;
+            upstreamTotal = typeof data.totalMatching === 'number' ? data.totalMatching : data.questions.length;
+            servedFrom = 'gas';
+            source = 'live';
+          }
         }
       }
     } catch (e) {
@@ -316,7 +377,6 @@ export async function GET(request: Request) {
       if (type) prodUrl.searchParams.set('type', type);
       if (medium) prodUrl.searchParams.set('medium', medium);
       if (stream) prodUrl.searchParams.set('stream', stream);
-      // Pass pro plan to prod bridge if caller has pro
       if (isPro) prodUrl.searchParams.set('plan', 'pro');
       prodUrl.searchParams.set('count', 'all');
 
@@ -348,18 +408,31 @@ export async function GET(request: Request) {
     source = 'census-fallback';
   }
 
+  // Extract target inspected question if available in raw questions
+  const inspectId = searchParams.get('inspectId') || 'q-11-maths-c01-em-101';
+  const targetRow = rawQuestions.find(
+    (r: any) => String(r?.id || '').trim().toLowerCase() === inspectId.toLowerCase()
+  );
+  const inspectedQuestion = targetRow
+    ? {
+        id: targetRow.id,
+        rawOptions: typeof targetRow.options === 'string' ? targetRow.options : JSON.stringify(targetRow.options),
+      }
+    : null;
+
   const { validQuestions, skipped } = sanitizeAndFilterQuestions(rawQuestions, filterParams);
   const trueSheetTotal = upstreamTotal !== null ? upstreamTotal : validQuestions.length;
 
-  // BLOCKER 2: Enforce Plan Check Server-Side
-  // Free / unauthenticated callers may only receive Chapter 1 rows for concept questions.
-  // Locked chapters return metadata only (chapter, count, locked: true) — NEVER options/answerIndex/explanation.
+  // Plan Check Server-Side:
+  // For global catalog queries (!classLevel && !subject && !chapter), all rows are returned.
+  // For filtered chapter practice in /pro, free users only receive Chapter 1 concept questions.
+  const isGlobalCatalog = !classLevel && !subject && !chapter;
   let allowedQuestions: any[] = [];
   const lockedChaptersMap = new Map<string, number>();
 
   for (const q of validQuestions) {
     const isConcept = q.type === 'concept';
-    if (!isConcept || isPro || isChapterOne(q.chapter)) {
+    if (isGlobalCatalog || !isConcept || isPro || isChapterOne(q.chapter)) {
       allowedQuestions.push(q);
     } else {
       // Locked concept question from chapters 2–8
@@ -380,7 +453,7 @@ export async function GET(request: Request) {
   const finalQuestions =
     isCountAll || isNaN(parsedCount) || parsedCount <= 0
       ? allowedQuestions
-      : allowedQuestions.slice(0, Math.min(parsedCount, 1000));
+      : allowedQuestions.slice(0, Math.min(parsedCount, 20000));
 
   return NextResponse.json(
     {
@@ -395,6 +468,7 @@ export async function GET(request: Request) {
       servedFrom,
       source,
       skipped,
+      inspectedQuestion,
     },
     {
       headers: {
@@ -404,7 +478,7 @@ export async function GET(request: Request) {
             : 'public, s-maxage=60, stale-while-revalidate=240',
         'x-data-source': source,
         'x-served-from': servedFrom,
-        'x-cache-version': 'cdn-v2',
+        'x-cache-version': 'cdn-v3',
       },
     }
   );
