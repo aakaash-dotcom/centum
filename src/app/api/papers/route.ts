@@ -222,9 +222,10 @@ export async function GET(request: Request) {
   }
 
   // Fallback to committed catalog in papers.json when env vars are missing or upstream is unreachable
+  const verifiedSwaps = getVerifiedSwaps();
   let papers = detectBilingualPapers(
     (allPapers as any[]).map((p) => {
-      const swapDriveId = (paperSwaps as Record<string, string>)[p.id];
+      const swapDriveId = verifiedSwaps[p.id];
       const resolvedDriveId = swapDriveId || extractDriveId(p);
       return {
         ...p,
@@ -306,7 +307,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           action: 'ops-papers-batch-swap',
           key: secretKey,
-          swaps: paperSwaps,
+          swaps: body.swaps || getVerifiedSwaps(),
         }),
       });
       const data = await res.json();
