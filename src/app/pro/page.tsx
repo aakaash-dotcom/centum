@@ -42,6 +42,82 @@ import { isLanguageSubject } from '@/lib/data';
 import rawPapers from '@/data/papers.json';
 import { Paper, Question } from '@/types';
 
+export interface ProMaterialShelfItem {
+  id: string;
+  labelEn: string;
+  labelTa: string;
+  icon: string;
+  substrate: 'concept-quiz' | 'pyq-solved' | 'video-lessons' | 'notes-formula' | 'impq-bank' | 'mock-tests' | 'oneword-drill' | 'doubt-clearing';
+  status: 'live' | 'coming';
+}
+
+export const proMaterials: ProMaterialShelfItem[] = [
+  {
+    id: 'concept-quiz',
+    labelEn: 'Concept Quiz',
+    labelTa: 'கருத்துத் தேர்வு',
+    icon: '🧠',
+    substrate: 'concept-quiz',
+    status: 'live',
+  },
+  {
+    id: 'pyq-solved',
+    labelEn: 'PYQ with Full Solutions',
+    labelTa: 'முழு விடையுடன் முந்தைய தாள்கள்',
+    icon: '📄',
+    substrate: 'pyq-solved',
+    status: 'live',
+  },
+  {
+    id: 'video-lessons',
+    labelEn: 'Video Lessons',
+    labelTa: 'வீடியோ வகுப்புகள்',
+    icon: '▶',
+    substrate: 'video-lessons',
+    status: 'coming',
+  },
+  {
+    id: 'notes-formula',
+    labelEn: 'Notes & Formula Sheets',
+    labelTa: 'நோட்டுகள் & சூத்திரத் தாள்கள்',
+    icon: '📝',
+    substrate: 'notes-formula',
+    status: 'coming',
+  },
+  {
+    id: 'impq-bank',
+    labelEn: 'Important Questions Bank',
+    labelTa: 'முக்கிய வினா வங்கி',
+    icon: '🎯',
+    substrate: 'impq-bank',
+    status: 'live',
+  },
+  {
+    id: 'mock-tests',
+    labelEn: 'Full Mock Tests',
+    labelTa: 'முழு மாதிரித் தேர்வுகள்',
+    icon: '⏱️',
+    substrate: 'mock-tests',
+    status: 'coming',
+  },
+  {
+    id: 'oneword-drill',
+    labelEn: 'One-Word Drill',
+    labelTa: 'ஒரு மதிப்பெண் பயிற்சி',
+    icon: '⚡',
+    substrate: 'oneword-drill',
+    status: 'live',
+  },
+  {
+    id: 'doubt-clearing',
+    labelEn: 'Doubt Clearing',
+    labelTa: 'சந்தேக தீர்வு',
+    icon: '💬',
+    substrate: 'doubt-clearing',
+    status: 'coming',
+  },
+];
+
 interface ProMaterialItem {
   id: string;
   classLevel: string;
@@ -176,6 +252,7 @@ function ProHomeContent() {
   const [livePapers, setLivePapers] = useState<Paper[]>(() => rawPapers as unknown as Paper[]);
   const [papersTotalCount, setPapersTotalCount] = useState<number>(4500);
   const [conceptQuestions, setConceptQuestions] = useState<Question[]>([]);
+  const [onewordQuestions, setOnewordQuestions] = useState<Question[]>([]);
   const [lockedChapters, setLockedChapters] = useState<Array<{ chapter: string; count: number; locked: boolean }>>([]);
   const [conceptTotalCount, setConceptTotalCount] = useState<number>(240);
   const [textbooks, setTextbooks] = useState<TextbookChapter[]>([]);
@@ -232,7 +309,7 @@ function ProHomeContent() {
     async function loadContent() {
       setIsLoading(true);
       try {
-        const [matRes, vidRes, qRes] = await Promise.all([
+        const [matRes, vidRes, qRes, owRes] = await Promise.all([
           fetch(
             `/api/pro-materials?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
           ),
@@ -241,6 +318,9 @@ function ProHomeContent() {
           ),
           fetch(
             `/api/questions?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}&type=concept&count=all&medium=${encodeURIComponent(medium || 'english')}`
+          ),
+          fetch(
+            `/api/questions?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}&type=oneword&count=10&medium=${encodeURIComponent(medium || 'english')}`
           ),
         ]);
 
@@ -285,6 +365,15 @@ function ProHomeContent() {
             setConceptQuestions([]);
             setLockedChapters([]);
             setConceptTotalCount(medium ? 240 : 480);
+          }
+        }
+
+        if (owRes.ok) {
+          const owData = await owRes.json();
+          if (owData && owData.ok && Array.isArray(owData.questions)) {
+            setOnewordQuestions(owData.questions);
+          } else {
+            setOnewordQuestions([]);
           }
         }
       } catch (e) {
@@ -621,10 +710,311 @@ function ProHomeContent() {
 
   const isTamil = Boolean(student?.medium ? String(student.medium).toLowerCase().startsWith('t') : medium === 'tamil');
 
+  // Handler for opening Locked tile from the proMaterials shelf
+  const handleLockedTileClick = (item: ProMaterialShelfItem) => {
+    setUpsellContext({
+      subject: selectedSubject,
+      chapter: isTamil ? item.labelTa : item.labelEn,
+      videoCount: 2,
+      conceptCount: 30,
+      paperCount: classPapers.length || 12,
+    });
+    setUpsellModalOpen(true);
+  };
+
+  const handleConceptQuizClick = () => {
+    if (sectionRefs.concept.current) {
+      sectionRefs.concept.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      router.push(
+        `/test-runner?subject=${encodeURIComponent(selectedSubject)}&type=concept&standard=${encodeURIComponent(effectiveClass)}&count=15`
+      );
+    }
+  };
+
+  const renderSubstrate = (item: ProMaterialShelfItem) => {
+    switch (item.id) {
+      case 'concept-quiz': {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-[#7C3AED] dark:text-[#A78BFA] pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span>{conceptChapterRows.length} {isTamil ? 'பாட அலகுகள்' : 'Chapters Available'}</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-black">{isTamil ? 'நேரலை' : 'Ready to Play'}</span>
+            </div>
+            <div className="space-y-1.5">
+              {conceptChapterRows.slice(0, 3).map((ch) => (
+                <div key={ch.title} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-[#230D3E] text-xs">
+                  <span className="font-bold text-[#2E1065] dark:text-[#FAF5FF] truncate max-w-[170px]">
+                    {ch.title}
+                  </span>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                    {ch.count} Qs
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleConceptQuizClick();
+                }}
+                className="w-full py-1.5 px-3 rounded-xl bg-[#A3E635] hover:bg-[#86efac] text-[#18181B] text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <span>{isTamil ? 'தொடங்குக' : 'Launch Concept Quiz'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      case 'pyq-solved': {
+        const pyqPapers = classPapers.filter(
+          (p) => (p.category || 'pyq').toLowerCase() === 'pyq'
+        );
+        const displayPapers =
+          pyqPapers.length > 0
+            ? pyqPapers.slice(0, 3)
+            : livePapers
+                .filter((p) => (p.category || 'pyq').toLowerCase() === 'pyq')
+                .slice(0, 3);
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span>{pyqPapers.length || livePapers.length} {isTamil ? 'முழு விடைத்தாள்கள்' : 'Papers with Solutions'}</span>
+              <span className="text-amber-600 font-bold">100% Solved</span>
+            </div>
+            <div className="space-y-1.5">
+              {displayPapers.map((paper, idx) => (
+                <div key={paper.id || idx} className="p-2 rounded-xl bg-slate-50 dark:bg-[#230D3E] text-xs space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-[#7C3AED] dark:text-[#A78BFA]">
+                      {paper.year} · {paper.exam}
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-700 dark:text-amber-300">
+                      Step Solutions
+                    </span>
+                  </div>
+                  <p className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                    {paper.title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'video-lessons': {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-amber-600 dark:text-amber-400 font-bold">{isTamil ? 'விரைவில் 🌱' : 'Coming soon 🌱'}</span>
+              <span>6 Skeleton Tiles</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="p-1.5 rounded-xl bg-slate-100 dark:bg-[#230D3E] border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1 h-[60px] text-center"
+                >
+                  <div className="w-4 h-4 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[8px] text-slate-400">
+                    ▶
+                  </div>
+                  <div className="w-10 h-1.5 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <span className="text-[7.5px] font-bold text-slate-400">{isTamil ? 'விரைவில்' : 'Coming soon'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'notes-formula': {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-amber-600 dark:text-amber-400 font-bold">{isTamil ? 'விரைவில் 🌱' : 'Coming soon 🌱'}</span>
+              <span>6 Skeleton Cards</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div
+                  key={i}
+                  className="p-1.5 rounded-xl bg-slate-100 dark:bg-[#230D3E] border border-dashed border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center gap-1 h-[60px] text-center"
+                >
+                  <div className="w-4 h-4 rounded-md bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[8px] text-slate-400">
+                    📝
+                  </div>
+                  <div className="w-10 h-1.5 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <span className="text-[7.5px] font-bold text-slate-400">{isTamil ? 'விரைவில்' : 'Coming soon'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'impq-bank': {
+        const impTitles =
+          materials.length > 0
+            ? materials.map((m) => m.title)
+            : [
+                '10th Maths Top Centum 5-Mark Questions (Golden Questions)',
+                '10th Science Essential Diagrams & Laws ImpQ Bank',
+                'Chapter 1 · Relations & Functions Top 2-Mark & 5-Mark Bank',
+                'Chapter 2 · Numbers & Sequences Compulsory Questions Bank',
+              ];
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span>Drive Curated Bank</span>
+              <span className="text-amber-600 font-bold">5-Mark & 2-Mark</span>
+            </div>
+            <div className="space-y-1.5">
+              {impTitles.slice(0, 3).map((title, idx) => (
+                <div key={idx} className="p-2 rounded-xl bg-slate-50 dark:bg-[#230D3E] text-xs space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-amber-700 dark:text-amber-400">
+                      DRIVE VAULT
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-800 dark:text-amber-200">
+                      Golden ImpQ
+                    </span>
+                  </div>
+                  <p className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                    {title}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'mock-tests': {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-amber-600 dark:text-amber-400 font-bold">{isTamil ? 'விரைவில் 🌱' : 'Coming soon 🌱'}</span>
+              <span>4 Skeleton Cards</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-[#230D3E] border border-dashed border-slate-200 dark:border-slate-700 flex flex-col justify-between h-[64px]"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs">⏱️</span>
+                    <span className="text-[8px] font-bold text-slate-400">{isTamil ? 'விரைவில்' : 'Coming soon'}</span>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded" />
+                    <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'oneword-drill': {
+        const questionsToShow =
+          onewordQuestions.length > 0
+            ? onewordQuestions.slice(0, 3)
+            : [
+                {
+                  id: 'ow-1',
+                  question: 'If n(A × B) = 20 and n(A) = 5 then n(B) is',
+                  options: ['5', '4', '15', '25'],
+                  chapter: 'Chapter 1',
+                },
+                {
+                  id: 'ow-2',
+                  question: 'The range of relation R = {(x, x²) | x is prime < 13} is',
+                  options: ['{4, 9, 25, 49, 121}', '{2, 3, 5, 7, 11}'],
+                  chapter: 'Chapter 1',
+                },
+                {
+                  id: 'ow-3',
+                  question: 'If ordered pairs (a + 2, 4) and (5, 2a + b) are equal, then (a, b) is',
+                  options: ['(3, -2)', '(2, -2)'],
+                  chapter: 'Chapter 1',
+                },
+              ];
+
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span>Instant 1-Mark Bank</span>
+              <span className="text-emerald-600 font-bold">Real Live Rows</span>
+            </div>
+            <div className="space-y-1.5">
+              {questionsToShow.map((q, idx) => (
+                <div key={q.id || idx} className="p-2 rounded-xl bg-slate-50 dark:bg-[#230D3E] text-xs space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-[#7C3AED] dark:text-[#A78BFA]">
+                      {q.chapter || 'Book-Back Drill'}
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                      1-Mark
+                    </span>
+                  </div>
+                  <p className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                    {q.question}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      case 'doubt-clearing': {
+        return (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <span className="text-amber-600 dark:text-amber-400 font-bold">{isTamil ? 'விரைவில் 🌱' : 'Coming soon 🌱'}</span>
+              <span>3 Skeleton Cards</span>
+            </div>
+            <div className="space-y-1.5">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-[#230D3E] border border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px]">
+                      💬
+                    </div>
+                    <div className="space-y-1">
+                      <div className="w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded" />
+                      <div className="w-14 h-1.5 bg-slate-200 dark:bg-slate-700 rounded" />
+                    </div>
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-400">{isTamil ? 'விரைவில்' : 'Coming soon'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
+      default:
+        return null;
+    }
+  };
+
   const SECTION_CHIPS: Array<{ id: ProSection; label: string; icon: string; count?: number | string }> = [
     { id: 'all', label: isTamil ? 'அனைத்தும்' : 'All', icon: '✨' },
     { id: 'videos', label: isTamil ? 'வீடியோக்கள்' : 'Videos', icon: '▶', count: videos.length },
-    { id: 'concept', label: 'Concept Quiz', icon: '🧠', count: conceptChapterRows.length },
+    { id: 'concept', label: isTamil ? 'கருத்துத் தேர்வு' : 'Concept Quiz', icon: '🧠', count: conceptChapterRows.length },
     { id: 'notes', label: isTamil ? 'நோட்டுகள்' : 'Notes', icon: '📝', count: materials.length },
     { id: 'papers', label: isTamil ? 'தாள்கள் (PYQ)' : 'Papers (PYQ)', icon: '📄', count: classPapers.length },
     { id: 'textbooks', label: isTamil ? 'பாடநூல்கள்' : 'Textbooks', icon: '📚', count: textbooks.length || '8+' },
@@ -771,6 +1161,115 @@ function ProHomeContent() {
           })}
         </div>
       </div>
+
+      {/* PRO MATERIALS SHELF (Locked-and-blurred 8-item shelf) */}
+      {activeSection === 'all' && (
+        <div className="mb-8 space-y-3" data-testid="pro-materials-shelf">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
+              <Crown className="w-4 h-4 text-amber-500 fill-current" />
+              <span>{isTamil ? 'Pro பாடப்பொருட்கள் பெட்டகம் (Material Shelf)' : 'Pro Materials Shelf'}</span>
+            </h3>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              8 Material Vaults
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {proMaterials.map((item) => {
+              const isUnlocked = item.id === 'concept-quiz' || isPro;
+              const isComingSoon = item.status === 'coming';
+              const label = isTamil ? item.labelTa : item.labelEn;
+
+              return (
+                <div
+                  key={item.id}
+                  data-testid={`pro-tile-${item.id}`}
+                  data-substrate={item.status === 'live' ? 'real' : 'skeleton'}
+                  data-status={item.status}
+                  data-locked={!isUnlocked}
+                  onClick={() => {
+                    if (!isUnlocked) {
+                      handleLockedTileClick(item);
+                    } else if (item.id === 'concept-quiz') {
+                      handleConceptQuizClick();
+                    }
+                  }}
+                  className={`pro-material-tile relative rounded-2xl border text-left flex flex-col justify-between overflow-hidden shadow-xs transition-all h-[240px] sm:h-[260px] ${
+                    isUnlocked
+                      ? 'bg-white dark:bg-[#1B0B2E] border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/50'
+                      : 'bg-white dark:bg-[#1B0B2E] border-slate-200 dark:border-slate-800/90 cursor-pointer hover:border-[#7C3AED]/50'
+                  }`}
+                >
+                  {/* Tile Header Bar */}
+                  <div className="p-3.5 pb-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 shrink-0 z-10 bg-white/60 dark:bg-[#1B0B2E]/60">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-lg shrink-0">{item.icon}</span>
+                      <div className="min-w-0">
+                        <h4 className="text-xs sm:text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                          {label}
+                        </h4>
+                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block truncate">
+                          {item.status === 'live'
+                            ? (isTamil ? 'உடனடி நேரலை' : 'Live Material')
+                            : (isTamil ? 'விரைவில்' : 'Coming soon')}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      {isUnlocked ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                          {isTamil ? 'திறக்கப்பட்டது ✓' : 'UNLOCKED'}
+                        </span>
+                      ) : isComingSoon ? (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {isTamil ? 'விரைவில் 🌱' : 'COMING SOON'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          <span>PRO</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Substrate Area (Real content or Coming Soon skeletons) */}
+                  <div className="relative flex-1 p-3.5 pt-2.5 overflow-hidden">
+                    {renderSubstrate(item)}
+
+                    {/* Lock & Blur Overlay (Rendered when NOT unlocked) */}
+                    {!isUnlocked && (
+                      <div
+                        className="pro-lock-overlay absolute inset-0 z-20 flex flex-col items-center justify-center p-4 text-center select-none"
+                        style={{
+                          backdropFilter: 'blur(8px)',
+                          WebkitBackdropFilter: 'blur(8px)',
+                        }}
+                      >
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] text-white shadow-lg shadow-[#7C3AED]/35 flex items-center justify-center border-2 border-white/60 dark:border-white/20">
+                            <Lock className="w-4 h-4 sm:w-5 sm:h-5" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-xs sm:text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight block">
+                              {isTamil ? 'Pro-வில் திறக்கவும்' : 'Unlock with Pro'}
+                            </span>
+                            <span className="text-[10px] font-bold text-[#7C3AED] dark:text-[#C4B5FD] block">
+                              {isTamil ? 'அனைத்து அணுகல்களுக்கும் கிளிக் செய்யவும்' : 'Tap to unlock full access'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* "New This Week" Strip */}
       {newThisWeekItems.length > 0 && (activeSection === 'all' || activeSection === 'videos') && (

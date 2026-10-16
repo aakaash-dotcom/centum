@@ -365,6 +365,15 @@ export function sortTextbookRows<T extends { type?: string; unitNo?: number | st
   });
 }
 
+export function extractTermVolDiscriminator(titleText?: string): string {
+  const text = String(titleText || '').toLowerCase();
+  const termMatch = text.match(/(?:term|பருவம்)\s*(\d+)/i);
+  if (termMatch) return `term${termMatch[1]}`;
+  const volMatch = text.match(/(?:volume|vol|பாகம்|தொகுதி)\s*(\d+)/i);
+  if (volMatch) return `vol${volMatch[1]}`;
+  return '';
+}
+
 /**
  * Maps raw sheet row to public TextbookItem
  */
@@ -381,8 +390,18 @@ export function mapRawToItem(row: RawTextbookRow, idx: number, isGap = false): T
   const previewUrl = row.driveFileId ? `https://drive.google.com/file/d/${row.driveFileId}/preview` : row.fileUrl;
   const downloadUrl = row.driveFileId ? `/api/drive/download?id=${row.driveFileId}` : (row.fileUrl || '');
 
+  const disc = extractTermVolDiscriminator(row.unitTitle);
+  let idSuffix = '';
+  if (row.unitNo && row.unitNo !== '0') {
+    idSuffix = disc ? `${row.unitNo}-${disc}` : row.unitNo;
+  } else if (isFullBook) {
+    idSuffix = disc ? `full-${disc}` : 'full';
+  } else {
+    idSuffix = disc ? `${idx}-${disc}` : String(idx);
+  }
+
   const item: TextbookItem = {
-    id: `tb-${classLevel}-${subject}-${medium.toLowerCase()}-${row.unitNo || (isFullBook ? 'full' : idx)}`,
+    id: `tb-${classLevel}-${subject}-${medium.toLowerCase()}-${idSuffix}`,
     classLevel,
     subject,
     medium,
