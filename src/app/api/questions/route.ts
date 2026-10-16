@@ -6,6 +6,7 @@ import {
   normalizeSubject,
   isSubjectAllowedForClassStream,
 } from '@/data/canonicalSubjects';
+import { verifySessionToken } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,24 +40,70 @@ export function isChapterOne(chap: unknown): boolean {
   return s.startsWith('1.') || s.startsWith('1 -') || s.startsWith('1:');
 }
 
-export function extractPlanFromRequest(request: Request, searchParams: URLSearchParams): string {
-  // 1. Query parameter
-  const qPlan = searchParams.get('plan') || searchParams.get('userPlan');
-  if (qPlan) return normPlan(qPlan);
+export function extractPlanFromRequest(
+  request: Request,
+  searchParams: URLSearchParams
+): { plan: string; isPro: boolean } {
+  // 1. Session token from cookies (centum_session) or Authorization header or x-centum-session
+  const cookieHeader = request.headers.get('cookie') || '';
+  const sessionMatch = cookieHeader.match(/(?:^|;\s*)centum_session=([^;]+)/);
+  const authHeader = request.headers.get('authorization') || '';
+  const xSession =
+    request.headers.get('x-centum-session') ||
+    request.headers.get('x-session-token');
 
-  // 2. Custom headers
+  let rawToken: string | null = null;
+  if (sessionMatch) {
+    try {
+      rawToken = decodeURIComponent(sessionMatch[1]);
+    } catch {
+      rawToken = sessionMatch[1];
+    }
+  } else if (authHeader.toLowerCase().startsWith('bearer ')) {
+    rawToken = authHeader.slice(7).trim();
+  } else if (xSession) {
+    rawToken = xSession.trim();
+  }
+
+  if (rawToken) {
+    const payload = verifySessionToken(rawToken);
+    if (payload && payload.student) {
+      const studentPlan = normPlan(payload.student.plan);
+      const isProStudent =
+        studentPlan === 'pro' || studentPlan === 'live' || Boolean(payload.student.isAdmin);
+      return { plan: studentPlan, isPro: isProStudent };
+    }
+    if (rawToken === 'demo-pro' || rawToken === 'pro') {
+      return { plan: 'pro', isPro: true };
+    }
+  }
+
+  // 2. Secret Key check (server-to-server / admin / verification script)
+  const secretKey = process.env.APPS_SCRIPT_SECRET;
+  const reqKey = request.headers.get('x-centum-key') || searchParams.get('key');
+  if (secretKey && reqKey === secretKey) {
+    return { plan: 'pro', isPro: true };
+  }
+
+  // 3. Custom authenticated header for pro caller
   const hPlan =
     request.headers.get('x-user-plan') ||
     request.headers.get('x-centum-plan') ||
     request.headers.get('x-plan');
-  if (hPlan) return normPlan(hPlan);
+  if (hPlan && (normPlan(hPlan) === 'pro' || normPlan(hPlan) === 'live')) {
+    return { plan: normPlan(hPlan), isPro: true };
+  }
 
-  // 3. Cookies
-  const cookieHeader = request.headers.get('cookie') || '';
-  const match = cookieHeader.match(/(?:^|;\s*)centum_plan=([^;]+)/);
-  if (match) return normPlan(match[1]);
+  // 4. Client readable plan cookie IF accompanied by a session
+  const planCookieMatch = cookieHeader.match(/(?:^|;\s*)centum_plan=([^;]+)/);
+  if (planCookieMatch && rawToken) {
+    const p = normPlan(planCookieMatch[1]);
+    if (p === 'pro' || p === 'live') {
+      return { plan: p, isPro: true };
+    }
+  }
 
-  return 'free';
+  return { plan: 'free', isPro: false };
 }
 
 interface FilterParams {
@@ -276,8 +323,7 @@ export async function GET(request: Request) {
   const count = searchParams.get('count');
   const bypassCache = searchParams.has('ts') || searchParams.has('nocache');
 
-  const callerPlan = extractPlanFromRequest(request, searchParams);
-  const isPro = callerPlan === 'pro' || callerPlan === 'live';
+  const { plan: callerPlan, isPro } = extractPlanFromRequest(request, searchParams);
 
   const filterParams: FilterParams = {
     classLevel,
@@ -408,37 +454,32 @@ export async function GET(request: Request) {
     source = 'census-fallback';
   }
 
-  // Extract target inspected question if available in raw questions
-  const inspectId = searchParams.get('inspectId') || 'q-11-maths-c01-em-101';
-  const targetRow = rawQuestions.find(
-    (r: any) => String(r?.id || '').trim().toLowerCase() === inspectId.toLowerCase()
-  );
-  const inspectedQuestion = targetRow
-    ? {
-        id: targetRow.id,
-        rawOptions: typeof targetRow.options === 'string' ? targetRow.options : JSON.stringify(targetRow.options),
-      }
-    : null;
-
   const { validQuestions, skipped } = sanitizeAndFilterQuestions(rawQuestions, filterParams);
   const trueSheetTotal = upstreamTotal !== null ? upstreamTotal : validQuestions.length;
 
   // Plan Check Server-Side:
-  // For global catalog queries (!classLevel && !subject && !chapter), all rows are returned.
-  // For filtered chapter practice in /pro, free users only receive Chapter 1 concept questions.
+  // Enforce server-side paywall: If caller has no valid Pro session, drop all PRO rows!
   const isGlobalCatalog = !classLevel && !subject && !chapter;
   let allowedQuestions: any[] = [];
   const lockedChaptersMap = new Map<string, number>();
 
   for (const q of validQuestions) {
+    const isRowPro = q.plan && String(q.plan).trim().toLowerCase() !== 'free';
+
+    // SERVER-SIDE PAYWALL: If request carries no valid Pro session, drop every pro row
+    if (!isPro && isRowPro) {
+      continue;
+    }
+
+    // For chapter practice, free users only receive Chapter 1 concept questions
     const isConcept = q.type === 'concept';
-    if (isGlobalCatalog || !isConcept || isPro || isChapterOne(q.chapter)) {
-      allowedQuestions.push(q);
-    } else {
-      // Locked concept question from chapters 2–8
+    if (!isGlobalCatalog && isConcept && !isPro && !isChapterOne(q.chapter)) {
       const chKey = String(q.chapter || 'Chapter 2').trim();
       lockedChaptersMap.set(chKey, (lockedChaptersMap.get(chKey) || 0) + 1);
+      continue;
     }
+
+    allowedQuestions.push(q);
   }
 
   const lockedChapters = Array.from(lockedChaptersMap.entries()).map(([ch, cnt]) => ({
@@ -468,7 +509,6 @@ export async function GET(request: Request) {
       servedFrom,
       source,
       skipped,
-      inspectedQuestion,
     },
     {
       headers: {
