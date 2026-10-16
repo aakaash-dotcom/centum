@@ -99,6 +99,32 @@ function extractDriveId(p: any): string {
   return p.driveFileId || '';
 }
 
+export const DROPPED_BILINGUAL_DUPLICATE_IDS = new Set([
+  'sslc-mathematics-2022-annual-tm',
+  'sslc-science-2022-annual-tm',
+  'sslc-social-science-2022-annual-tm',
+  'hsc-accountancy-2022-annual-tm',
+  'hsc-biology-2022-annual-tm',
+  'hsc-botany-2022-annual-tm',
+  'hsc-business-maths-2022-annual-tm',
+  'hsc-chemistry-2022-annual-tm',
+  'hsc-commerce-2022-annual-tm',
+  'hsc-computer-science-2022-annual-tm',
+  'hsc-economics-2022-annual-tm',
+  'hsc-history-2022-annual-tm',
+  'hsc-mathematics-2022-annual-tm',
+  'hsc-mathematics-2024-annual-tm',
+  'hsc-mathematics-2025-annual-tm',
+  'hsc-physics-2022-annual-tm',
+  'hsc-political-science-2022-annual-tm',
+  'hsc-political-science-2024-annual-tm',
+  'hsc-political-science-2025-annual-tm',
+  'hsc-statistics-2022-annual-tm',
+  'hsc-statistics-2024-annual-tm',
+  'hsc-statistics-2025-annual-tm',
+  'hsc-zoology-2022-annual-tm',
+]);
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const classLevel = searchParams.get('classLevel');
@@ -124,6 +150,7 @@ export async function GET(request: Request) {
           let normalizedPapers = detectBilingualPapers(
             data.papers
               .filter((p: any) => {
+                if (DROPPED_BILINGUAL_DUPLICATE_IDS.has(p.id)) return false;
                 const cat = String(p.category || 'pyq').toLowerCase();
                 if (cat === 'provisional') return false;
                 const yr = Number(p.year);
