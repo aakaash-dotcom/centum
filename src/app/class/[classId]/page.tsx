@@ -246,7 +246,7 @@ function ClassPageContent() {
       if (key) keysSet.add(key);
     });
 
-    const priority = ['annual', 'quarterly', 'halfyearly', 'revision', 'model'];
+    const priority = ['annual', 'quarterly', 'halfyearly', 'midterm', 'revision', 'model'];
     const sortedKeys = Array.from(keysSet).sort((a, b) => {
       const idxA = priority.indexOf(a);
       const idxB = priority.indexOf(b);

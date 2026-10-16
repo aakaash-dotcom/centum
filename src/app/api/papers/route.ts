@@ -3,6 +3,7 @@ import { allPapers, detectBilingualPapers, deduplicateBilingualPapers, normalize
 import fs from 'fs';
 import path from 'path';
 import paperSwaps from '@/data/paper-swaps.json';
+import midtermCatalog from '@/data/midterm-114.json';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,32 @@ export function getVerifiedSwaps(): Record<string, string> {
   } catch {}
 
   return merged;
+}
+
+export function getMidtermAppendRows(): any[] {
+  if (Array.isArray(midtermCatalog) && midtermCatalog.length > 0) {
+    return midtermCatalog;
+  }
+  const candidatePaths = [
+    path.join(process.cwd(), 'centum', 'ops', 'MIDTERM-114-APPEND-READY.json'),
+    path.join(process.cwd(), 'ops', 'MIDTERM-114-APPEND-READY.json'),
+    path.join(process.cwd(), '..', 'centum', 'ops', 'MIDTERM-114-APPEND-READY.json'),
+    path.join(process.cwd(), '..', 'ops', 'MIDTERM-114-APPEND-READY.json'),
+    path.join(process.cwd(), 'scripts', 'MIDTERM-114-APPEND-READY.json'),
+    'C:/centum/ops/MIDTERM-114-APPEND-READY.json',
+  ];
+
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(/*turbopackIgnore: true*/ p)) {
+        const raw = JSON.parse(fs.readFileSync(/*turbopackIgnore: true*/ p, 'utf8'));
+        if (Array.isArray(raw) && raw.length > 0) {
+          return raw;
+        }
+      }
+    } catch {}
+  }
+  return [];
 }
 
 export const normClass = (v: unknown) => {
@@ -130,6 +157,8 @@ export async function GET(request: Request) {
   const classLevel = searchParams.get('classLevel');
   const medium = searchParams.get('medium');
   const subject = searchParams.get('subject');
+  const exam = searchParams.get('exam');
+  const category = searchParams.get('category');
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
   const secretKey = process.env.APPS_SCRIPT_SECRET;
@@ -147,14 +176,26 @@ export async function GET(request: Request) {
       if (res.ok) {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.papers)) {
+          const midtermRows = getMidtermAppendRows();
+          const existingIds = new Set(data.papers.map((p: any) => p.id));
+          const combinedRawPapers = [...data.papers];
+          for (const m of midtermRows) {
+            if (!existingIds.has(m.id)) {
+              combinedRawPapers.push(m);
+              existingIds.add(m.id);
+            }
+          }
+
           let normalizedPapers = detectBilingualPapers(
-            data.papers
+            combinedRawPapers
               .filter((p: any) => {
                 if (DROPPED_BILINGUAL_DUPLICATE_IDS.has(p.id)) return false;
                 const cat = String(p.category || 'pyq').toLowerCase();
                 if (cat === 'provisional') return false;
+                const isModelOrMidterm = cat === 'model' || String(p.exam || '').toLowerCase().includes('mid');
                 const yr = Number(p.year);
-                if (yr && (yr < 2022 || yr > 2025)) return false;
+                if (!isModelOrMidterm && yr && (yr < 2022 || yr > 2025)) return false;
+                if (isModelOrMidterm && yr && (yr < 2022 || yr > 2026)) return false;
                 return true;
               })
               .map((p: any) => {
@@ -201,6 +242,22 @@ export async function GET(request: Request) {
             normalizedPapers = normalizedPapers.filter((p: any) => {
               const pSubj = normalizeSubjectName(String(p.subject || '')).toLowerCase();
               return pSubj === targetSubj;
+            });
+          }
+
+          if (exam && exam.toLowerCase() !== 'all') {
+            const targetExam = exam.trim().toLowerCase();
+            normalizedPapers = normalizedPapers.filter((p: any) => {
+              const pExam = String(p.exam || '').trim().toLowerCase();
+              return pExam === targetExam || (targetExam === 'midterm' && pExam.includes('mid'));
+            });
+          }
+
+          if (category && category.toLowerCase() !== 'all') {
+            const targetCat = category.trim().toLowerCase();
+            normalizedPapers = normalizedPapers.filter((p: any) => {
+              const pCat = String(p.category || 'pyq').trim().toLowerCase();
+              return pCat === targetCat;
             });
           }
 
@@ -252,22 +309,43 @@ export async function GET(request: Request) {
 
   // Fallback to committed catalog in papers.json when env vars are missing or upstream is unreachable
   const verifiedSwaps = getVerifiedSwaps();
+  const midtermRows = getMidtermAppendRows();
+  const existingFallbackIds = new Set((allPapers as any[]).map((p) => p.id));
+  const combinedFallback = [...(allPapers as any[])];
+  for (const m of midtermRows) {
+    if (!existingFallbackIds.has(m.id)) {
+      combinedFallback.push(m);
+      existingFallbackIds.add(m.id);
+    }
+  }
+
   let papers = detectBilingualPapers(
-    (allPapers as any[]).map((p) => {
-      const swapDriveId = verifiedSwaps[p.id];
-      const resolvedDriveId = swapDriveId || extractDriveId(p);
-      return {
-        ...p,
-        classLevel: normClass(p.classLevel),
-        medium: normMedium(p.medium),
-        category: normCategory(p.category),
-        plan: normPlan(p.plan),
-        driveFileId: resolvedDriveId,
-        pdfUrl: swapDriveId
-          ? `https://drive.google.com/uc?id=${swapDriveId}&export=download`
-          : (p.pdfUrl || (resolvedDriveId ? `https://drive.google.com/uc?id=${resolvedDriveId}&export=download` : '')),
-      };
-    })
+    combinedFallback
+      .filter((p: any) => {
+        if (DROPPED_BILINGUAL_DUPLICATE_IDS.has(p.id)) return false;
+        const cat = String(p.category || 'pyq').toLowerCase();
+        if (cat === 'provisional') return false;
+        const isModelOrMidterm = cat === 'model' || String(p.exam || '').toLowerCase().includes('mid');
+        const yr = Number(p.year);
+        if (!isModelOrMidterm && yr && (yr < 2022 || yr > 2025)) return false;
+        if (isModelOrMidterm && yr && (yr < 2022 || yr > 2026)) return false;
+        return true;
+      })
+      .map((p) => {
+        const swapDriveId = verifiedSwaps[p.id];
+        const resolvedDriveId = swapDriveId || extractDriveId(p);
+        return {
+          ...p,
+          classLevel: normClass(p.classLevel),
+          medium: normMedium(p.medium),
+          category: normCategory(p.category),
+          plan: normPlan(p.plan),
+          driveFileId: resolvedDriveId,
+          pdfUrl: swapDriveId
+            ? `https://drive.google.com/uc?id=${swapDriveId}&export=download`
+            : (p.pdfUrl || (resolvedDriveId ? `https://drive.google.com/uc?id=${resolvedDriveId}&export=download` : '')),
+        };
+      })
   );
 
   if (classLevel) {
@@ -295,6 +373,22 @@ export async function GET(request: Request) {
     papers = papers.filter((p: any) => {
       const pSubj = normalizeSubjectName(String(p.subject || '')).toLowerCase();
       return pSubj === targetSubj;
+    });
+  }
+
+  if (exam && exam.toLowerCase() !== 'all') {
+    const targetExam = exam.trim().toLowerCase();
+    papers = papers.filter((p: any) => {
+      const pExam = String(p.exam || '').trim().toLowerCase();
+      return pExam === targetExam || (targetExam === 'midterm' && pExam.includes('mid'));
+    });
+  }
+
+  if (category && category.toLowerCase() !== 'all') {
+    const targetCat = category.trim().toLowerCase();
+    papers = papers.filter((p: any) => {
+      const pCat = String(p.category || 'pyq').trim().toLowerCase();
+      return pCat === targetCat;
     });
   }
 
@@ -344,6 +438,72 @@ export async function POST(request: Request) {
       const data = await res.json();
       return NextResponse.json(data);
     }
+
+    if (body.action === 'append-midterm-to-sheet' || body.action === 'ops-papers-batch-append') {
+      const rowsToAppend = body.rows || getMidtermAppendRows();
+
+      // First try batch append on GAS
+      try {
+        const batchRes = await fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'ops-papers-batch-append',
+            key: secretKey,
+            rows: rowsToAppend,
+          }),
+        });
+        const batchData = await batchRes.json().catch(() => null);
+        if (batchData && batchData.ok) {
+          return NextResponse.json(batchData);
+        }
+      } catch {}
+
+      // Fallback: append row-by-row via ops-add
+      let added = 0;
+      const errors: any[] = [];
+      for (const row of rowsToAppend) {
+        try {
+          const res = await fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'ops-add',
+              key: secretKey,
+              tab: 'Papers',
+              row,
+            }),
+          });
+          const d = await res.json().catch(() => null);
+          if (d && d.ok) added++;
+          else errors.push({ id: row.id, error: d?.error || 'failed' });
+        } catch (err: any) {
+          errors.push({ id: row.id, error: err?.message || 'fetch-failed' });
+        }
+      }
+
+      return NextResponse.json({
+        ok: true,
+        method: 'ops-add-loop',
+        added,
+        total: rowsToAppend.length,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+    }
+
+    if (body.action === 'gas-proxy') {
+      const res = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(body.payload || {}),
+          key: secretKey,
+        }),
+      });
+      const data = await res.json();
+      return NextResponse.json(data);
+    }
+
     return NextResponse.json({ ok: false, error: 'unknown-action' }, { status: 400 });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || 'POST failed' }, { status: 500 });

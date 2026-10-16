@@ -1543,6 +1543,7 @@ export default function AdminPage() {
                           <option value="Public">Public</option>
                           <option value="Quarterly">Quarterly</option>
                           <option value="Half-Yearly">Half-Yearly</option>
+                          <option value="Mid Term">Mid Term</option>
                           <option value="Revision 1">Revision 1</option>
                           <option value="Revision 2">Revision 2</option>
                         </select>

@@ -52,6 +52,7 @@ export const rawTexts = {
     annual: { en: 'annual exam', ta: 'ஆண்டுத் தேர்வு' },
     quarterly: { en: 'quarterly', ta: 'காலாண்டுத் தேர்வு' },
     halfyearly: { en: 'half yearly', ta: 'அரையாண்டுத் தேர்வு' },
+    midterm: { en: 'Mid Term', ta: 'இடைக்கால தேர்வு' },
     revision: { en: 'revision test', ta: 'திருப்புதல் தேர்வு' },
     model: { en: 'model exam', ta: 'மாதிரித் தேர்வு' },
   },

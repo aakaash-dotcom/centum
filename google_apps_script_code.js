@@ -62,7 +62,7 @@ const APP_NAME = "CENTUM DB";
 const DRIVE_FOLDER_NAME = "CENTUM Papers";
 
 const SCHEMA = {
-  Papers:        ["id","classLevel","category","subject","exam","year","medium","title","driveFileId","featured","plan"],
+  Papers:        ["id","classLevel","category","subject","exam","year","medium","title","driveFileId","featured","plan","pdfUrl","isBilingual"],
   News:          ["id","title","date","category","summary","body","sourceUrl","imageUrl","pinned"],
   Questions:     ["id","classLevel","subject","chapter","type","question","options","answerIndex","explanation","medium","plan"],
   DailyQuiz:     ["date","classLevel","stream","subject","chapter","question","options","answerIndex","explanation","medium"],
@@ -272,6 +272,12 @@ function doGet(e) {
       return json_(papersBatchSwap_({ swaps: swapsObj }));
     }
 
+    if (a === "ops-papers-batch-append") {
+      let rowsArr;
+      try { rowsArr = JSON.parse(e.parameter.rows || "[]"); } catch (err) { return json_({ ok: false, error: "rows-json-parse" }); }
+      return json_(papersBatchAppend_({ rows: rowsArr }));
+    }
+
     return json_({ ok: false, error: "unknown action" });
   } catch (err) { return json_({ ok: false, error: String(err) }); }
 }
@@ -362,6 +368,8 @@ function doPost(e) {
       if (_out) return json_(_out);
     } else if (body.action === "ops-papers-batch-swap" || body.type === "ops-papers-batch-swap") {
       return json_(papersBatchSwap_(body));
+    } else if (body.action === "ops-papers-batch-append" || body.type === "ops-papers-batch-append") {
+      return json_(papersBatchAppend_(body));
     } else {
       return json_({ ok: false, error: "unknown type" });
     }
@@ -466,6 +474,34 @@ function papersBatchSwap_(body) {
     sh.getDataRange().setValues(data);
   }
   return { ok: true, updated: updated, totalRows: data.length - 1 };
+}
+
+function papersBatchAppend_(body) {
+  const sh = sheet_("Papers");
+  const data = sh.getDataRange().getValues();
+  if (data.length < 1) return { ok: false, error: "no-sheet" };
+  const h = data[0].map(String);
+  const idCol = h.indexOf("id");
+  const existingIds = new Set();
+  for (let r = 1; r < data.length; r++) {
+    if (idCol !== -1) existingIds.add(String(data[r][idCol]));
+  }
+  const rowsToAdd = [];
+  const rows = body.rows || [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r && (!r.id || !existingIds.has(String(r.id)))) {
+      const rowArr = h.map(function(col) {
+        return r[col] !== undefined ? r[col] : "";
+      });
+      rowsToAdd.push(rowArr);
+      if (r.id) existingIds.add(String(r.id));
+    }
+  }
+  if (rowsToAdd.length > 0) {
+    sh.getRange(data.length + 1, 1, rowsToAdd.length, h.length).setValues(rowsToAdd);
+  }
+  return { ok: true, added: rowsToAdd.length, totalRows: sh.getLastRow() - 1 };
 }
 
 // =================== v5 coins + referral codes ===================

@@ -80,6 +80,7 @@ export function getExamCanonicalKey(raw: string): string {
   if (lower.includes('annual') || lower.includes('public') || lower.includes('பொது')) return 'annual';
   if (lower.includes('quarter') || lower.includes('காலாண்டு')) return 'quarterly';
   if (lower.includes('half') || lower.includes('அரையாண்டு')) return 'halfyearly';
+  if (lower.includes('midterm') || lower.includes('mid') || lower.includes('இடைக்கால')) return 'midterm';
   if (lower.includes('rev') || lower.includes('திருப்புதல்')) return 'revision';
   if (lower.includes('model') || lower.includes('மாதிரி')) return 'model';
   return lower;
@@ -91,6 +92,7 @@ export function getExamFriendlyLabel(canonicalKey: string): string {
     annual: texts.examTypes.annual,
     quarterly: texts.examTypes.quarterly,
     halfyearly: texts.examTypes.halfyearly,
+    midterm: texts.examTypes.midterm,
     revision: texts.examTypes.revision,
     model: texts.examTypes.model,
   };
@@ -312,7 +314,7 @@ function MaterialsContent() {
       if (key) keysSet.add(key);
     });
 
-    const priority = ['annual', 'quarterly', 'halfyearly', 'revision', 'model'];
+    const priority = ['annual', 'quarterly', 'halfyearly', 'midterm', 'revision', 'model'];
     const sortedKeys = Array.from(keysSet).sort((a, b) => {
       const idxA = priority.indexOf(a);
       const idxB = priority.indexOf(b);
