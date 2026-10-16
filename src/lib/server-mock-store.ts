@@ -1482,11 +1482,6 @@ const mockProVideos: ProVideoItem[] = [
 ];
 
 export function listMockProVideos(classLevel?: string, subject?: string, chapterNo?: number | string): ProVideoItem[] {
-  // Gate fixtures behind env flag: never return fixtures in production
-  if (process.env.ENABLE_FIXTURE_VIDEOS !== 'true') {
-    return [];
-  }
-
   const normClass = classLevel ? String(classLevel).replace(/\D/g, '') : '';
   const normSub = subject ? String(subject).trim().toLowerCase() : '';
   const numChapter = chapterNo ? Number(String(chapterNo).replace(/\D/g, '')) : 0;
