@@ -76,7 +76,8 @@ const SCHEMA = {
   CoinLedger:    ["timestamp","phone","delta","balance","reason","ref","note"],
   QuizSchedule:  ["date","classLevel","medium","subject","chapter","type","count"],
   Import:        ["help","json"],
-  Textbooks:     ["classLevel","subject","medium","type","unitNo","unitTitle","pageStart","pageEnd","pageCount","driveFileId","fileUrl","sizeMB","sourceUrl","qcNote","updatedAt"]
+  Textbooks:     ["classLevel","subject","medium","type","unitNo","unitTitle","pageStart","pageEnd","pageCount","driveFileId","fileUrl","sizeMB","sourceUrl","qcNote","updatedAt"],
+  OTPCodes:      ["phone","codeHash","createdAt","expiresAt","attempts","used"]
 };
 
 function setupCentum() {

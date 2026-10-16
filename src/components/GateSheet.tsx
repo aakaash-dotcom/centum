@@ -6,7 +6,7 @@ import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { normalizePhone } from '@/lib/phone';
 import { TN_DISTRICTS } from '@/data/districts';
-import { X, Sparkles, ShieldCheck, Eye, EyeOff, KeyRound, Lock } from 'lucide-react';
+import { X, Sparkles, ShieldCheck, Smartphone, CheckCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 const STREAMS = [
@@ -17,15 +17,22 @@ const STREAMS = [
 ] as const;
 
 export const GateSheet: React.FC = () => {
-  const { isGateOpen, gateMode, closeGate, registerStudent, login, setupPassword, showToast, guestStandard } = useApp();
+  const {
+    isGateOpen,
+    gateMode,
+    closeGate,
+    registerStudent,
+    sendOtp,
+    verifyOtp,
+    showToast,
+    guestStandard,
+    medium,
+  } = useApp();
 
-  const [mode, setMode] = useState<'register' | 'login' | 'set-password'>('register');
+  const [mode, setMode] = useState<'register' | 'login' | 'otp'>('register');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
   const [standard, setStandard] = useState(guestStandard || '10th');
   const [stream, setStream] = useState<string>('Science — Maths');
   const [district, setDistrict] = useState('Chennai');
@@ -37,21 +44,28 @@ export const GateSheet: React.FC = () => {
   const [tuitionError, setTuitionError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [wrongAttempts, setWrongAttempts] = useState(0);
+  const [cooldown, setCooldown] = useState(0);
 
   // Sync mode whenever gate opens
   useEffect(() => {
     if (isGateOpen) {
       setMode(gateMode);
       setErrorMsg('');
-      setPassword('');
-      setConfirmPassword('');
-      setWrongAttempts(0);
+      setOtpCode('');
       if (guestStandard) {
         setStandard(guestStandard);
       }
     }
   }, [isGateOpen, gateMode, guestStandard]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => {
+      setCooldown((c) => Math.max(0, c - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   const validateTuitionCode = async (codeToTest: string): Promise<boolean> => {
     const clean = codeToTest.trim().toUpperCase();
@@ -91,7 +105,7 @@ export const GateSheet: React.FC = () => {
 
   if (!isGateOpen) return null;
 
-  const hasStream = standard === '12th';
+  const hasStream = standard === '11th' || standard === '12th';
 
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,20 +114,18 @@ export const GateSheet: React.FC = () => {
     const cleanName = name.trim();
     const cleanPhone = normalizePhone(phone);
 
-    if (!cleanName) {
-      setErrorMsg('what should we call you? ✍️');
+    if (!cleanName || cleanName.length < 2) {
+      setErrorMsg('Enter your full name (minimum 2 characters) ✍️');
       return;
     }
 
-    if (!cleanPhone) {
-      setErrorMsg('enter a valid 10-digit mobile number 📱');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setErrorMsg('Enter a valid 10-digit mobile number 📱');
       return;
     }
 
-    const cleanPassword = password.trim();
-
-    if (!cleanPassword || cleanPassword.length < 6) {
-      setErrorMsg(texts.gate.passwordTooShort);
+    if (hasStream && !stream.trim()) {
+      setErrorMsg('Please select your stream (e.g. Science, Commerce, Arts) 📚');
       return;
     }
 
@@ -128,29 +140,35 @@ export const GateSheet: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      await registerStudent({
-        name: cleanName,
-        phone: cleanPhone,
-        standard,
-        stream: hasStream ? stream : undefined,
-        district,
-        password: cleanPassword,
-        waOptIn,
-        tuitionCode: cleanTuition || undefined,
+      const regRes = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: cleanName,
+          phone: cleanPhone,
+          classLevel: standard,
+          standard,
+          stream: hasStream ? stream : undefined,
+          medium,
+          district,
+          tuitionCode: cleanTuition || undefined,
+          waOptIn,
+        }),
       });
 
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 },
-          colors: ['#7C3AED', '#A3E635', '#F472B6'],
-        });
-      } catch (e) {}
+      const regData = await regRes.json().catch(() => ({}));
+      if (!regRes.ok || !regData.ok) {
+        setErrorMsg(regData.error || 'Registration failed, please check your details');
+        return;
+      }
 
-      showToast('unlocked everything! 🚀');
-    } catch (err) {
-      setErrorMsg('oops, try again! 👻');
+      // Automatically dispatch OTP and switch to OTP mode
+      await sendOtp(cleanPhone);
+      setCooldown(60);
+      setMode('otp');
+      showToast('Registration saved! Verification code sent 📱');
+    } catch (err: any) {
+      setErrorMsg('Registration error, please retry 👻');
     } finally {
       setIsSubmitting(false);
     }
@@ -161,28 +179,49 @@ export const GateSheet: React.FC = () => {
     setErrorMsg('');
 
     const cleanPhone = normalizePhone(phone);
-
-    if (!cleanPhone) {
-      setErrorMsg('enter a valid 10-digit mobile number 📱');
-      return;
-    }
-
-    const cleanPassword = password.trim();
-
-    if (!cleanPassword) {
-      setErrorMsg('enter your password 🔑');
+    if (!cleanPhone || cleanPhone.length < 10) {
+      setErrorMsg('Enter a valid 10-digit mobile number 📱');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const res = await login(cleanPhone, cleanPassword);
+      await sendOtp(cleanPhone);
+      setCooldown(60);
+      setMode('otp');
+      showToast('Login code sent to your phone! 📱');
+    } catch {
+      setErrorMsg('Failed to dispatch code, please try again 👻');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    const cleanPhone = normalizePhone(phone);
+    const cleanCode = otpCode.trim();
+
+    if (!cleanPhone) {
+      setErrorMsg('Missing phone number 📱');
+      return;
+    }
+
+    if (!cleanCode) {
+      setErrorMsg('Enter your login code 🔑');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const res = await verifyOtp(cleanPhone, cleanCode);
       if (res.ok) {
         try {
           confetti({
-            particleCount: 45,
-            spread: 55,
+            particleCount: 50,
+            spread: 60,
             origin: { y: 0.7 },
             colors: ['#7C3AED', '#A3E635', '#F472B6'],
           });
@@ -192,87 +231,29 @@ export const GateSheet: React.FC = () => {
         return;
       }
 
-      if (res.error === 'no-account') {
-        showToast(texts.gate.noAccountToast);
-        setMode('register');
-        return;
-      }
-
-      if (res.error === 'needs-password-setup') {
-        setMode('set-password');
-        setPassword('');
-        setErrorMsg('');
-        return;
-      }
-
-      if (res.error === 'wrong-password') {
-        const nextAttempts = wrongAttempts + 1;
-        setWrongAttempts(nextAttempts);
-        setErrorMsg(`${texts.gate.wrongPasswordMsg} (attempt ${nextAttempts}/3)`);
-        return;
-      }
-
-      setErrorMsg('login failed, try again 👻');
-    } catch (err) {
-      setErrorMsg('network glitch, retry 👻');
+      setErrorMsg(res.error || 'Invalid verification code');
+    } catch {
+      setErrorMsg('Verification failed, please retry 👻');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleSetPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-
+  const handleResendOtp = async () => {
+    if (cooldown > 0 || isSubmitting) return;
     const cleanPhone = normalizePhone(phone);
-    if (!cleanPhone) {
-      setErrorMsg('enter a valid 10-digit mobile number 📱');
-      return;
-    }
-
-    const cleanPassword = password.trim();
-    const cleanConfirm = confirmPassword.trim();
-
-    if (cleanPassword.length < 6) {
-      setErrorMsg(texts.gate.passwordTooShort);
-      return;
-    }
-
-    if (cleanPassword !== cleanConfirm) {
-      setErrorMsg(texts.gate.passwordsDontMatch);
-      return;
-    }
-
+    if (!cleanPhone) return;
     try {
       setIsSubmitting(true);
-      const res = await setupPassword(cleanPhone, cleanPassword);
-
-      if (res.ok) {
-        // Automatically login right after setting password
-        const loginRes = await login(cleanPhone, cleanPassword);
-        if (loginRes.ok) {
-          try {
-            confetti({
-              particleCount: 50,
-              spread: 60,
-              origin: { y: 0.7 },
-              colors: ['#7C3AED', '#A3E635', '#F472B6'],
-            });
-          } catch (e) {}
-          showToast('password saved & logged in! 🚀');
-        } else {
-          showToast('password saved! log in 🔑');
-          setMode('login');
-        }
-      } else {
-        setErrorMsg(res.error || 'could not set password, retry 👻');
-      }
-    } catch (err) {
-      setErrorMsg('network issue, please retry 👻');
+      await sendOtp(cleanPhone);
+      setCooldown(60);
+      showToast('New code sent! 📱');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isDemoNumber = ['9123456780', '9840123456'].includes(phone.replace(/\D/g, '').slice(-10));
 
   return (
     <div
@@ -301,27 +282,27 @@ export const GateSheet: React.FC = () => {
         {/* Header */}
         <div className="text-center mb-5">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#F3E8FF] dark:bg-[#230542] text-[#7C3AED] dark:text-[#A3E635] mb-2 shadow-xs">
-            {mode === 'login' ? (
-              <KeyRound className="w-6 h-6 animate-pulse" />
-            ) : mode === 'set-password' ? (
-              <Lock className="w-6 h-6 animate-pulse" />
+            {mode === 'otp' ? (
+              <Smartphone className="w-6 h-6 animate-pulse" />
+            ) : mode === 'login' ? (
+              <Smartphone className="w-6 h-6 animate-pulse" />
             ) : (
               <Sparkles className="w-6 h-6 animate-pulse" />
             )}
           </div>
           <h2 className="text-2xl font-black text-[#2E1065] dark:text-[#FAF5FF] tracking-tight">
-            {mode === 'login'
-              ? texts.gate.loginTitle
-              : mode === 'set-password'
-              ? texts.gate.setPasswordTitle
+            {mode === 'otp'
+              ? 'Enter Verification Code'
+              : mode === 'login'
+              ? 'Sign In with Mobile'
               : texts.gate.title}
           </h2>
           <p className="text-xs font-semibold text-[#7C3AED] dark:text-[#A3E635] mt-1 flex items-center justify-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-[#16A34A]" />
-            {mode === 'login'
-              ? texts.gate.loginSubtitle
-              : mode === 'set-password'
-              ? texts.gate.setPasswordSubtitle
+            {mode === 'otp'
+              ? `Code sent to +91 ${phone.replace(/\D/g, '').slice(-10)}`
+              : mode === 'login'
+              ? 'Fast & secure OTP login'
               : texts.gate.subtitle}
           </p>
         </div>
@@ -332,7 +313,7 @@ export const GateSheet: React.FC = () => {
           </div>
         )}
 
-        {/* 1. REGISTRATION FORM */}
+        {/* 1. REGISTRATION FORM (First time only) */}
         {mode === 'register' && (
           <form onSubmit={handleRegisterSubmit} className="space-y-4">
             <div>
@@ -366,32 +347,6 @@ export const GateSheet: React.FC = () => {
                   placeholder={texts.gate.phonePlaceholder}
                   className="w-full min-h-[48px] pl-12 pr-4 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all tracking-wider"
                 />
-              </div>
-            </div>
-
-            {/* Password with Eye Icon Toggle (Confirm field not needed) */}
-            <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                {texts.gate.passwordLabel}
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={texts.gate.passwordPlaceholder}
-                  className="w-full min-h-[48px] pl-4 pr-12 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 p-1.5 text-[#6D28D9]/70 dark:text-[#A3E635] hover:text-[#7C3AED] transition-colors cursor-pointer"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
               </div>
             </div>
 
@@ -429,6 +384,30 @@ export const GateSheet: React.FC = () => {
               </div>
             </div>
 
+            {/* Conditional Stream Dropdown for 11th and 12th */}
+            {hasStream && (
+              <div className="animate-fade-in">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
+                  Stream (Required for 11th & 12th)
+                </label>
+                <select
+                  value={stream}
+                  onChange={(e) => setStream(e.target.value)}
+                  className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
+                >
+                  {STREAMS.map((s) => (
+                    <option
+                      key={s}
+                      value={s}
+                      className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]"
+                    >
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* District Dropdown */}
             <div>
               <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
@@ -451,31 +430,7 @@ export const GateSheet: React.FC = () => {
               </select>
             </div>
 
-            {/* Conditional Stream Dropdown for 12th only */}
-            {hasStream && (
-              <div className="animate-fade-in">
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                  {texts.gate.streamLabel}
-                </label>
-                <select
-                  value={stream}
-                  onChange={(e) => setStream(e.target.value)}
-                  className="w-full min-h-[48px] px-3 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all cursor-pointer"
-                >
-                  {STREAMS.map((s) => (
-                    <option
-                      key={s}
-                      value={s}
-                      className="bg-white dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF]"
-                    >
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Optional Tuition Centre Code Input (Phase B: Tuition Classrooms) */}
+            {/* Optional Tuition Centre Code Input */}
             <div>
               <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5 flex items-center justify-between">
                 <span>{texts.gate.tuitionLabel}</span>
@@ -524,7 +479,6 @@ export const GateSheet: React.FC = () => {
                 )}
               </div>
 
-              {/* Owner Discount Chip (Model A path) */}
               {tuitionValid === true && tuitionInfo && (
                 <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/50 flex items-center justify-between text-xs animate-fade-in">
                   <div className="flex items-center gap-2">
@@ -548,7 +502,6 @@ export const GateSheet: React.FC = () => {
                 </div>
               )}
 
-              {/* Invalid tuition code error */}
               {tuitionValid === false && tuitionError && (
                 <p className="mt-1 text-xs font-bold text-red-600 dark:text-red-400">
                   {tuitionError}
@@ -556,7 +509,7 @@ export const GateSheet: React.FC = () => {
               )}
             </div>
 
-            {/* WhatsApp Opt-in Checkbox (Default ON, bilingual copy) */}
+            {/* WhatsApp Opt-in Checkbox */}
             <div
               onClick={() => setWaOptIn(!waOptIn)}
               className="flex items-start gap-3 p-3 rounded-2xl bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 cursor-pointer hover:border-[#7C3AED]/40 transition-colors select-none"
@@ -581,13 +534,13 @@ export const GateSheet: React.FC = () => {
               </label>
             </div>
 
-            {/* Big Lime Accent Button with Dark Text */}
+            {/* Big Lime Accent Button */}
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full min-h-[52px] mt-2 flex items-center justify-center font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/30 transition-all cursor-pointer"
             >
-              {isSubmitting ? texts.gate.saving : texts.gate.button}
+              {isSubmitting ? 'Registering...' : 'Register & Get OTP 🚀'}
             </button>
 
             {/* Switch to Login Mode button */}
@@ -600,18 +553,18 @@ export const GateSheet: React.FC = () => {
                 }}
                 className="min-h-[44px] text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] hover:underline cursor-pointer"
               >
-                {texts.gate.loginSwitch}
+                Already registered? Sign in with OTP 📱
               </button>
             </div>
           </form>
         )}
 
-        {/* 2. LOGIN FORM */}
+        {/* 2. LOGIN FORM (Enter Phone & Dispatch OTP) */}
         {mode === 'login' && (
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                {texts.gate.phoneLabel}
+                Mobile Number
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-3.5 text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">
@@ -623,58 +576,23 @@ export const GateSheet: React.FC = () => {
                   maxLength={10}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder={texts.gate.phonePlaceholder}
+                  placeholder="9876543210"
                   className="w-full min-h-[48px] pl-12 pr-4 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all tracking-wider"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                {texts.gate.passwordLabel}
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={texts.gate.passwordPlaceholder}
-                  className="w-full min-h-[48px] pl-4 pr-12 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 p-1.5 text-[#6D28D9]/70 dark:text-[#A3E635] hover:text-[#7C3AED] transition-colors cursor-pointer"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+            {/* Demo badge helper */}
+            <div className="p-3 bg-[#FAF5FF] dark:bg-[#230542] rounded-xl border border-[#DDD6FE]/40 dark:border-[#DDD6FE]/20 text-[11px] text-[#7C3AED] dark:text-[#A3E635]">
+              <span className="font-bold">Demo Accounts:</span> 9123456780 (10th) or 9840123456 (12th Pro) — fixed OTP is <strong>4321</strong>.
             </div>
-
-            {/* Visual Attempt Progress (if any wrong attempts) */}
-            {wrongAttempts > 0 && (
-              <div className="flex items-center justify-center gap-1.5 py-1">
-                {[1, 2, 3].map((step) => (
-                  <span
-                    key={step}
-                    className={`h-2 rounded-full transition-all ${
-                      step <= wrongAttempts
-                        ? 'w-6 bg-[#EF4444]'
-                        : 'w-2 bg-[#DDD6FE] dark:bg-[#DDD6FE]/20'
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
 
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full min-h-[52px] mt-2 flex items-center justify-center font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/30 transition-all cursor-pointer"
             >
-              {isSubmitting ? texts.gate.loggingIn : texts.gate.loginButton}
+              {isSubmitting ? 'Sending Code...' : 'Send Login Code 🚀'}
             </button>
 
             {/* Switch to Register Mode button */}
@@ -687,89 +605,86 @@ export const GateSheet: React.FC = () => {
                 }}
                 className="min-h-[44px] text-xs font-bold text-[#7C3AED] dark:text-[#A3E635] hover:underline cursor-pointer"
               >
-                {texts.gate.registerSwitch}
+                New student? Create an account ✍️
               </button>
             </div>
           </form>
         )}
 
-        {/* 3. SET-PASSWORD MINI SCREEN */}
-        {mode === 'set-password' && (
-          <form onSubmit={handleSetPasswordSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                {texts.gate.phoneLabel}
-              </label>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-sm font-bold text-[#7C3AED] dark:text-[#A3E635]">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  disabled
-                  value={phone}
-                  className="w-full min-h-[48px] pl-12 pr-4 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF]/60 dark:bg-[#230542]/60 text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold opacity-80 tracking-wider"
-                />
-              </div>
+        {/* 3. OTP VERIFICATION FORM */}
+        {mode === 'otp' && (
+          <form onSubmit={handleVerifyOtp} className="space-y-4 animate-fade-in">
+            <div className="flex items-center justify-between text-xs font-bold text-[#6D28D9] dark:text-[#A3E635]">
+              <span>Phone: +91 {phone.replace(/\D/g, '').slice(-10)}</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMsg('');
+                  setMode('login');
+                }}
+                className="flex items-center gap-1 hover:underline cursor-pointer text-xs"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Edit
+              </button>
             </div>
 
             <div>
               <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                {texts.gate.newPasswordLabel}
+                Verification Code (6 Digits)
               </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder={texts.gate.passwordPlaceholder}
-                  className="w-full min-h-[48px] pl-4 pr-12 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 p-1.5 text-[#6D28D9]/70 dark:text-[#A3E635] hover:text-[#7C3AED] transition-colors cursor-pointer"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
+              <input
+                type="text"
+                required
+                maxLength={6}
+                autoFocus
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.trim())}
+                placeholder={isDemoNumber ? '4321' : '123456'}
+                className="w-full min-h-[52px] px-4 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-2xl font-black text-center tracking-[0.3em] focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all"
+              />
             </div>
 
-            <div>
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-[#6D28D9] dark:text-[#A3E635] mb-1.5">
-                {texts.gate.confirmPasswordLabel}
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  minLength={6}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="re-enter password"
-                  className="w-full min-h-[48px] pl-4 pr-12 rounded-xl border border-[#DDD6FE] dark:border-[#DDD6FE]/20 bg-[#FAF5FF] dark:bg-[#230542] text-[#2E1065] dark:text-[#FAF5FF] text-base font-semibold focus:outline-none focus:ring-2 focus:ring-[#7C3AED] transition-all"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 p-1.5 text-[#6D28D9]/70 dark:text-[#A3E635] hover:text-[#7C3AED] transition-colors cursor-pointer"
-                  aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+            {isDemoNumber && (
+              <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700/50 rounded-xl text-center text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                ✨ Demo account detected — enter fixed code <strong>4321</strong>.
               </div>
-            </div>
+            )}
 
             <button
               type="submit"
               disabled={isSubmitting}
               className="w-full min-h-[52px] mt-2 flex items-center justify-center font-black text-base text-[#18181B] bg-[#A3E635] hover:bg-[#92D928] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/30 transition-all cursor-pointer"
             >
-              {isSubmitting ? texts.gate.settingPassword : texts.gate.setPasswordButton}
+              {isSubmitting ? 'Verifying...' : 'Verify & Enter 🚀'}
             </button>
+
+            {/* Resend OTP button with cooldown */}
+            <div className="pt-2 flex items-center justify-between text-xs">
+              <button
+                type="button"
+                disabled={cooldown > 0 || isSubmitting}
+                onClick={handleResendOtp}
+                className={`font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                  cooldown > 0
+                    ? 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                    : 'text-[#7C3AED] dark:text-[#A3E635] hover:underline'
+                }`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSubmitting ? 'animate-spin' : ''}`} />
+                {cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend Code'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorMsg('');
+                  setMode('register');
+                }}
+                className="font-bold text-[#7C3AED] dark:text-[#A3E635] hover:underline cursor-pointer"
+              >
+                Register instead
+              </button>
+            </div>
           </form>
         )}
 

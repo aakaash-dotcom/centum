@@ -475,7 +475,7 @@ export async function GET(request: Request) {
         'Cache-Control':
           isPro
             ? 'private, no-cache, no-store, max-age=0'
-            : 'public, s-maxage=60, stale-while-revalidate=240',
+            : 'public, s-maxage=300, stale-while-revalidate=3600',
         'x-data-source': source,
         'x-served-from': servedFrom,
         'x-cache-version': 'cdn-v3',

@@ -1,8 +1,58 @@
 import { NextResponse } from 'next/server';
 import { allPapers, detectBilingualPapers, deduplicateBilingualPapers, normalizeSubjectName } from '@/lib/data';
+import fs from 'fs';
+import path from 'path';
 import paperSwaps from '@/data/paper-swaps.json';
 
 export const dynamic = 'force-dynamic';
+
+export function getVerifiedSwaps(): Record<string, string> {
+  const merged: Record<string, string> = { ...(paperSwaps as Record<string, string>) };
+
+  const candidatePaths = [
+    path.join(process.cwd(), 'ops', 'SWAP-79-VERIFIED.json'),
+    path.join(process.cwd(), 'centum', 'ops', 'SWAP-79-VERIFIED.json'),
+    path.join(process.cwd(), '..', 'centum', 'ops', 'SWAP-79-VERIFIED.json'),
+    path.join(process.cwd(), '..', 'ops', 'SWAP-79-VERIFIED.json'),
+    path.join(process.cwd(), 'scripts', 'SWAP-79-VERIFIED.json'),
+    'C:/centum/ops/SWAP-79-VERIFIED.json',
+  ];
+
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(/*turbopackIgnore: true*/ p)) {
+        const raw = JSON.parse(fs.readFileSync(/*turbopackIgnore: true*/ p, 'utf8'));
+        if (typeof raw === 'object' && raw !== null) {
+          for (const [id, val] of Object.entries(raw)) {
+            if (val && typeof val === 'object' && (val as any).swapTo) {
+              merged[id] = (val as any).swapTo;
+            } else if (typeof val === 'string') {
+              merged[id] = val;
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  try {
+    const envVal = process.env.SWAP_79_VERIFIED || process.env.SWAP_79_VERIFIED_JSON;
+    if (envVal) {
+      const parsed = JSON.parse(envVal);
+      if (typeof parsed === 'object' && parsed !== null) {
+        for (const [id, val] of Object.entries(parsed)) {
+          if (val && typeof val === 'object' && (val as any).swapTo) {
+            merged[id] = (val as any).swapTo;
+          } else if (typeof val === 'string') {
+            merged[id] = val;
+          }
+        }
+      }
+    }
+  } catch {}
+
+  return merged;
+}
 
 export const normClass = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
@@ -81,7 +131,8 @@ export async function GET(request: Request) {
                 return true;
               })
               .map((p: any) => {
-                const swapDriveId = (paperSwaps as Record<string, string>)[p.id];
+                const verifiedSwaps = getVerifiedSwaps();
+                const swapDriveId = verifiedSwaps[p.id];
                 const resolvedDriveId = swapDriveId || extractDriveId(p);
                 return {
                   ...p,
@@ -138,10 +189,10 @@ export async function GET(request: Request) {
             },
             {
               headers: {
-                'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
+                'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
                 'x-data-source': 'live',
                 'x-served-from': 'gas',
-                'x-cache-version': 'cdn-v2',
+                'x-cache-version': 'cdn-v3',
               },
             }
           );
@@ -229,10 +280,10 @@ export async function GET(request: Request) {
     },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
+        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=3600',
         'x-data-source': 'catalog',
         'x-served-from': 'catalog-fallback',
-        'x-cache-version': 'cdn-v2',
+        'x-cache-version': 'cdn-v3',
       },
     }
   );

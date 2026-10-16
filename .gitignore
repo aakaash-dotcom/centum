@@ -44,3 +44,6 @@ next-env.d.ts
 # nested website project
 /website/
 
+# scratch directory
+scratch/
+

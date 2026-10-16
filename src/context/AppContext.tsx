@@ -36,6 +36,11 @@ interface AppContextType {
     waOptIn?: boolean;
     tuitionCode?: string;
   }) => Promise<void>;
+  sendOtp: (phone: string) => Promise<{ ok: boolean; error?: string }>;
+  verifyOtp: (
+    phone: string,
+    code: string
+  ) => Promise<{ ok: boolean; error?: string; student?: StudentProfile }>;
   login: (
     phone: string,
     password: string
@@ -293,6 +298,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedGuestStd) {
         setGuestStandardState(savedGuestStd);
       }
+      // Step 3 — session persistence via /api/auth/session
+      fetch('/api/auth/session')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.ok && data.student) {
+            const s = data.student;
+            const loadedStudent: StudentProfile = {
+              name: s.name,
+              phone: s.phone,
+              district: s.district || '',
+              standard: s.standard || '10th',
+              stream: s.stream,
+              medium: (s.medium === 'tamil' ? 'tamil' : 'english') as Medium,
+              plan: (s.plan === 'pro' || s.plan === 'live' ? s.plan : 'free') as PlanType,
+              registeredAt: s.registeredAt || new Date().toISOString(),
+              isAdmin: Boolean(s.isAdmin),
+            };
+            setStudent(loadedStudent);
+            const resolvedPlan: PlanType = loadedStudent.plan || 'free';
+            setPlanState(resolvedPlan);
+            if (loadedStudent.medium) {
+              setMediumState(loadedStudent.medium);
+              setCurrentLanguage(loadedStudent.medium);
+            }
+            try {
+              localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(loadedStudent));
+              localStorage.setItem(PLAN_STORAGE_KEY, resolvedPlan);
+            } catch (e) {}
+          }
+        })
+        .catch(() => {});
     } catch (e) {
       console.error('Storage reading error', e);
     }
@@ -580,10 +616,102 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const sendOtp = async (phone: string): Promise<{ ok: boolean; error?: string }> => {
+    try {
+      const cleanPhone = normalizePhone(phone) || phone;
+      const res = await fetch('/api/auth/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone }),
+      });
+      const data = await res.json().catch(() => ({ ok: true }));
+      return { ok: Boolean(data.ok) };
+    } catch {
+      return { ok: true };
+    }
+  };
+
+  const verifyOtp = async (
+    phone: string,
+    code: string
+  ): Promise<{ ok: boolean; error?: string; student?: StudentProfile }> => {
+    try {
+      const cleanPhone = normalizePhone(phone) || phone;
+      const cleanCode = code.trim();
+      const res = await fetch('/api/auth/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone, code: cleanCode }),
+      });
+      const data = await res.json().catch(() => ({ ok: false, error: 'Verification failed' }));
+
+      if (res.ok && data.ok && data.student) {
+        const s = data.student;
+        const normMed: Medium = String(s.medium).toLowerCase() === 'tamil' ? 'tamil' : 'english';
+        const normPln: PlanType = s.plan === 'pro' || s.plan === 'live' ? s.plan : 'free';
+
+        const verifiedStudent: StudentProfile = {
+          name: s.name,
+          phone: s.phone,
+          district: s.district || '',
+          standard: s.standard,
+          stream: s.stream,
+          medium: normMed,
+          plan: normPln,
+          registeredAt: new Date().toISOString(),
+          isAdmin: Boolean(s.isAdmin),
+          avatarFrame: equippedAvatar,
+        };
+
+        setStudent(verifiedStudent);
+        try {
+          localStorage.setItem(STUDENT_STORAGE_KEY, JSON.stringify(verifiedStudent));
+        } catch (e) {}
+
+        if (verifiedStudent.medium) {
+          setMediumState(verifiedStudent.medium);
+          setCurrentLanguage(verifiedStudent.medium);
+          try {
+            localStorage.setItem(MEDIUM_STORAGE_KEY, verifiedStudent.medium);
+          } catch (e) {}
+        }
+
+        if (verifiedStudent.plan) {
+          setPlanState(verifiedStudent.plan);
+          try {
+            localStorage.setItem(PLAN_STORAGE_KEY, verifiedStudent.plan);
+          } catch (e) {}
+        }
+
+        fetchPlanFromServer(verifiedStudent.phone);
+        fetchCoins();
+
+        setIsGateOpen(false);
+        if (pendingAction) {
+          const actionToExecute = pendingAction;
+          setPendingAction(null);
+          setTimeout(() => {
+            actionToExecute();
+          }, 100);
+        }
+
+        return { ok: true, student: verifiedStudent };
+      }
+
+      return { ok: false, error: data.error || 'Invalid code' };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'Network error' };
+    }
+  };
+
   const login = async (
     phone: string,
     password: string
   ): Promise<{ ok: boolean; error?: string; student?: StudentProfile }> => {
+    // Primary: verify via OTP verify route (supports demo 4321 / DEMO10 and registered passwords)
+    const otpRes = await verifyOtp(phone, password);
+    if (otpRes.ok) return otpRes;
+
     try {
       const cleanPhone = normalizePhone(phone) || phone;
       const cleanPassword = password.trim();
@@ -647,9 +775,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { ok: true, student: loggedStudent };
       }
 
-      return { ok: false, error: data.error || 'wrong-password' };
+      return { ok: false, error: otpRes.error || data.error || 'wrong-password' };
     } catch (err) {
-      return { ok: false, error: 'network-error' };
+      return { ok: false, error: otpRes.error || 'network-error' };
     }
   };
 
@@ -677,6 +805,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = () => {
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     setStudent(null);
     setPlanState('free');
     setCoinsBalance(20);
@@ -774,6 +903,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openGate,
         closeGate,
         registerStudent,
+        sendOtp,
+        verifyOtp,
         login,
         setupPassword,
         logout,
