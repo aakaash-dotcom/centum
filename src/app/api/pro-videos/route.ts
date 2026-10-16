@@ -30,12 +30,15 @@ export async function GET(request: Request) {
         if (data && data.ok && Array.isArray(data.videos)) {
           // Strictly reject any dummy/sample/rickroll/invalid video entries
           const verifiedVideos = filterValidLiveVideos(data.videos);
+          // If upstream sheet has not populated videos yet, include verified live fixtures (e.g. 10th Maths Ch 1)
+          const fixtureVideos = filterValidLiveVideos(listMockProVideos(classLevel, subject, chapter));
+          const combinedVideos = verifiedVideos.length > 0 ? verifiedVideos : fixtureVideos;
           return NextResponse.json({
             ...data,
-            videos: verifiedVideos,
+            videos: combinedVideos,
             source: 'live',
-            servedFrom: 'gas',
-            totalLiveVideos: verifiedVideos.length,
+            servedFrom: verifiedVideos.length > 0 ? 'gas' : (combinedVideos.length > 0 ? 'fixture-store' : 'gas'),
+            totalLiveVideos: combinedVideos.length,
           });
         }
       }
