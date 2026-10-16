@@ -177,7 +177,9 @@ export async function GET(request: Request) {
             });
           }
 
-          normalizedPapers = deduplicateBilingualPapers(normalizedPapers);
+          if (searchParams.get('dedup') === 'true') {
+            normalizedPapers = deduplicateBilingualPapers(normalizedPapers);
+          }
 
           return NextResponse.json(
             {
@@ -269,7 +271,9 @@ export async function GET(request: Request) {
     });
   }
 
-  papers = deduplicateBilingualPapers(papers);
+  if (searchParams.get('dedup') === 'true') {
+    papers = deduplicateBilingualPapers(papers);
+  }
 
   return NextResponse.json(
     {
