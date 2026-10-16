@@ -668,8 +668,47 @@ function rows_(name) {
 function append_(name, row) { sheet_(name).appendRow(row); }
 function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
 function splitOptions_(c) {
-  if (Array.isArray(c)) return c.map(function (s) { return String(s).trim(); });
-  return String(c || "").split("|").map(function (s) { return s.trim(); });
+  if (Array.isArray(c)) return c.map(function (s) { return String(s).trim(); }).filter(Boolean);
+  const s = String(c || "").trim();
+  if (!s) return [];
+  if (s.charAt(0) === "[" && s.charAt(s.length - 1) === "]") {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed) && parsed.length === 4) return parsed.map(function (x) { return String(x).trim(); });
+    } catch (e) {}
+  }
+  if (s.indexOf("\n") !== -1) {
+    const lines = s.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean);
+    if (lines.length === 4) return lines;
+  }
+  if (s.indexOf(" | ") !== -1) {
+    const parts = s.split(/\s+\|\s+/).map(function (p) { return p.trim(); });
+    if (parts.length === 4 && parts.every(Boolean)) return parts;
+  }
+  const rawParts = s.split("|").map(function (p) { return p.trim(); });
+  if (rawParts.length === 4 && rawParts.every(Boolean)) return rawParts;
+  if (rawParts.length > 4) {
+    const reconstructed = [];
+    let buf = "";
+    for (let i = 0; i < rawParts.length; i++) {
+      const part = rawParts[i];
+      if (buf) {
+        buf += "|" + part;
+        if (part.charAt(part.length - 1) === "|" || buf.split("|").length % 2 === 1) {
+          reconstructed.push(buf);
+          buf = "";
+        }
+      } else if (part === "" && i + 1 < rawParts.length) {
+        buf = "|" + rawParts[++i];
+      } else {
+        reconstructed.push(part);
+      }
+    }
+    if (buf) reconstructed.push(buf);
+    if (reconstructed.length === 4 && reconstructed.every(Boolean)) return reconstructed;
+  }
+  if (rawParts.length === 3 && rawParts.every(Boolean)) return [rawParts[0], rawParts[1], rawParts[2], "None of these"];
+  return rawParts;
 }
 function publicStudent_(s, phone) { return { name: s.name, phone: String(phone || ""), district: s.district, standard: s.standard, stream: s.stream, medium: s.medium, plan: s.plan }; }
 

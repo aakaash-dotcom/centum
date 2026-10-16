@@ -357,203 +357,121 @@ export default function ClassroomPage() {
           </div>
         </div>
       ) : (
-        /* ==================== UNJOINED STATE (DISCOVERY / PREVIEW) ==================== */
-        <div className="space-y-8 animate-fadeIn">
-          {/* 3-Step Explainer */}
-          <div className="rounded-2xl bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm border border-slate-200 dark:border-slate-800">
-            <div className="text-center max-w-lg mx-auto mb-6">
-              <span className="text-xs uppercase tracking-widest font-black text-emerald-600 dark:text-emerald-400">
-                {isTamil ? 'எளிய 3 படிகள்' : 'How It Works'}
-              </span>
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1">
-                {isTamil
-                  ? 'உங்கள் டியூஷன் வகுப்பறையை இணைப்பது எப்படி?'
-                  : 'Connect Your Tuition in 3 Easy Steps'}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">
-                {isTamil
-                  ? 'உங்கள் ஆசிரியர் தரும் குறியீட்டை உள்ளிட்டு ஒரே இடத்தில் நாள்குறிப்பு மற்றும் வருகையைப் பெறுங்கள்.'
-                  : 'Get daily homework diary, attendance tracking, and high-yield test prep all in one place.'}
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-center flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-emerald-500 text-white font-black text-base flex items-center justify-center mb-3 shadow-md shadow-emerald-500/20">
-                  1
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                  {isTamil ? 'இருக்கை குறியீட்டைப் பெறுங்கள்' : 'Get Seat Code'}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {isTamil
-                    ? 'உங்கள் டியூஷன் ஆசிரியரிடம் உங்கள் பிரத்யேக Centum இருக்கை குறியீட்டைக் கேளுங்கள்.'
-                    : 'Ask your tuition teacher or master for your exclusive Centum seat code.'}
-                </p>
+        /* ==================== UNJOINED STATE: 3 CLEAN BOXES (Brief F) ==================== */
+        <div className="space-y-5 animate-fade-in max-w-lg mx-auto w-full">
+          {/* Box 1: Students (Seat Code Input) */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-[#7C3AED]/30 dark:border-[#7C3AED]/40 shadow-lg shadow-[#7C3AED]/5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center text-lg font-black shrink-0">
+                🎓
               </div>
-
-              <div className="p-4 rounded-xl bg-teal-50/50 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/40 text-center flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-teal-500 text-white font-black text-base flex items-center justify-center mb-3 shadow-md shadow-teal-500/20">
-                  2
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                  {isTamil ? 'குறியீட்டை உள்ளிட்டு இணையுங்கள்' : 'Claim & Link Seat'}
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA] block">
+                  {isTamil ? 'மாணவர்கள்' : 'For Students'}
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight">
+                  {isTamil ? 'டியூஷன் இருக்கை குறியீடு உள்ளதா?' : 'Have a Tuition Seat Code?'}
                 </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {isTamil
-                    ? 'குறியீட்டை உள்ளிட்டு ஒரே கிளிக்கில் உங்கள் கணக்கை டியூஷனுடன் இணைக்கவும்.'
-                    : 'Enter the code to link your Centum student account directly with your tuition.'}
-                </p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/40 text-center flex flex-col items-center">
-                <div className="w-10 h-10 rounded-full bg-indigo-500 text-white font-black text-base flex items-center justify-center mb-3 shadow-md shadow-indigo-500/20">
-                  3
-                </div>
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">
-                  {isTamil ? 'அனைத்தும் ஒரே இடத்தில்' : 'All In One Place'}
-                </h3>
-                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {isTamil
-                    ? 'தினசரி வீட்டுப்பாடம், வருகை விவரம் & தேர்வுகளுக்கான சிறப்பு வினாக்கள் தயார்!'
-                    : 'View daily homework notes, attendance reports & masterclass test sets anytime.'}
-                </p>
               </div>
             </div>
 
-            {/* Join Code Input Form */}
-            <form onSubmit={handleJoinSubmit} className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800 max-w-md mx-auto">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 text-center">
-                {isTamil ? 'உங்களிடம் டியூஷன் இருக்கை குறியீடு உள்ளதா?' : 'Have a Tuition Seat Code?'}
-              </label>
+            <p className="text-xs text-slate-600 dark:text-purple-200/80 leading-relaxed mb-4">
+              {isTamil
+                ? 'உங்கள் ஆசிரியர் வழங்கிய இருக்கை குறியீட்டை உள்ளிட்டு தினசரி வீட்டுப்பாடம், வருகை விவரம் & சிறப்பு தேர்வுகளை அணுகுங்கள்.'
+                : 'Enter your exclusive seat code from your tuition centre to unlock daily diary feeds, attendance tracking & board exam masterclasses.'}
+            </p>
+
+            <form onSubmit={handleJoinSubmit} className="space-y-3">
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder={isTamil ? 'எ.கா: APEX10-S01' : 'e.g. APEX10-S01'}
                   value={seatInput}
                   onChange={(e) => setSeatInput(e.target.value.toUpperCase())}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono uppercase text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="flex-1 px-4 py-3 rounded-2xl border border-[#DDD6FE] dark:border-[#3B2063] bg-[#FAF5FF] dark:bg-[#2A1247] text-[#2E1065] dark:text-[#FAF5FF] font-mono uppercase text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#7C3AED]"
                 />
                 <button
                   type="submit"
                   disabled={!seatInput.trim()}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-bold flex items-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                  className="px-6 py-3 rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-40 text-white text-sm font-black flex items-center gap-1.5 transition-all shadow-md shadow-[#7C3AED]/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <span>{isTamil ? 'இணை' : 'Claim'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 text-center">
-                {isTamil
-                  ? 'குறியீட்டை உள்ளிட்டதும் உடனடியாக உங்கள் ப்ரோ அம்சங்கள் செயல்படும்.'
-                  : 'Deep-links directly to seat activation with instant Pro validation.'}
-              </p>
             </form>
           </div>
 
-          {/* Blurred Sample Classroom Card Teaser */}
-          <div className="relative rounded-2xl bg-white dark:bg-slate-900 p-5 sm:p-6 shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-            {/* Header info */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-xs uppercase tracking-wider font-bold text-slate-400">
-                {isTamil ? 'முன்னோட்டம்: மாதிரி வகுப்பறை' : 'Teaser Preview: Sample Classroom'}
-              </span>
-              <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                <Sparkles className="w-3 h-3" />
-                Premium Classroom
-              </span>
-            </div>
-
-            {/* Blurred Teaser Content */}
-            <div className="filter blur-[3px] select-none pointer-events-none opacity-60 space-y-4">
-              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-800 to-slate-900 text-white flex justify-between items-center">
-                <div>
-                  <h4 className="font-bold text-lg">Apex Centum Academy</h4>
-                  <p className="text-xs text-emerald-200">Teacher: Ramesh Kumar Sir · Code: DEMO10</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-emerald-400">93%</span>
-                  <p className="text-[10px] text-slate-300">30-day Attendance</p>
-                </div>
+          {/* Box 2: Tuition Owners (Benefits + WhatsApp CTA) */}
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#2E1065] via-[#3B0F6E] to-[#1B0B2E] border-2 border-[#7C3AED]/40 text-white shadow-xl shadow-[#7C3AED]/15">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#7C3AED]/30 text-[#A3E635] flex items-center justify-center text-lg font-black shrink-0 border border-[#7C3AED]/40">
+                🏫
               </div>
-
-              <div className="space-y-2">
-                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs">
-                  <span className="font-bold text-blue-600">📝 Homework: </span>
-                  Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.
-                </div>
-                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs">
-                  <span className="font-bold text-amber-600">📢 Notice: </span>
-                  Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.
-                </div>
-                <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs">
-                  <span className="font-bold text-purple-600">🧪 Exam: </span>
-                  Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.
-                </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#A3E635] block">
+                  {isTamil ? 'டியூஷன் ஆசிரியர்கள் & உரிமையாளர்கள்' : 'Tuition Owners & Teachers'}
+                </span>
+                <h3 className="text-base sm:text-lg font-black text-white leading-tight">
+                  {isTamil ? 'உங்கள் டியூஷனுக்கு டிஜிட்டல் வகுப்பறை' : 'Get Your Own Digital Classroom'}
+                </h3>
               </div>
             </div>
 
-            {/* Overlay Banner */}
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-xl flex items-center justify-center mb-3">
-                <Lock className="w-6 h-6" />
-              </div>
-              <h3 className="text-base sm:text-lg font-black text-white drop-shadow mb-1">
-                {isTamil ? 'உங்கள் வகுப்பறை தகவல்களை அணுகுங்கள்' : 'Unlock Your Classroom Updates'}
-              </h3>
-              <p className="text-xs text-slate-200 max-w-sm drop-shadow mb-4">
-                {isTamil
-                  ? 'உங்கள் ஆசிரியர் வழங்கும் இருக்கை குறியீட்டைப் பெற்று இணைக்கவும்.'
-                  : 'Claim your seat code provided by your tuition to unlock real-time diary notes & attendance.'}
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsDemoOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-black shadow-lg shadow-emerald-500/25 transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>{isTamil ? 'மாதிரி வகுப்பறையைக் காண்க' : 'View Demo Classroom'}</span>
-                </button>
-                <Link
-                  href="/join"
-                  className="px-4 py-2.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 shadow-md transition-all flex items-center gap-1.5"
-                >
-                  <span>{isTamil ? 'இருக்கை குறியீட்டை உள்ளிடவும்' : 'Enter Seat Code'}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          {/* Teacher CTA: Running a tuition? */}
-          <div className="rounded-2xl bg-gradient-to-r from-indigo-900 via-slate-900 to-purple-950 text-white p-5 sm:p-6 shadow-xl border border-indigo-500/30 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="space-y-1.5 text-center sm:text-left">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-300 bg-indigo-500/20 px-2.5 py-0.5 rounded-full border border-indigo-400/30">
-                👨‍🏫 {isTamil ? 'ஆசிரியர்களுக்கான பிரத்யேக வசதி' : 'For Tuition Teachers & Owners'}
-              </span>
-              <h3 className="text-lg sm:text-xl font-black text-white">
-                {isTamil
-                  ? 'டியூஷன் நடத்துகிறீர்களா? உங்கள் சொந்த வகுப்பறையைப் பெறுங்கள்!'
-                  : 'Running a tuition? Get your own digital classroom!'}
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-300 max-w-lg leading-relaxed">
-                {isTamil
-                  ? 'உங்கள் மாணவர்களுக்கான பிரத்யேக போர்டல், தினசரி வருகைப்பதிவு, டிஜிட்டல் நாள்குறிப்பு மற்றும் கட்டண பகிர்வு வசதியை உடனே தொடங்குங்கள்.'
-                  : 'Empower your tuition with branded digital attendance, diary feeds, and exclusive board exam study materials.'}
-              </p>
-            </div>
+            <ul className="text-xs space-y-2 mb-5 text-purple-100">
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0" />
+                <span>{isTamil ? 'பிரத்யேக டிஜிட்டல் நாள்குறிப்பு & வீட்டுப்பாட அறிவிப்புகள்' : 'Branded Digital Diary & Daily Homework Feed'}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0" />
+                <span>{isTamil ? 'நேரடி வருகைப்பதிவு & மாணவர் முன்னேற்றப் பார்வை' : 'Real-time 30-day Attendance & Student Tracking'}</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0" />
+                <span>{isTamil ? '100/100 பொதுத்தேர்வு சிறப்பு வினாக்கள் & பொருட்கள்' : '100/100 High-Yield Board Exam Study Materials'}</span>
+              </li>
+            </ul>
 
             <a
               href="https://wa.me/918610653352?text=Hi%20Centum,%20I%20run%20a%20tuition%20centre%20and%20want%20to%20get%20my%20own%20digital%20classroom"
               target="_blank"
               rel="noopener noreferrer"
-              className="whitespace-nowrap px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-colors"
+              className="w-full px-5 py-3 rounded-2xl bg-[#A3E635] hover:bg-[#bef264] text-slate-950 text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
             >
-              <MessageCircle className="w-4 h-4 fill-white" />
-              <span>{isTamil ? 'வாட்ஸ்அப்பில் தொடர்புகொள்ள' : 'Chat with Founder'}</span>
+              <MessageCircle className="w-4 h-4 fill-slate-950" />
+              <span>{isTamil ? 'வாட்ஸ்அப்பில் நிறுவனருடன் பேசுக' : 'Chat with Founder on WhatsApp'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+          </div>
+
+          {/* Box 3: Demo Classroom ("Explore Demo Classroom") */}
+          <div className="p-6 rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-[#DDD6FE] dark:border-[#3B2063] shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center text-lg font-black shrink-0">
+                ✨
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  {isTamil ? 'முன்னோட்டம்' : 'Interactive Preview'}
+                </span>
+                <h3 className="text-sm sm:text-base font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight">
+                  {isTamil ? 'மாதிரி வகுப்பறையைக் காண்க' : 'Explore Demo Classroom'}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-purple-300/70 mt-0.5">
+                  {isTamil ? 'நேரடி நாள்குறிப்பு, வருகைப்பதிவு & புள்ளிவிவரங்களை சோதிக்கவும்.' : 'Preview how diary notes, attendance & student reports work.'}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsDemoOpen(true)}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] border border-[#7C3AED] text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#7C3AED] hover:text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>{isTamil ? 'மாதிரி பார்க்க' : 'Explore Demo'}</span>
+            </button>
           </div>
         </div>
       )}

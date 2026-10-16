@@ -619,99 +619,75 @@ function ProHomeContent() {
     }
   };
 
+  const isTamil = Boolean(student?.medium ? String(student.medium).toLowerCase().startsWith('t') : medium === 'tamil');
+
   const SECTION_CHIPS: Array<{ id: ProSection; label: string; icon: string; count?: number | string }> = [
-    { id: 'all', label: 'அனைத்தும்', icon: '✨' },
-    { id: 'videos', label: 'வீடியோக்கள்', icon: '▶', count: videos.length },
+    { id: 'all', label: isTamil ? 'அனைத்தும்' : 'All', icon: '✨' },
+    { id: 'videos', label: isTamil ? 'வீடியோக்கள்' : 'Videos', icon: '▶', count: videos.length },
     { id: 'concept', label: 'Concept Quiz', icon: '🧠', count: conceptChapterRows.length },
-    { id: 'textbooks', label: 'பாடநூல்கள்', icon: '📚', count: textbooks.length || '8+' },
-    { id: 'papers', label: 'தாள்கள் (PYQ)', icon: '📄', count: classPapers.length },
-    { id: 'notes', label: 'நோட்டுகள்', icon: '📝', count: materials.length },
-    { id: 'diagrams', label: 'படங்கள்', icon: '🎨', count: 'விரைவில்' },
-    { id: 'handwritten', label: 'கையேடுகள்', icon: '✍️', count: 'விரைவில்' },
+    { id: 'notes', label: isTamil ? 'நோட்டுகள்' : 'Notes', icon: '📝', count: materials.length },
+    { id: 'papers', label: isTamil ? 'தாள்கள் (PYQ)' : 'Papers (PYQ)', icon: '📄', count: classPapers.length },
+    { id: 'textbooks', label: isTamil ? 'பாடநூல்கள்' : 'Textbooks', icon: '📚', count: textbooks.length || '8+' },
+    { id: 'diagrams', label: isTamil ? 'படங்கள்' : 'Diagrams', icon: '🎨', count: isTamil ? 'விரைவில்' : 'Soon' },
+    { id: 'handwritten', label: isTamil ? 'கையேடுகள்' : 'Handwritten', icon: '✍️', count: isTamil ? 'விரைவில்' : 'Soon' },
   ];
 
   return (
-    <div className="flex-1 flex flex-col px-4 pt-3 pb-24 max-w-md mx-auto w-full animate-fade-in text-[#2E1065] dark:text-[#FAF5FF]">
-      {/* Ghost Breadcrumb Back Pill (Task 2) */}
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#EDE9FE] dark:border-[#3B2063]">
+    <div className="flex-1 flex flex-col px-4 pt-3 pb-24 max-w-2xl mx-auto w-full animate-fade-in text-[#2E1065] dark:text-[#FAF5FF]">
+      {/* Ghost Breadcrumb Back Pill */}
+      <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#EDE9FE] dark:border-[#3B2063]">
         <button
           type="button"
           onClick={() => {
             setActiveSection('all');
             router.push('/pro');
           }}
-          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FAF5FF] dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#EDE9FE] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#FAF5FF] dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#EDE9FE] transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>← அனைத்து Pro பொருட்கள்</span>
+          <span>{isTamil ? '← அனைத்து Pro பொருட்கள்' : '← All Pro Materials'}</span>
         </button>
 
         <div className="flex items-center gap-2">
-          {/* Medium Toggle */}
-          <div className="inline-flex items-center p-0.5 rounded-full bg-[#EDE9FE] dark:bg-[#3B0F6E] border border-[#DDD6FE] dark:border-[#DDD6FE]/20">
-            <button
-              type="button"
-              onClick={() => setMedium('tamil')}
-              className={`px-2 py-0.5 text-[10px] font-black rounded-full transition-all ${
-                medium === 'tamil' ? 'bg-[#7C3AED] text-white shadow-xs' : 'text-[#6D28D9] dark:text-[#DDD6FE]'
-              }`}
-            >
-              தமிழ்
-            </button>
-            <button
-              type="button"
-              onClick={() => setMedium('english')}
-              className={`px-2 py-0.5 text-[10px] font-black rounded-full transition-all ${
-                medium === 'english' ? 'bg-[#7C3AED] text-white shadow-xs' : 'text-[#6D28D9] dark:text-[#DDD6FE]'
-              }`}
-            >
-              EM
-            </button>
-          </div>
-
-          <span className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 text-[10px] font-black uppercase tracking-wider shadow-xs flex items-center gap-1">
-            <Crown className="w-3 h-3" />
+          <span className="px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 text-xs font-black uppercase tracking-wider shadow-xs flex items-center gap-1.5">
+            <Crown className="w-3.5 h-3.5 fill-current" />
             <span>Class {effectiveClass}th Pro</span>
           </span>
         </div>
       </div>
 
-      {/* TASK 4: Real Honest Hero Strip */}
-      <div className="p-4 rounded-3xl bg-gradient-to-br from-[#7C3AED] via-[#8B5CF6] to-[#9333EA] text-white shadow-xl shadow-[#7C3AED]/25 border border-white/20 mb-3 relative overflow-hidden">
-        <div className="flex items-center gap-2 mb-1.5">
-          <span className="text-2xl">👑</span>
-          <h1 className="text-lg sm:text-xl font-black tracking-tight leading-tight">
-            CENTUM Pro Hub
-          </h1>
-        </div>
-
-        {/* Live honest count strip (Task 4) */}
-        <div
-          data-testid="pro-live-hero-strip"
-          className="p-2.5 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 text-xs font-bold leading-relaxed space-y-1"
-        >
-          <div className="flex items-center gap-1.5 text-[#FDE047] text-[11px] font-black uppercase tracking-wider">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>தற்போது Pro-இல்:</span>
+      {/* Clean Pro Hub Hero (Brief C - No count numbers) */}
+      <div className="p-5 rounded-3xl bg-gradient-to-br from-[#7C3AED] via-[#6D28D9] to-[#2E1065] text-white shadow-xl shadow-[#7C3AED]/25 border border-white/20 mb-4 relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-[#A3E635] text-[11px] font-black uppercase tracking-wider mb-2">
+            <Crown className="w-3.5 h-3.5 fill-current" />
+            <span>CENTUM Pro Masterclass Hub</span>
           </div>
-          <p className="text-xs sm:text-[13px] font-extrabold text-white">
-            {allVideosCount} வீடியோ · {conceptTotalCount} concept · {papersTotalCount.toLocaleString()}+ தாள்கள் · நோட்டுகள் வருகிறது
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight mb-1">
+            {isTamil ? `${effectiveClass}ஆம் வகுப்பு Pro கற்றல் தளம்` : `Class ${effectiveClass}th Pro Learning Hub`}
+          </h1>
+          <p className="text-xs sm:text-sm font-medium text-white/85 leading-relaxed max-w-sm">
+            {isTamil
+              ? 'வீடியோ வகுப்புகள், அத்தியாய வாரியான கருத்துத் தேர்வுகள், அரசு பாடநூல்கள் & முந்தைய ஆண்டு வினாத்தாள்கள்.'
+              : 'Masterclasses, chapter concept mastery quizzes, official state textbooks & past examination papers.'}
           </p>
         </div>
+        <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-[#A3E635]/15 blur-2xl pointer-events-none" />
+        <div className="absolute right-4 top-4 text-4xl opacity-20 pointer-events-none">👑</div>
       </div>
 
-      {/* Subject Chips Row */}
-      <div className="mb-2.5">
+      {/* Enlarged Subject Chips Row (Brief C) */}
+      <div className="mb-3">
         <div className="flex items-center justify-between mb-1.5 px-0.5">
-          <span className="text-[10px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA]">
-            பாடங்கள் ({effectiveClass}th)
+          <span className="text-[11px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA]">
+            {isTamil ? `பாடங்கள் (${effectiveClass}th)` : `Subjects (${effectiveClass}th)`}
           </span>
           {parseInt(effectiveClass, 10) >= 11 && (
             <div className="flex items-center gap-1">
               {(['maths', 'bio', 'commerce'] as const).map((st) => {
                 const activeStream = normalizeStream(effectiveStream);
                 const isStActive = activeStream === st;
-                const label = st === 'maths' ? 'கணிதம்' : st === 'bio' ? 'உயிரியல்' : 'வணிகவியல்';
+                const label = st === 'maths' ? (isTamil ? 'கணிதம்' : 'Maths') : st === 'bio' ? (isTamil ? 'உயிரியல்' : 'Biology') : (isTamil ? 'வணிகவியல்' : 'Commerce');
                 return (
                   <button
                     key={st}
@@ -719,7 +695,7 @@ function ProHomeContent() {
                     onClick={() => {
                       setStreamOverride(st);
                     }}
-                    className={`px-2 py-0.5 rounded-full text-[9px] font-black transition-all border ${
+                    className={`min-h-[32px] px-3 py-1 rounded-full text-xs font-black transition-all border ${
                       isStActive
                         ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
                         : 'bg-white dark:bg-[#1B0B2E] text-slate-500 border-[#DDD6FE] dark:border-[#3B2063]'
@@ -732,7 +708,7 @@ function ProHomeContent() {
             </div>
           )}
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none">
           {canonicalSubjects.map((sub) => {
             const isSelected = selectedSubject.toLowerCase() === sub.toLowerCase();
             const hasContent = hasSubjectContent(sub);
@@ -741,16 +717,16 @@ function ProHomeContent() {
                 key={sub}
                 type="button"
                 onClick={() => setSelectedSubject(sub)}
-                className={`min-h-[36px] px-3.5 rounded-full text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 border flex items-center gap-1 ${
+                className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer whitespace-nowrap shrink-0 border flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white border-[#7C3AED] shadow-sm'
-                    : 'bg-white dark:bg-[#1B0B2E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#DDD6FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40'
+                    ? 'bg-[#7C3AED] text-white border-[#7C3AED] shadow-md shadow-[#7C3AED]/30 scale-[1.02]'
+                    : 'bg-white dark:bg-[#1B0B2E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/50 hover:bg-[#FAF5FF]'
                 }`}
               >
                 <span>{sub}</span>
                 {!hasContent && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-400">
-                    விரைவில் 🌱
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-400">
+                    {isTamil ? 'விரைவில் 🌱' : 'Soon 🌱'}
                   </span>
                 )}
               </button>
@@ -759,9 +735,9 @@ function ProHomeContent() {
         </div>
       </div>
 
-      {/* Task 2: Section Tabs with Pre-selected Highlighting & Counts */}
-      <div className="mb-4">
-        <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      {/* Enlarged Type/Section Filters (Brief C) */}
+      <div className="mb-5">
+        <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-none">
           {SECTION_CHIPS.map((chip) => {
             const isSelected = activeSection === chip.id;
             return (
@@ -773,9 +749,9 @@ function ProHomeContent() {
                   const qParam = chip.id === 'all' ? '' : `?section=${chip.id}`;
                   router.push(`/pro${qParam}`);
                 }}
-                className={`min-h-[32px] px-3 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 border ${
+                className={`min-h-[44px] px-4 py-2 rounded-2xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-2 border ${
                   isSelected
-                    ? 'bg-[#A3E635] text-[#18181B] border-[#84CC16] shadow-xs scale-102 font-black'
+                    ? 'bg-[#7C3AED] text-white border-[#6D28D9] shadow-md shadow-[#7C3AED]/30 scale-[1.02]'
                     : 'bg-white/90 dark:bg-[#1B0B2E] text-[#6D28D9] dark:text-[#DDD6FE] border-[#EDE9FE] dark:border-[#3B2063] hover:bg-[#FAF5FF]'
                 }`}
               >
@@ -783,8 +759,8 @@ function ProHomeContent() {
                 <span>{chip.label}</span>
                 {chip.count !== undefined && (
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                      isSelected ? 'bg-black/15 text-black' : 'bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300'
+                    className={`text-[11px] px-2 py-0.5 rounded-full font-black ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-[#EDE9FE] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA]'
                     }`}
                   >
                     {chip.count}
@@ -796,13 +772,13 @@ function ProHomeContent() {
         </div>
       </div>
 
-      {/* TASK 4: "இந்த வாரம் புதிதாக" (New This Week) Strip */}
+      {/* "New This Week" Strip */}
       {newThisWeekItems.length > 0 && (activeSection === 'all' || activeSection === 'videos') && (
         <div className="mb-5 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span>இந்த வாரம் புதிதாக (New this week)</span>
+              <span>{isTamil ? 'இந்த வாரம் புதிதாக (New this week)' : 'New This Week'}</span>
             </span>
             <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded-full">
               LIVE
@@ -817,7 +793,7 @@ function ProHomeContent() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
-                    <span className="px-1.5 py-0.2 rounded-md bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 text-[9px] font-black">
+                    <span className="px-1.5 py-0.5 rounded-md bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 text-[9px] font-black">
                       {item.badge}
                     </span>
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
@@ -833,7 +809,7 @@ function ProHomeContent() {
                   <button
                     type="button"
                     onClick={() => setActiveVideoId(item.item.id)}
-                    className="px-2.5 py-1 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-[11px] font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer"
                   >
                     <Play className="w-3 h-3 fill-current" />
                     <span>Watch</span>
@@ -872,13 +848,13 @@ function ProHomeContent() {
         </div>
       )}
 
-      {/* SECTION 1: VIDEOS MASTERCLASS + Understand-Check Popups (Task 6) */}
+      {/* SHELF 1: VIDEOS MASTERCLASS (Brief D: Horizontal Scroll Cards) */}
       {(activeSection === 'all' || activeSection === 'videos') && (
         <div ref={sectionRefs.videos} className="mb-6 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
               <Video className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
-              <span>Chapter Video Masterclasses ({videos.length})</span>
+              <span>{isTamil ? 'அத்தியாய வீடியோ வகுப்புகள்' : 'Chapter Video Masterclasses'} ({videos.length})</span>
             </h3>
             <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
               In-app 16:9
@@ -891,56 +867,52 @@ function ProHomeContent() {
                 <Video className="w-5 h-5" />
               </div>
               <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF]">
-                {selectedSubject} வீடியோக்கள் தயாரிப்பில் உள்ளன
+                {isTamil ? `${selectedSubject} வீடியோக்கள் தயாரிப்பில் உள்ளன` : `${selectedSubject} masterclasses in production`}
               </h4>
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                தற்போது நேரடி வீடியோக்கள்: 0 · டிசம்பர் முதல் வாரம் நேரலையாகும் 🌱
+                {isTamil ? 'டிசம்பர் முதல் வாரம் நேரலையாகும் 🌱' : 'Releasing in December 🌱'}
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x -mx-1 px-1">
               {videos.map((vid) => (
                 <div
                   key={vid.id}
-                  className="p-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col gap-2"
+                  className="w-[260px] sm:w-[280px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/50 transition-all flex flex-col justify-between gap-3"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center shrink-0">
-                        <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
-                          {vid.topic}
-                        </h4>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          Chapter {vid.chapterNo || 1} · {vid.targetSec ? Math.round(vid.targetSec / 60) : 15} min
-                        </span>
-                      </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-2 py-0.5 rounded-md bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-[10px] font-black">
+                        Ch {vid.chapterNo || 1}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        {vid.targetSec ? Math.round(vid.targetSec / 60) : 15} min
+                      </span>
                     </div>
 
+                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                      {vid.topic}
+                    </h4>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
                     <button
                       type="button"
                       onClick={() => setActiveVideoId(vid.id)}
-                      className="px-2.5 py-1 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-[11px] font-black shrink-0 transition-all cursor-pointer"
+                      className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
-                      Play ▶
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>{isTamil ? 'பார்க்க' : 'Watch'}</span>
                     </button>
-                  </div>
 
-                  {/* Task 6: Understand-check popup quiz pill */}
-                  <div className="pt-1 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-400">
-                      புரிதல் சரிபார்ப்பு
-                    </span>
                     <button
                       type="button"
                       data-testid="understand-check-pill"
                       onClick={() => handleStartUnderstandCheck(vid)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-[10px] font-black transition-all cursor-pointer"
+                      className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-[10px] font-black transition-all cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                      <span>உணர்ந்தேனா? (3–5 Q)</span>
+                      <span>{isTamil ? 'உணர்ந்தேனா? (3–5 Q)' : 'Got it? (3–5 Q)'}</span>
                     </button>
                   </div>
                 </div>
@@ -950,20 +922,20 @@ function ProHomeContent() {
         </div>
       )}
 
-      {/* SECTION 2: CONCEPT QUIZZES (Task 3: Gated with Ch1 Free Teaser + Locked Ch2+ Rows) */}
+      {/* SHELF 2: CONCEPT QUIZZES (Brief D: Horizontal Scroll Cards) */}
       {(activeSection === 'all' || activeSection === 'concept' || activeSection === 'quiz') && (
         <div ref={sectionRefs.concept} className="mb-6 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
               <Brain className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
-              <span>Concept Mastery Quizzes (Pro)</span>
+              <span>{isTamil ? 'கருத்துத் தேர்வுகள் (Concept Mastery)' : 'Concept Mastery Quizzes (Pro)'}</span>
             </h3>
             <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded-full">
               Ch 1 Free Teaser
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x -mx-1 px-1">
             {conceptChapterRows.map((row) => {
               const isLocked = !row.isFreeTeaser && !isPro;
 
@@ -980,55 +952,46 @@ function ProHomeContent() {
                       );
                     }
                   }}
-                  className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left ${
+                  className={`w-[240px] sm:w-[260px] shrink-0 snap-start p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-left ${
                     isLocked
                       ? 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-400/40 hover:border-amber-500 hover:bg-amber-500/10'
                       : 'bg-white dark:bg-[#1B0B2E] border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs'
                   }`}
                 >
-                  <div className="min-w-0 flex items-center gap-2.5">
-                    {isLocked ? (
-                      <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 shrink-0">
-                        <Lock className="w-4 h-4" />
-                      </span>
-                    ) : (
-                      <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
-                        <Play className="w-4 h-4 fill-current ml-0.5" />
-                      </span>
-                    )}
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        {row.isFreeTeaser ? (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
-                            FREE TEASER
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200">
-                            PRO 🔒
-                          </span>
-                        )}
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                          {row.count} Questions
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      {row.isFreeTeaser ? (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                          FREE TEASER
                         </span>
-                      </div>
-                      <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
-                        {row.title}
-                      </h4>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200">
+                          PRO 🔒
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        {row.count} Qs
+                      </span>
                     </div>
+
+                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                      {row.title}
+                    </h4>
                   </div>
 
-                  {isLocked ? (
-                    <span className="px-2.5 py-1 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 text-[10px] font-black shrink-0 transition-all shadow-xs flex items-center gap-1">
-                      <span>Unlock</span>
-                      <Lock className="w-3 h-3" />
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-1 rounded-xl bg-[#A3E635] text-[#18181B] text-[10px] font-black shrink-0 transition-all shadow-xs flex items-center gap-1">
-                      <span>Play</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </span>
-                  )}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    {isLocked ? (
+                      <span className="w-full py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5">
+                        <span>{isTamil ? 'திறக்க' : 'Unlock'}</span>
+                        <Lock className="w-3.5 h-3.5" />
+                      </span>
+                    ) : (
+                      <span className="w-full py-1.5 px-3 rounded-xl bg-[#A3E635] text-[#18181B] text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5">
+                        <span>{isTamil ? 'தொடங்குக' : 'Play'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -1036,163 +999,13 @@ function ProHomeContent() {
         </div>
       )}
 
-      {/* SECTION 3: TEXTBOOKS பாடநூல்கள் (Task 8: Live Ledger, Full-Book Card, Zero Drive URLs) */}
-      {(activeSection === 'all' || activeSection === 'textbooks') && (
-        <div ref={sectionRefs.textbooks} className="mb-6 space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
-              <BookMarked className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
-              <span>பாடநூல்கள் (Official TN Board Textbooks)</span>
-            </h3>
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-              In-app PDF
-            </span>
-          </div>
-
-          {isLoadingTextbooks ? (
-            <div className="p-6 text-center text-xs font-bold text-slate-500 animate-pulse">
-              பாடநூல்கள் பதிவிறக்கம் செய்யப்படுகிறது... 📚
-            </div>
-          ) : textbooks.length === 0 ? (
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center">
-              <p className="text-xs font-bold text-slate-500">
-                டிசம்பர் முதல் வாரம் — {selectedSubject} பாடநூல் அலகுகள் சேர்க்கப்படும் 🌱
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {/* FULL-book row + Unit Chapters / Term Volumes (Task 8) */}
-              {(() => {
-                const fullBook = textbooks.find((t) => t.isFullBook || t.unitNo === 0);
-                return (
-                  <>
-                    {fullBook && (
-                      <div
-                        key="full-book-top"
-                        className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-500/15 via-[#7C3AED]/10 to-amber-500/15 border-2 border-[#7C3AED]/30 hover:border-[#7C3AED] transition-all flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#7C3AED] to-[#9333EA] text-white flex items-center justify-center shrink-0 shadow-xs text-base">
-                            📚
-                          </div>
-                          <div className="min-w-0">
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-[#7C3AED] text-white">
-                              FULL BOOK
-                            </span>
-                            <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight mt-0.5">
-                              {fullBook.title}
-                            </h4>
-                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                              {fullBook.pages} பக்கங்கள் · TN State Board
-                            </span>
-                          </div>
-                        </div>
-
-                        <Link
-                          href={`/viewer?page=textbooks&id=${encodeURIComponent(fullBook.driveFileId)}&title=${encodeURIComponent(fullBook.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
-                          className="px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shrink-0 transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                        >
-                          <span>திறக்க</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      </div>
-                    )}
-
-                    {/* Unit Chapters / Term Volumes */}
-                    {textbooks
-                      .filter((t) => t !== fullBook)
-                      .map((unit) => (
-                        <div
-                          key={`unit-${unit.id || unit.unitNo || unit.title}`}
-                          className="p-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex items-center justify-between gap-3"
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <span className="w-6 h-6 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black flex items-center justify-center shrink-0">
-                              {unit.unitNo > 0 ? unit.unitNo : '📖'}
-                            </span>
-                            <div className="min-w-0">
-                              <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
-                                {unit.title}
-                              </h4>
-                              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                {unit.pages} பக்கங்கள்
-                              </span>
-                            </div>
-                          </div>
-
-                          <Link
-                            href={`/viewer?page=textbooks&id=${encodeURIComponent(unit.driveFileId)}&title=${encodeURIComponent(unit.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
-                            className="px-2.5 py-1 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] hover:bg-[#7C3AED] hover:text-white text-xs font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer"
-                          >
-                            <span>View</span>
-                            <ArrowRight className="w-3 h-3" />
-                          </Link>
-                        </div>
-                      ))}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* SECTION 4: PYQ PAPERS (Task 1 in-app viewer routing) */}
-      {(activeSection === 'all' || activeSection === 'papers') && (
-        <div ref={sectionRefs.papers} className="mb-6 space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
-              <span>முந்தைய ஆண்டு தாள்கள் ({classPapers.length})</span>
-            </h3>
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-              {medium === 'tamil' ? 'தமிழ் வழி' : 'English Medium'}
-            </span>
-          </div>
-
-          {classPapers.length === 0 ? (
-            <div className="p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center">
-              <p className="text-xs font-bold text-slate-500">
-                டிசம்பர் முதல் வாரம் — மேலும் தாள்கள் சேர்க்கப்படும் 🌱
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {classPapers.slice(0, 10).map((paper) => (
-                <div
-                  key={paper.id}
-                  className="p-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex items-center justify-between gap-3 text-left"
-                >
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
-                      {paper.title}
-                    </h4>
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                      {paper.year} · {paper.exam} · {paper.medium}
-                    </span>
-                  </div>
-
-                  <Link
-                    href={`/viewer?page=papers&id=${encodeURIComponent(paper.pdfUrl || paper.driveFileId || paper.id)}&title=${encodeURIComponent(paper.title)}&subject=${encodeURIComponent(paper.subject)}&year=${encodeURIComponent(paper.year)}`}
-                    className="px-2.5 py-1 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shrink-0 transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Open</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* SECTION 5: NOTES & STUDY MATERIALS */}
+      {/* SHELF 3: NOTES & STUDY MATERIALS (Brief D: Horizontal Scroll Cards) */}
       {(activeSection === 'all' || activeSection === 'notes') && (
         <div ref={sectionRefs.notes} className="mb-6 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
               <BookOpen className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
-              <span>அத்தியாய நோட்டுகள் (Study Materials)</span>
+              <span>{isTamil ? 'அத்தியாய நோட்டுகள் (Study Notes)' : 'Chapter Notes & Study Materials'} ({materials.length})</span>
             </h3>
             <span className="text-[10px] font-bold text-slate-500">
               High-yield PDF
@@ -1202,37 +1015,40 @@ function ProHomeContent() {
           {materials.length === 0 ? (
             <div className="p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center">
               <p className="text-xs font-bold text-slate-500">
-                டிசம்பர் முதல் வாரம் — ஆசிரியர் சரிபார்த்த நோட்டுகள் வருகிறது 🌱
+                {isTamil ? 'டிசம்பர் முதல் வாரம் — ஆசிரியர் சரிபார்த்த நோட்டுகள் வருகிறது 🌱' : 'Verified teacher notes arriving in December 🌱'}
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x -mx-1 px-1">
               {materials.map((mat) => (
                 <div
                   key={mat.id}
-                  className="p-3 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex items-center justify-between gap-3"
+                  className="w-[230px] sm:w-[250px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3 text-left"
                 >
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate leading-tight">
-                      {mat.title}
-                    </h4>
+                  <div className="space-y-1">
                     <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
                       {mat.chapter}
                     </span>
+                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                      {mat.title}
+                    </h4>
                   </div>
 
-                  {mat.notesPdfUrl ? (
-                    <Link
-                      href={`/viewer?page=notes&id=${encodeURIComponent(mat.notesPdfUrl)}&title=${encodeURIComponent(mat.title)}&subject=${encodeURIComponent(mat.subject)}`}
-                      className="px-2.5 py-1 rounded-xl bg-[#7C3AED] text-white text-xs font-black shrink-0 cursor-pointer"
-                    >
-                      Read 📄
-                    </Link>
-                  ) : (
-                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-bold">
-                      விரைவில்
-                    </span>
-                  )}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    {mat.notesPdfUrl ? (
+                      <Link
+                        href={`/viewer?page=notes&id=${encodeURIComponent(mat.notesPdfUrl)}&title=${encodeURIComponent(mat.title)}&subject=${encodeURIComponent(mat.subject)}`}
+                        className="w-full py-1.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>{isTamil ? 'படிக்க' : 'Read'}</span>
+                      </Link>
+                    ) : (
+                      <span className="w-full py-1.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold text-center block">
+                        {isTamil ? 'விரைவில்' : 'Coming soon'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1240,51 +1056,203 @@ function ProHomeContent() {
         </div>
       )}
 
-      {/* SECTION 6: DIAGRAMS (Task 4 Friendly Coming Chip) */}
+      {/* SHELF 4: PYQ PAPERS (Brief D: Horizontal Scroll Cards) */}
+      {(activeSection === 'all' || activeSection === 'papers') && (
+        <div ref={sectionRefs.papers} className="mb-6 space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
+              <FileText className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
+              <span>{isTamil ? 'முந்தைய ஆண்டு தாள்கள் (PYQ)' : 'Past Year Question Papers (PYQ)'} ({classPapers.length})</span>
+            </h3>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              {isTamil ? 'தமிழ் வழி' : 'English Medium'}
+            </span>
+          </div>
+
+          {classPapers.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center">
+              <p className="text-xs font-bold text-slate-500">
+                {isTamil ? 'டிசம்பர் முதல் வாரம் — மேலும் தாள்கள் சேர்க்கப்படும் 🌱' : 'More past papers arriving in December 🌱'}
+              </p>
+            </div>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x -mx-1 px-1">
+              {classPapers.slice(0, 15).map((paper) => (
+                <div
+                  key={paper.id}
+                  className="w-[230px] sm:w-[250px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex flex-col justify-between gap-3 text-left"
+                >
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-bold text-[#7C3AED] dark:text-[#A78BFA]">
+                      {paper.year} · {paper.exam}
+                    </span>
+                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                      {paper.title}
+                    </h4>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <Link
+                      href={`/viewer?page=papers&id=${encodeURIComponent(paper.pdfUrl || paper.driveFileId || paper.id)}&title=${encodeURIComponent(paper.title)}&subject=${encodeURIComponent(paper.subject)}&year=${encodeURIComponent(paper.year)}`}
+                      className="w-full py-1.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>{isTamil ? 'திறக்க' : 'Open'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SHELF 5: OFFICIAL TEXTBOOKS (Brief D: Horizontal Scroll Cards) */}
+      {(activeSection === 'all' || activeSection === 'textbooks') && (
+        <div ref={sectionRefs.textbooks} className="mb-6 space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
+              <BookMarked className="w-4 h-4 text-[#7C3AED] dark:text-[#A78BFA]" />
+              <span>{isTamil ? 'அரசு பாடநூல்கள் (TN Board Textbooks)' : 'Official Textbooks (TN State Board)'} ({textbooks.length})</span>
+            </h3>
+            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+              In-app PDF
+            </span>
+          </div>
+
+          {isLoadingTextbooks ? (
+            <div className="p-6 text-center text-xs font-bold text-slate-500 animate-pulse">
+              {isTamil ? 'பாடநூல்கள் பதிவிறக்கம் செய்யப்படுகிறது... 📚' : 'Loading textbooks... 📚'}
+            </div>
+          ) : textbooks.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center">
+              <p className="text-xs font-bold text-slate-500">
+                {isTamil ? `டிசம்பர் முதல் வாரம் — ${selectedSubject} பாடநூல் அலகுகள் சேர்க்கப்படும் 🌱` : `${selectedSubject} textbook units releasing in December 🌱`}
+              </p>
+            </div>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-3 pt-1 scrollbar-none snap-x -mx-1 px-1">
+              {(() => {
+                const fullBook = textbooks.find((t) => t.isFullBook || t.unitNo === 0);
+                const otherBooks = textbooks.filter((t) => t !== fullBook);
+                return (
+                  <>
+                    {fullBook && (
+                      <div
+                        key="full-book-card"
+                        className="w-[250px] sm:w-[270px] shrink-0 snap-start p-3.5 rounded-2xl bg-gradient-to-br from-[#7C3AED]/15 via-purple-500/10 to-amber-500/10 border-2 border-[#7C3AED]/40 hover:border-[#7C3AED] transition-all flex flex-col justify-between gap-3 text-left shadow-xs"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-[#7C3AED] text-white">
+                              FULL BOOK
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                              {fullBook.pages} {isTamil ? 'பக்' : 'pages'}
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                            {fullBook.title}
+                          </h4>
+                        </div>
+
+                        <div className="pt-2 border-t border-[#7C3AED]/20">
+                          <Link
+                            href={`/viewer?page=textbooks&id=${encodeURIComponent(fullBook.driveFileId)}&title=${encodeURIComponent(fullBook.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
+                            className="w-full py-1.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <span>{isTamil ? 'முழு நூல் திறக்க' : 'Open Full Book'}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    )}
+
+                    {otherBooks.map((unit) => (
+                      <div
+                        key={`unit-${unit.id || unit.unitNo || unit.title}`}
+                        className="w-[230px] sm:w-[250px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex flex-col justify-between gap-3 text-left"
+                      >
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="w-6 h-6 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black flex items-center justify-center">
+                              {unit.unitNo > 0 ? unit.unitNo : '📖'}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                              {unit.pages} {isTamil ? 'பக்' : 'pages'}
+                            </span>
+                          </div>
+
+                          <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                            {unit.title}
+                          </h4>
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                          <Link
+                            href={`/viewer?page=textbooks&id=${encodeURIComponent(unit.driveFileId)}&title=${encodeURIComponent(unit.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
+                            className="w-full py-1.5 px-3 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] hover:bg-[#7C3AED] hover:text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                          >
+                            <span>{isTamil ? 'திறக்க' : 'Open'}</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SECTION 6: DIAGRAMS */}
       {(activeSection === 'all' || activeSection === 'diagrams') && (
         <div ref={sectionRefs.diagrams} className="mb-6 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
               <span>🎨</span>
-              <span>முக்கிய வரைபடங்கள் (High-Yield Diagrams)</span>
+              <span>{isTamil ? 'முக்கிய வரைபடங்கள் (High-Yield Diagrams)' : 'High-Yield Diagrams'}</span>
             </h3>
             <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded-full">
-              டிசம்பர் முதல் வாரம்
+              {isTamil ? 'டிசம்பர் முதல் வாரம்' : 'December Launch'}
             </span>
           </div>
 
           <div className="p-5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center space-y-2">
             <span className="text-3xl">📐</span>
             <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF]">
-              அறிவியல் & கணித வரைபட விளக்கங்கள் தயாரிக்கப்படுகிறது
+              {isTamil ? 'அறிவியல் & கணித வரைபட விளக்கங்கள் தயாரிக்கப்படுகிறது' : 'Science & Mathematics diagram modules in preparation'}
             </h4>
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-              முக்கிய 5-மதிப்பெண் வரைபடங்கள் மற்றும் லேபிளிங் பயிற்சிகள் டிசம்பர் முதல் வாரம் வெளியாகும்.
+              {isTamil ? 'முக்கிய 5-மதிப்பெண் வரைபடங்கள் மற்றும் லேபிளிங் பயிற்சிகள் டிசம்பர் முதல் வாரம் வெளியாகும்.' : 'High-yield 5-mark diagram labeling and step-by-step illustrations releasing in December.'}
             </p>
           </div>
         </div>
       )}
 
-      {/* SECTION 7: HANDWRITTEN NOTES (Task 4 Friendly Coming Chip) */}
+      {/* SECTION 7: HANDWRITTEN NOTES */}
       {(activeSection === 'all' || activeSection === 'handwritten') && (
         <div ref={sectionRefs.handwritten} className="mb-6 space-y-3">
           <div className="flex items-center justify-between px-1">
             <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] flex items-center gap-1.5">
               <span>✍️</span>
-              <span>டாப்பர் கையெழுத்து பிரதிகள் (Topper Handwritten Notes)</span>
+              <span>{isTamil ? 'டாப்பர் கையெழுத்து பிரதிகள் (Topper Handwritten Notes)' : 'Topper Handwritten Notes'}</span>
             </h3>
             <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-400/20 px-2 py-0.5 rounded-full">
-              டிசம்பர் முதல் வாரம்
+              {isTamil ? 'டிசம்பர் முதல் வாரம்' : 'December Launch'}
             </span>
           </div>
 
           <div className="p-5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-dashed border-[#DDD6FE] dark:border-[#3B2063] text-center space-y-2">
             <span className="text-3xl">📝</span>
             <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF]">
-              100/100 பெற்ற மாணவர்களின் அசல் விடைத்தாள்கள்
+              {isTamil ? '100/100 பெற்ற மாணவர்களின் அசல் விடைத்தாள்கள்' : 'Original answer copies of 100/100 state rankers'}
             </h4>
             <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-              டாப்பர்களின் விடைத்தாள் அமைப்பு மற்றும் திருத்த குறிப்புகள் டிசம்பர் முதல் வாரம் இணைக்கப்படும்.
+              {isTamil ? 'டாப்பர்களின் விடைத்தாள் அமைப்பு மற்றும் திருத்த குறிப்புகள் டிசம்பர் முதல் வாரம் இணைக்கப்படும்.' : 'Presentation layouts and evaluator margin guidelines releasing in December.'}
             </p>
           </div>
         </div>

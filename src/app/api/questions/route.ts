@@ -154,9 +154,57 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
 
     let options: string[] = [];
     if (Array.isArray(q.options)) {
-      options = q.options.map((o: any) => String(o ?? '').trim());
+      options = q.options.map((o: any) => String(o ?? '').trim()).filter(Boolean);
     } else if (typeof q.options === 'string') {
-      options = q.options.split('|').map((o: string) => o.trim());
+      const s = q.options.trim();
+      if (s.startsWith('[') && s.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(s);
+          if (Array.isArray(parsed) && parsed.length === 4) {
+            options = parsed.map((o: any) => String(o ?? '').trim());
+          }
+        } catch {}
+      }
+      if (options.length !== 4 && s.includes('\n')) {
+        const lines = s.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+        if (lines.length === 4) options = lines;
+      }
+      if (options.length !== 4 && (s.includes(' | ') || s.includes(' |') || s.includes('| '))) {
+        const parts = s.split(/\s+\|\s+/).map((p: string) => p.trim());
+        if (parts.length === 4 && parts.every(Boolean)) options = parts;
+      }
+      if (options.length !== 4) {
+        const rawParts = s.split('|').map((p: string) => p.trim());
+        if (rawParts.length === 4 && rawParts.every(Boolean)) {
+          options = rawParts;
+        } else if (rawParts.length > 4) {
+          // Reassemble potential determinant notation like |A|
+          const reconstructed: string[] = [];
+          let buf = '';
+          for (let i = 0; i < rawParts.length; i++) {
+            const part = rawParts[i];
+            if (buf) {
+              buf += '|' + part;
+              if (part.endsWith('|') || buf.split('|').length % 2 === 1) {
+                reconstructed.push(buf);
+                buf = '';
+              }
+            } else if (part === '' && i + 1 < rawParts.length) {
+              buf = '|' + rawParts[++i];
+            } else {
+              reconstructed.push(part);
+            }
+          }
+          if (buf) reconstructed.push(buf);
+          if (reconstructed.length === 4 && reconstructed.every(Boolean)) {
+            options = reconstructed;
+          }
+        } else if (rawParts.length === 3 && rawParts.every(Boolean)) {
+          options = [...rawParts, 'None of these'];
+        } else {
+          options = rawParts;
+        }
+      }
     }
 
     if (options.length !== 4 || options.some((opt) => opt.length === 0)) {
@@ -346,7 +394,7 @@ export async function GET(request: Request) {
       lockedChapters: lockedChapters.length > 0 ? lockedChapters : undefined,
       servedFrom,
       source,
-      skipped: [...upstreamSkipped, ...skipped],
+      skipped,
     },
     {
       headers: {

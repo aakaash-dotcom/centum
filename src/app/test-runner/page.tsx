@@ -192,7 +192,12 @@ function TestRunnerContent() {
 
         const shuffled = shuffle ? [...matched].sort(() => Math.random() - 0.5) : matched;
         const parsedCount = parseInt(countParam, 10);
-        const finalCount = parsedCount > 0 ? parsedCount : Math.min(shuffled.length, 15);
+        const finalCount =
+          parsedCount > 0
+            ? parsedCount
+            : countParam === 'all'
+            ? shuffled.length
+            : Math.min(shuffled.length, 15);
         const sliced = shuffled.slice(0, finalCount);
 
         setQuestions(sliced);

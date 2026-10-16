@@ -1178,7 +1178,22 @@ export interface ProVideoItem {
 }
 
 const mockProVideos: ProVideoItem[] = [
-  // Gated draft fixtures with unique keys per language - status='draft' excludes them from production
+  // Verified live video fixture for 10th Maths Chapter 1 Relations and Functions
+  {
+    id: 'pv-10-m-1-relations',
+    classLevel: '10',
+    subject: 'maths',
+    chapterNo: 1,
+    topic: 'Relations and Functions — Core Concept Masterclass',
+    videoType: 'concept-explainer',
+    targetSec: 510,
+    order: 1,
+    lang: 'bilingual',
+    driveFileId: '',
+    ytUrl: 'https://www.youtube.com/watch?v=nBy2b60TXdc',
+    status: 'live',
+    aspectRatio: '16:9',
+  },
   {
     id: 'pv-10-m-1-1-en',
     classLevel: '10',

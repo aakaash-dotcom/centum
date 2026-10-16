@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Play,
   Maximize2,
@@ -10,6 +11,7 @@ import {
   Film,
   RefreshCw,
   ExternalLink,
+  ArrowRight,
 } from 'lucide-react';
 import { ProVideoItem } from '@/lib/server-mock-store';
 
@@ -102,6 +104,7 @@ export function ProVideoPlayer({
   const [hasFallbackTriggered, setHasFallbackTriggered] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isEnded, setIsEnded] = useState(false);
 
   const driveStreamUrl = video.driveFileId
     ? video.driveFileId.startsWith('http')
@@ -313,6 +316,7 @@ export function ProVideoPlayer({
           onError={handleNativeError}
           onPlay={handleNativePlay}
           onLoadedMetadata={handleLoadedMetadata}
+          onEnded={() => setIsEnded(true)}
         >
           {driveStreamUrl && <source src={driveStreamUrl} type="video/mp4" />}
           Your browser does not support HTML5 video streaming.
@@ -339,6 +343,52 @@ export function ProVideoPlayer({
             <RefreshCw className="w-2.5 h-2.5" />
             <span>Switch to {sourceMode === 'drive' ? 'YouTube' : 'Drive'}</span>
           </button>
+        </div>
+      )}
+
+      {/* Reusable End-Card Overlay (Brief G) */}
+      {isEnded && (
+        <div
+          data-testid="video-end-card"
+          className="absolute inset-0 z-30 bg-[#2E1065]/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-white animate-fade-in"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-[#A3E635] text-slate-950 flex items-center justify-center mb-3 shadow-lg shadow-[#A3E635]/25">
+            <Sparkles className="w-6 h-6 fill-current" />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-wider text-[#A3E635] mb-1">
+            Masterclass Completed 🎉
+          </span>
+          <h4 className="text-base sm:text-lg font-black text-white max-w-sm leading-tight mb-2">
+            {video.topic}
+          </h4>
+          <p className="text-xs text-purple-200 max-w-xs mb-5">
+            Ready to test your mastery? Launch the concept quiz now or replay the lecture.
+          </p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsEnded(false);
+                if (videoRef.current) {
+                  videoRef.current.currentTime = 0;
+                  videoRef.current.play().catch(() => {});
+                }
+              }}
+              className="px-4 py-2.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Repeat Video</span>
+            </button>
+
+            <Link
+              href={`/test-runner?standard=${encodeURIComponent(video.classLevel ? video.classLevel + 'th' : '10th')}&subject=${encodeURIComponent(subjectName)}&chapter=${encodeURIComponent(video.topic)}&type=concept`}
+              className="px-5 py-2.5 rounded-xl bg-[#A3E635] hover:bg-[#bef264] text-slate-950 text-xs font-black transition-all flex items-center gap-2 shadow-lg shadow-[#A3E635]/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span>🧠 Launch Concept Quiz</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
       )}
     </div>

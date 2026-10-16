@@ -194,7 +194,9 @@ function TestsContent() {
 
   const isUserPro =
     String(plan || '').toLowerCase() === 'pro' ||
-    String(plan || '').toLowerCase() === 'live';
+    String(plan || '').toLowerCase() === 'live' ||
+    String(student?.plan || '').toLowerCase() === 'pro' ||
+    String(student?.plan || '').toLowerCase() === 'live';
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -252,7 +254,8 @@ function TestsContent() {
     setIsError(false);
 
     const streamParam = effectiveStream ? `&stream=${encodeURIComponent(effectiveStream)}` : '';
-    const base = `/api/questions?classLevel=${encodeURIComponent(effectiveStandard)}&subject=${encodeURIComponent(subj)}&medium=${encodeURIComponent(medium || 'english')}&count=all${streamParam}`;
+    const planParam = isUserPro ? '&plan=pro' : '&plan=free';
+    const base = `/api/questions?classLevel=${encodeURIComponent(effectiveStandard)}&subject=${encodeURIComponent(subj)}&medium=${encodeURIComponent(medium || 'english')}&count=all${streamParam}${planParam}`;
 
     Promise.all([
       fetch(`${base}&type=oneword`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
@@ -294,7 +297,7 @@ function TestsContent() {
       setIsLoading(false);
       setQuestions([]);
     }
-  }, [medium, effectiveStandard, student?.stream, selectedSubject]);
+  }, [medium, effectiveStandard, student?.stream, selectedSubject, isUserPro]);
 
   // Track previous standard/medium to only reset when they actually change
   const prevStandardRef = useRef(effectiveStandard);
@@ -472,8 +475,8 @@ function TestsContent() {
   };
 
   const showConfirmation = (ch: ChapterItem) => {
-    // 15 questions randomized sample
-    const count = Math.min(ch.poolSize, 15);
+    // Full chapter question pool
+    const count = ch.poolSize;
     const testKey = `${effectiveStandard}_${selectedSubject}_${ch.rawName}_${selectedType}`;
 
     const typeLabel =
@@ -645,10 +648,10 @@ function TestsContent() {
             </button>
           </div>
 
-          {/* Row 2: PRO QUIZ BOX - min-h-[64px], restored sleek pre-R7 styling */}
+          {/* Row 2: PRO QUIZ BOX - routes to Pro Hub Concept Quiz section */}
           <button
             type="button"
-            onClick={() => openPaywall(texts.tests.proQuizPitch)}
+            onClick={() => router.push(`/pro?section=concept&subject=${encodeURIComponent(selectedSubject || 'Maths')}`)}
             className="w-full min-h-[64px] px-4 py-2.5 rounded-2xl transition-all cursor-pointer flex items-center justify-between border-2 border-amber-400 dark:border-amber-400/80 bg-gradient-to-r from-amber-400/15 via-yellow-400/20 to-amber-500/25 dark:from-amber-500/20 dark:via-yellow-500/20 dark:to-amber-400/25 text-[#2E1065] dark:text-[#F5F0FF] shadow-xs hover:shadow-md dark:shadow-amber-500/10 group"
           >
             <div className="flex items-center gap-3">
@@ -827,8 +830,9 @@ function TestsContent() {
                     const isChapter1 = index === 0 || ch.sortKey === 1 || ch.sortKey === 1001;
                     const isLocked = selectedType === 'concept' && !isChapter1 && !isUserPro;
 
-                    // Sleek single-line label matching pre-R7: "Chapter 1 · Relations and Functions · 23 Q"
-                    const displayRow = `${ch.displayName} · ${ch.cleanTitle} · ${ch.poolSize} Q`;
+                    // Clean number prefix label: e.g. "1. Relations and Functions · 23 Q"
+                    const numberPrefix = ch.number !== 999 && ch.number > 0 ? `${ch.number}. ` : '';
+                    const displayRow = `${numberPrefix}${ch.cleanTitle} · ${ch.poolSize} Q`;
 
                     return (
                       <div

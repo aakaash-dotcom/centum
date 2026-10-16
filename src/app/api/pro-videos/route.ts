@@ -44,10 +44,8 @@ export async function GET(request: Request) {
     }
   }
 
-  // Gate fixture rows strictly behind an environment flag.
-  // In production (or when flag is unset/false), return an honest empty state with 0 videos.
-  const allowFixtures = process.env.ENABLE_FIXTURE_VIDEOS === 'true';
-  const rawMockVideos = allowFixtures ? listMockProVideos(classLevel, subject, chapter) : [];
+  // Filter through filterValidLiveVideos: only videos with status='live' and verified URL are served
+  const rawMockVideos = listMockProVideos(classLevel, subject, chapter);
   const videos = filterValidLiveVideos(rawMockVideos);
 
   return NextResponse.json(
@@ -59,14 +57,14 @@ export async function GET(request: Request) {
       videos,
       totalLiveVideos: videos.length,
       source: 'live',
-      servedFrom: allowFixtures && videos.length > 0 ? 'fixture-store' : 'empty-state',
+      servedFrom: videos.length > 0 ? 'fixture-store' : 'empty-state',
       note: videos.length === 0 ? 'No live videos currently published. Real verified videos coming.' : undefined,
     },
     {
       headers: {
         'Cache-Control': 'public, max-age=60',
-        'x-data-source': allowFixtures && videos.length > 0 ? 'fixture-store' : 'empty-state',
-        'x-served-from': allowFixtures && videos.length > 0 ? 'fixture-store' : 'empty-state',
+        'x-data-source': videos.length > 0 ? 'fixture-store' : 'empty-state',
+        'x-served-from': videos.length > 0 ? 'fixture-store' : 'empty-state',
       },
     }
   );
