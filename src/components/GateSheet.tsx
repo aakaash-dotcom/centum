@@ -259,7 +259,7 @@ export const GateSheet: React.FC = () => {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs animate-fade-in p-0 sm:p-4"
+      className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/60 backdrop-blur-xs animate-fade-in p-0 sm:p-4"
       onClick={closeGate}
     >
       <div

@@ -4,6 +4,13 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Crown, X, CheckCircle2, Sparkles, Tag, ArrowRight, Lock } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import {
+  PRO_PRICE,
+  PRO_PRICE_STRUCK,
+  PRO_PRICE_COUPON,
+  calculatePayablePrice,
+  getPricingPeriodCopy,
+} from '@/lib/pricing';
 
 export interface ProUpsellContext {
   subject?: string;
@@ -41,10 +48,10 @@ export function ProUpsellModal({ isOpen, onClose, context }: ProUpsellModalProps
   const cCount = context?.conceptCount ?? 30;
   const pCount = context?.paperCount ?? 12;
 
-  // Base pricing
-  const strikePrice = 2500;
-  const standardPrice = 1499;
-  const payablePrice = appliedCoupon?.valid ? 999 : standardPrice;
+  // Single exported source of truth for pricing
+  const strikePrice = PRO_PRICE_STRUCK;
+  const standardPrice = PRO_PRICE;
+  const payablePrice = calculatePayablePrice(standardPrice, appliedCoupon);
 
   const handleApplyCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,23 +63,26 @@ export function ProUpsellModal({ isOpen, onClose, context }: ProUpsellModalProps
       const res = await fetch(`/api/coupon?code=${encodeURIComponent(clean)}`);
       const data = await res.json();
       if (res.ok && data.valid) {
+        const discountPrice = calculatePayablePrice(standardPrice, { valid: true, discountPercent: data.discountPercent });
         setAppliedCoupon({
           code: clean,
           valid: true,
           discountPercent: data.discountPercent,
           message: isTamil
-            ? `✓ ஆசிரியர்/பரிந்துரை குறியீடு ஏற்கப்பட்டது! கட்டணம்: ₹999`
-            : `✓ Referral code applied! Special price: ₹999`,
+            ? `✓ ஆசிரியர்/பரிந்துரை குறியீடு ஏற்கப்பட்டது! கட்டணம்: ₹${discountPrice}`
+            : `✓ Referral code applied! Special price: ₹${discountPrice}`,
         });
       } else {
         // Fallback for valid community/influencer codes
         if (['CENTUM10', 'TEACHER500', 'APEX20', 'FRIEND20', 'CENTUM500'].includes(clean)) {
+          const discountPrice = PRO_PRICE_COUPON;
           setAppliedCoupon({
             code: clean,
             valid: true,
+            discountPercent: 10,
             message: isTamil
-              ? `✓ சமூக பரிந்துரை குறியீடு ஏற்கப்பட்டது! கட்டணம்: ₹999`
-              : `✓ Community code applied! Special price: ₹999`,
+              ? `✓ சமூக பரிந்துரை குறியீடு ஏற்கப்பட்டது! கட்டணம்: ₹${discountPrice}`
+              : `✓ Community code applied! Special price: ₹${discountPrice}`,
           });
         } else {
           setAppliedCoupon({
@@ -86,7 +96,7 @@ export function ProUpsellModal({ isOpen, onClose, context }: ProUpsellModalProps
       setAppliedCoupon({
         code: clean,
         valid: false,
-        message: 'Network error validating coupon',
+        message: isTamil ? 'இணைப்புப் பிழை, மீண்டும் முயற்சிக்கவும்' : 'Network error validating coupon',
       });
     } finally {
       setIsValidatingCoupon(false);
@@ -171,7 +181,9 @@ export function ProUpsellModal({ isOpen, onClose, context }: ProUpsellModalProps
             <span className="text-2xl sm:text-3xl font-black text-[#7C3AED] dark:text-[#A3E635]">
               ₹{payablePrice.toLocaleString()}
             </span>
-            <span className="text-[11px] font-bold text-slate-500">/ முழு ஆண்டு</span>
+            <span className="text-[11px] font-bold text-slate-500">
+              {getPricingPeriodCopy(isTamil)}
+            </span>
           </div>
           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
             {isTamil ? 'அனைத்து 5 பாடங்கள் + வீடியோக்கள் + மாதிரி தேர்வுகள்' : 'All 5 subjects + Videos + Practice Quizzes'}

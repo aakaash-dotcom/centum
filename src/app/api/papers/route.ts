@@ -285,23 +285,8 @@ export async function GET(request: Request) {
         }
       }
 
-      // Upstream responded with error status or malformed data
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'backend-unreachable',
-          source: 'live-failed',
-          servedFrom: 'none',
-        },
-        {
-          status: 503,
-          headers: {
-            'Cache-Control': 'no-store',
-            'x-data-source': 'live-failed',
-            'x-cache-version': 'cdn-v2',
-          },
-        }
-      );
+      // Upstream responded with error status or malformed data — fall back to committed catalog
+      console.warn('Apps Script papers responded with non-200 or invalid payload, falling back to committed catalog');
     } catch (e) {
       console.warn('Apps Script papers fetch failed, falling back to committed catalog', e);
     }

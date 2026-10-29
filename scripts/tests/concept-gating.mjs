@@ -39,7 +39,7 @@ async function runTests() {
     // Test 1: Free User Flow on /pro?section=concept
     // -------------------------------------------------------------
     console.log('--- 1. Testing Free User Flow on /pro?section=concept ---');
-    await page.goto(`${BASE_URL}/pro?section=concept`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/pro?section=concept`, { waitUntil: 'networkidle2' });
     await new Promise((r) => setTimeout(r, 1000));
 
     // Check Chapter 1 is playable
@@ -106,7 +106,7 @@ async function runTests() {
       localStorage.setItem('centum_student', JSON.stringify(student));
     });
 
-    await page.goto(`${BASE_URL}/pro?section=concept`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/pro?section=concept`, { waitUntil: 'networkidle2' });
     await new Promise((r) => setTimeout(r, 1000));
 
     const proLockedCount = await page.$$eval('[data-testid="concept-ch2-locked"]', (els) => els.length);

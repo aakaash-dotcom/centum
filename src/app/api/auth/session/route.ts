@@ -24,8 +24,21 @@ export async function GET() {
       );
     }
 
+    const s = payload.student as any;
+    const student = {
+      ...s,
+      name: String(s.name || 'Student'),
+      phone: s.phone != null ? String(s.phone) : '',
+      standard: String(s.standard || '10th'),
+      medium: String(s.medium || 'english'),
+      district: s.district != null ? String(s.district) : '',
+      stream: s.stream != null ? String(s.stream) : undefined,
+      plan: String(s.plan || 'free'),
+      isAdmin: Boolean(s.isAdmin),
+    };
+
     return NextResponse.json(
-      { ok: true, student: payload.student },
+      { ok: true, student },
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {

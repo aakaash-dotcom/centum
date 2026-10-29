@@ -38,8 +38,8 @@ export const PaywallSheet: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: student.phone,
-          name: student.name,
+          phone: student.phone ? String(student.phone) : '',
+          name: student.name ? String(student.name) : '',
           plan: 'pro',
           timestamp: new Date().toISOString(),
         }),
@@ -59,7 +59,7 @@ export const PaywallSheet: React.FC = () => {
       role="dialog"
       aria-modal="true"
       aria-label="Centum Pro Paywall"
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
+      className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
       onClick={handleClose}
     >
       <div

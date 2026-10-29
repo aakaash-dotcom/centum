@@ -101,7 +101,7 @@ export default function ClassroomPage() {
   // TASK VI: Fetch student classroom data in parallel and swap seamlessly without blocking
   const fetchClassroom = async () => {
     try {
-      const phoneParam = student?.phone ? encodeURIComponent(student.phone) : '';
+      const phoneParam = student?.phone ? encodeURIComponent(String(student.phone)) : '';
       const res = await fetch(`/api/classroom?phone=${phoneParam}`);
       if (res.ok) {
         const json = await res.json();

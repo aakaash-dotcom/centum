@@ -38,7 +38,7 @@ async function runTests() {
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true });
 
     console.log('--- 1. Navigating to /pro?section=videos ---');
-    await page.goto(`${BASE_URL}/pro?section=videos`, { waitUntil: 'networkidle0' });
+    await page.goto(`${BASE_URL}/pro?section=videos`, { waitUntil: 'networkidle2' });
     await new Promise((r) => setTimeout(r, 1200));
 
     // 1. Locate the Understand-check pill

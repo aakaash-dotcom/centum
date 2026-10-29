@@ -28,7 +28,7 @@ export default function ReferPage() {
   const fetchReferrals = async () => {
     if (!student?.phone) return;
     try {
-      const res = await fetch(`/api/referrals?phone=${encodeURIComponent(student.phone)}`);
+      const res = await fetch(`/api/referrals?phone=${encodeURIComponent(String(student.phone))}`);
       const resData = await res.json();
       if (resData.ok) {
         setData(resData);

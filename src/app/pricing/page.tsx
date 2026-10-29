@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { PLAN_FEATURES, PlanFeature } from '@/data/planFeatures';
-import { COMING_SOON } from '@/data/config';
+import { COMING_SOON, PRO_PRICE, PRO_PRICE_STRUCK, calculatePayablePrice } from '@/data/config';
 import { ArrowLeft, Check, X as XIcon, Crown, Video, Sparkles, CheckCircle2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { loadRazorpayScript } from '@/utils/razorpay';
@@ -24,8 +24,11 @@ export default function PricingPage() {
   const [codeError, setCodeError] = useState('');
   const [isPurchased, setIsPurchased] = useState(false);
 
-  const basePrice = 799;
-  const finalPrice = Math.round(basePrice * (1 - discountPercent / 100));
+  const basePrice = PRO_PRICE;
+  const finalPrice = calculatePayablePrice(basePrice, {
+    valid: discountPercent > 0,
+    discountPercent,
+  });
 
   const handleApplyCode = async () => {
     const code = couponInput.trim().toUpperCase();
@@ -85,7 +88,7 @@ export default function PricingPage() {
         body: JSON.stringify({
           plan: 'pro',
           coupon: appliedCode || undefined,
-          phone: student.phone,
+          phone: student.phone ? String(student.phone) : '',
         }),
       });
 
@@ -349,9 +352,13 @@ export default function PricingPage() {
                   <span className="text-2xl font-black text-amber-950 dark:text-amber-100">
                     ₹{finalPrice}
                   </span>
-                  {discountPercent > 0 && (
+                  {discountPercent > 0 ? (
                     <span className="text-sm font-bold line-through text-amber-900/50 dark:text-amber-300/50">
-                      ₹799
+                      ₹{PRO_PRICE}
+                    </span>
+                  ) : (
+                    <span className="text-sm font-bold line-through text-amber-900/50 dark:text-amber-300/50">
+                      ₹{PRO_PRICE_STRUCK}
                     </span>
                   )}
                   <span className="text-xs font-bold text-amber-900/70 dark:text-amber-300/70">

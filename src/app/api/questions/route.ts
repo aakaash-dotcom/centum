@@ -31,14 +31,8 @@ export const normPlan = (v: unknown) => {
   return s === 'pro' || s === 'live' ? s : 'free';
 };
 
-export function isChapterOne(chap: unknown): boolean {
-  if (!chap) return false;
-  const s = String(chap).trim().toLowerCase();
-  if (s === '1' || s === '01') return true;
-  const match = s.match(/(?:chapter|unit|ch|\b)(\d+)\b/i);
-  if (match && parseInt(match[1], 10) === 1) return true;
-  return s.startsWith('1.') || s.startsWith('1 -') || s.startsWith('1:');
-}
+import { isChapterAllowed, isChapterOne } from '@/lib/gating';
+export { isChapterAllowed, isChapterOne };
 
 export function extractPlanFromRequest(
   request: Request,
@@ -471,9 +465,9 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // For chapter practice, free users only receive Chapter 1 concept questions
+    // For chapter practice, free users receive first 3 chapters of concept questions
     const isConcept = q.type === 'concept';
-    if (!isGlobalCatalog && isConcept && !isPro && !isChapterOne(q.chapter)) {
+    if (!isGlobalCatalog && isConcept && !isPro && !isChapterAllowed(q.chapter)) {
       const chKey = String(q.chapter || 'Chapter 2').trim();
       lockedChaptersMap.set(chKey, (lockedChaptersMap.get(chKey) || 0) + 1);
       continue;

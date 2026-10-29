@@ -15,3 +15,6 @@ export const PYQ_BETA_GATE =
         ? process.env.PYQ_BETA_GATE !== 'false'
         : true);
 
+// Central single source of truth for Centum Pro pricing
+export { PRO_PRICE, PRO_PRICE_STRUCK, PRO_PRICE_COUPON, PRO_PRICE_LEGACY_BASE, calculatePayablePrice } from '@/lib/pricing';
+

@@ -12,10 +12,10 @@ export const LeaderboardBox: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
 
-  const studentStandard = student?.standard || '10th';
-  const studentPhone = student?.phone || '';
-  const studentName = student?.name || '';
-  const studentDistrict = student?.district || '';
+  const studentStandard = student?.standard ? String(student.standard) : '10th';
+  const studentPhone = student?.phone ? String(student.phone) : '';
+  const studentName = student?.name ? String(student.name) : '';
+  const studentDistrict = student?.district ? String(student.district) : '';
 
   const fetchLeaderboard = () => {
     setIsLoading(true);

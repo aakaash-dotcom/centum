@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getMockTuition, joinMockTuition } from '@/lib/server-mock-store';
+import { PRO_PRICE } from '@/data/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
           key: appsSecret,
           phone: phone || '',
           plan: plan || 'pro',
-          amount: amount || 799,
+          amount: amount || PRO_PRICE,
           paymentId,
           orderId,
           couponCode: cleanCoupon,

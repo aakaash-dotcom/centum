@@ -441,12 +441,39 @@ function TestsContent() {
     return { megaSets: mainMegaSet, chapterCards: visibleChapters };
   }, [questions, selectedSubject, selectedType, isSocial, medium]);
 
+  // Concept Quiz Free Rule: Chapters 1–3 free, Chapter 4+ requires Pro
+  const isConceptChapterFree = (ch: ChapterItem, index: number): boolean => {
+    if (ch.isMegaSet) return true;
+    if (ch.number >= 1 && ch.number <= 3) return true;
+    if (ch.number >= 4 && ch.number !== 999) return false;
+    const sk = ch.sortKey;
+    if (
+      (sk >= 1 && sk <= 3) ||
+      (sk >= 1001 && sk <= 1003) ||
+      (sk >= 2001 && sk <= 2003) ||
+      (sk >= 3001 && sk <= 3003) ||
+      (sk >= 4001 && sk <= 4003)
+    ) {
+      return true;
+    }
+    if ((sk >= 4 && sk <= 998) || sk >= 1004) {
+      return false;
+    }
+    const match = String(ch.rawName || '').match(/(?:chapter|unit|ch|அலகு|பாடம்|\b)\s*([0-9]+)\b/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num >= 1 && num <= 3) return true;
+      if (num >= 4) return false;
+    }
+    return index < 3;
+  };
+
   // Tap on a chapter card or mega-set
   const handleChapterTap = (ch: ChapterItem, index: number) => {
-    const isChapter1 = index === 0 || ch.sortKey === 1 || ch.sortKey === 1001 || ch.isMegaSet;
+    const isFree = isConceptChapterFree(ch, index);
 
-    // Gate rule: Concept quiz chapters 2+ require Pro
-    if (selectedType === 'concept' && !isChapter1 && !isUserPro) {
+    // Gate rule: Concept quiz chapters 4+ require Pro (first three chapters are free)
+    if (selectedType === 'concept' && !isFree && !isUserPro) {
       setUpsellContext({
         subject: selectedSubject || 'Maths',
         chapter: ch.cleanTitle || ch.displayName,
@@ -827,8 +854,9 @@ function TestsContent() {
 
                   {/* Restored Pre-R7 Sleek Chapter Cards (Only poolSize >= 10 rendered) */}
                   {chapterCards.map((ch, index) => {
-                    const isChapter1 = index === 0 || ch.sortKey === 1 || ch.sortKey === 1001;
-                    const isLocked = selectedType === 'concept' && !isChapter1 && !isUserPro;
+                    const isFree = isConceptChapterFree(ch, index);
+                    const isLocked = selectedType === 'concept' && !isFree && !isUserPro;
+                    const chNum = ch.number !== 999 && ch.number > 0 ? ch.number : index + 1;
 
                     // Clean number prefix label: e.g. "1. Relations and Functions · 23 Q"
                     const numberPrefix = ch.number !== 999 && ch.number > 0 ? `${ch.number}. ` : '';
@@ -837,7 +865,9 @@ function TestsContent() {
                     return (
                       <div
                         key={ch.rawName}
-                        data-testid={isLocked ? 'concept-ch2-locked' : 'concept-ch1-playable'}
+                        data-testid={`concept-ch${chNum}-${isLocked ? 'locked' : 'playable'}`}
+                        data-chapter-status={isLocked ? 'locked' : 'playable'}
+                        data-chapter-number={chNum}
                         onClick={() => handleChapterTap(ch, index)}
                         className={`w-full min-h-[50px] px-4 py-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 text-left group ${
                           isLocked

@@ -28,7 +28,7 @@ function JoinContent() {
 
   useEffect(() => {
     if (student?.phone && !phone) {
-      setPhone(student.phone);
+      setPhone(String(student.phone));
     }
   }, [student?.phone, phone]);
 

@@ -189,7 +189,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       const savedStudent = localStorage.getItem(STUDENT_STORAGE_KEY);
       if (savedStudent) {
-        const parsed: StudentProfile = JSON.parse(savedStudent);
+        const parsed: any = JSON.parse(savedStudent);
+        if (parsed.phone != null) {
+          parsed.phone = String(parsed.phone);
+        }
+        if (parsed.name != null) {
+          parsed.name = String(parsed.name);
+        }
+        if (parsed.standard != null) {
+          parsed.standard = String(parsed.standard);
+        }
         if (parsed.medium) {
           const normM = String(parsed.medium).trim().toLowerCase();
           parsed.medium = (normM === 'tamil' ? 'tamil' : 'english') as Medium;
@@ -198,7 +207,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const normP = String(parsed.plan).trim().toLowerCase();
           parsed.plan = (normP === 'pro' || normP === 'live' ? normP : 'free') as PlanType;
         }
-        setStudent(parsed);
+        setStudent(parsed as StudentProfile);
         if (parsed.medium) {
           setMediumState(parsed.medium);
           setCurrentLanguage(parsed.medium);
@@ -207,7 +216,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setEquippedAvatarState(parsed.avatarFrame);
         }
         if (parsed.phone) {
-          fetchPlanFromServer(parsed.phone);
+          fetchPlanFromServer(String(parsed.phone));
         }
       }
 
@@ -233,7 +242,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedQuizzes = localStorage.getItem(QUIZ_RESULTS_KEY);
       if (savedQuizzes) {
         setQuizResults(JSON.parse(savedQuizzes));
-      } else if (savedStudent && JSON.parse(savedStudent).phone?.includes('9123456780')) {
+      } else if (savedStudent && String(JSON.parse(savedStudent).phone ?? '').includes('9123456780')) {
         // TASK 9: Demo student seed history (streak 4, coins, 3 past quiz results)
         const demoQuizHistory: QuizResult[] = [
           {
@@ -305,13 +314,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (data && data.ok && data.student) {
             const s = data.student;
             const loadedStudent: StudentProfile = {
-              name: s.name,
-              phone: s.phone,
-              district: s.district || '',
-              standard: s.standard || '10th',
-              stream: s.stream,
-              medium: (s.medium === 'tamil' ? 'tamil' : 'english') as Medium,
-              plan: (s.plan === 'pro' || s.plan === 'live' ? s.plan : 'free') as PlanType,
+              name: String(s.name || 'Student'),
+              phone: s.phone != null ? String(s.phone) : '',
+              district: String(s.district || ''),
+              standard: String(s.standard || '10th'),
+              stream: s.stream ? String(s.stream) : undefined,
+              medium: (String(s.medium).toLowerCase() === 'tamil' ? 'tamil' : 'english') as Medium,
+              plan: (String(s.plan).toLowerCase() === 'pro' || String(s.plan).toLowerCase() === 'live' ? s.plan : 'free') as PlanType,
               registeredAt: s.registeredAt || new Date().toISOString(),
               isAdmin: Boolean(s.isAdmin),
             };

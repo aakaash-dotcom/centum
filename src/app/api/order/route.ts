@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getMockTuition } from '@/lib/server-mock-store';
+import { PRO_PRICE } from '@/data/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const BASE_PRICE_RUPEES = 799;
+    const BASE_PRICE_RUPEES = PRO_PRICE;
     let discountPercent = 0;
 
     // Server-side coupon verification: client cannot tamper with the price

@@ -42,7 +42,7 @@ export const AppTopBar: React.FC = () => {
           className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white dark:bg-[#1B0B2E] border border-[#DDD6FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED] transition-all group"
         >
           <img
-            src="/icon.png"
+            src="/centum-app-icon.svg"
             alt="Centum"
             className="w-5 h-5 rounded-sm object-cover shadow-xs group-hover:scale-105 transition-transform"
           />

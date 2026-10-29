@@ -10,8 +10,8 @@ export function DemoBanner() {
   const [isDemoSession, setIsDemoSession] = useState(false);
 
   useEffect(() => {
-    // Check if current user phone is a demo account or owner demo
-    const phone = student?.phone?.replace(/\D/g, '').slice(-10) || '';
+    // Check if current user phone is a demo account or owner demo (robust to number, string, null, undefined)
+    const phone = String(student?.phone ?? '').replace(/\D/g, '').slice(-10);
     const isStudentDemo = phone === '9123456780';
     const isOwnerDemo = phone === '9840123456';
 

@@ -144,7 +144,7 @@ export default function HomePage() {
               href="/pro"
               className="text-[11px] font-black text-[#7C3AED] dark:text-[#A78BFA] hover:underline"
             >
-              அனைத்தும் →
+              {medium === 'tamil' ? 'அனைத்தும் →' : 'View All →'}
             </Link>
           </div>
 
@@ -188,7 +188,7 @@ export default function HomePage() {
                   TEXTBOOKS
                 </span>
                 <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
-                  பாடநூல்கள் 📚
+                  {medium === 'tamil' ? 'பாடநூல்கள் 📚' : 'Textbooks 📚'}
                 </p>
               </div>
               <ArrowRight className="w-4 h-4 text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -336,7 +336,7 @@ export default function HomePage() {
             href="/pro"
             className="text-[11px] font-black text-[#7C3AED] dark:text-[#A78BFA] hover:underline"
           >
-            அனைத்தும் →
+            {medium === 'tamil' ? 'அனைத்தும் →' : 'View All →'}
           </Link>
         </div>
 
@@ -380,7 +380,7 @@ export default function HomePage() {
                 TEXTBOOKS
               </span>
               <p className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] truncate">
-                பாடநூல்கள் 📚
+                {medium === 'tamil' ? 'பாடநூல்கள் 📚' : 'Textbooks 📚'}
               </p>
             </div>
             <ArrowRight className="w-4 h-4 text-sky-600 dark:text-sky-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
