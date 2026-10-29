@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const standard = searchParams.get('standard') || '10th';
+  const rawStandard = searchParams.get('standard');
+  const standard = rawStandard && rawStandard.trim() !== '' && rawStandard.trim().toLowerCase() !== 'all' ? rawStandard.trim() : '';
   const phone = searchParams.get('phone') || '';
   const userName = searchParams.get('name') || '';
   const userDistrict = searchParams.get('district') || '';
@@ -16,9 +17,58 @@ export async function GET(request: Request) {
 
   if (scriptUrl && secretKey) {
     try {
+      const isDebug = searchParams.get('debug') === '1' || searchParams.get('trace') === '1';
+
+      if (isDebug) {
+        // Trace read-only from Apps Script
+        const schemaUrl = new URL(scriptUrl);
+        schemaUrl.searchParams.set('action', 'ops-schema');
+        schemaUrl.searchParams.set('key', secretKey);
+        const schemaRes = await fetch(schemaUrl.toString(), { cache: 'no-store' }).then(r => r.json()).catch(err => ({ error: err.message }));
+
+        const scoresUrl = new URL(scriptUrl);
+        scoresUrl.searchParams.set('action', 'ops-rows');
+        scoresUrl.searchParams.set('tab', 'Scores');
+        scoresUrl.searchParams.set('key', secretKey);
+        const scoresRes = await fetch(scoresUrl.toString(), { cache: 'no-store' }).then(r => r.json()).catch(err => ({ error: err.message }));
+
+        const noStdUrl = new URL(scriptUrl);
+        noStdUrl.searchParams.set('action', 'leaderboard');
+        noStdUrl.searchParams.set('key', secretKey);
+        const noStdRes = await fetch(noStdUrl.toString(), { cache: 'no-store' }).then(r => r.json()).catch(err => ({ error: err.message }));
+
+        const std10thUrl = new URL(scriptUrl);
+        std10thUrl.searchParams.set('action', 'leaderboard');
+        std10thUrl.searchParams.set('standard', '10th');
+        std10thUrl.searchParams.set('key', secretKey);
+        const std10thRes = await fetch(std10thUrl.toString(), { cache: 'no-store' }).then(r => r.json()).catch(err => ({ error: err.message }));
+
+        const std10Url = new URL(scriptUrl);
+        std10Url.searchParams.set('action', 'leaderboard');
+        std10Url.searchParams.set('standard', '10');
+        std10Url.searchParams.set('key', secretKey);
+        const std10Res = await fetch(std10Url.toString(), { cache: 'no-store' }).then(r => r.json()).catch(err => ({ error: err.message }));
+
+        return NextResponse.json({
+          ok: true,
+          source: 'live-trace',
+          requestedStandard: searchParams.get('standard'),
+          trace: {
+            schema: schemaRes,
+            scoresTabCount: Array.isArray(scoresRes?.rows) ? scoresRes.rows.length : 0,
+            scoresSample: Array.isArray(scoresRes?.rows) ? scoresRes.rows.slice(-10) : scoresRes,
+            gasLeaderboardNoStandard: noStdRes,
+            gasLeaderboard10th: std10thRes,
+            gasLeaderboard10: std10Res,
+          }
+        });
+      }
+
       const externalUrl = new URL(scriptUrl);
       externalUrl.searchParams.set('action', 'leaderboard');
-      externalUrl.searchParams.set('standard', standard);
+      if (standard && standard !== 'all') {
+        externalUrl.searchParams.set('standard', standard);
+      }
       if (phone) externalUrl.searchParams.set('phone', phone);
       externalUrl.searchParams.set('key', secretKey);
 
@@ -39,6 +89,7 @@ export async function GET(request: Request) {
               ok: true,
               leaderboard: sanitized,
               source: 'live',
+              gasWindow: data.window || 'last-7-days',
             },
             {
               headers: {
