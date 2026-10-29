@@ -113,52 +113,64 @@ export const LeaderboardBox: React.FC = () => {
 
       {/* Rows */}
       <div className="space-y-2">
-        {top5.map((row, idx) => {
-          const rank = idx + 1;
-          const isMe = row.me;
+        {top5.length === 0 ? (
+          <div className="py-6 px-4 text-center rounded-2xl bg-[#FAF5FF]/70 dark:bg-[#230542]/70 border border-[#EDE9FE] dark:border-[#DDD6FE]/20">
+            <span className="text-2xl mb-1 block">🏆</span>
+            <p className="text-xs font-bold text-[#6D28D9] dark:text-[#DDD6FE] mb-1">
+              No scores logged this week yet.
+            </p>
+            <p className="text-[11px] font-medium text-[#6D28D9]/70 dark:text-[#DDD6FE]/60">
+              Take a quiz today to claim the #1 spot! ⚡
+            </p>
+          </div>
+        ) : (
+          top5.map((row, idx) => {
+            const rank = idx + 1;
+            const isMe = row.me;
 
-          return (
-            <div
-              key={idx}
-              className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between text-xs ${
-                isMe
-                  ? 'bg-[#A3E635]/25 border-2 border-[#A3E635] ring-2 ring-[#A3E635]/40 shadow-xs'
-                  : 'bg-[#FAF5FF]/70 dark:bg-[#230542]/70 border-[#EDE9FE] dark:border-[#DDD6FE]/20'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                  {getRankBadge(rank)}
+            return (
+              <div
+                key={idx}
+                className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between text-xs ${
+                  isMe
+                    ? 'bg-[#A3E635]/25 border-2 border-[#A3E635] ring-2 ring-[#A3E635]/40 shadow-xs'
+                    : 'bg-[#FAF5FF]/70 dark:bg-[#230542]/70 border-[#EDE9FE] dark:border-[#DDD6FE]/20'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-6 h-6 flex items-center justify-center shrink-0">
+                    {getRankBadge(rank)}
+                  </div>
+
+                  <div className="truncate min-w-0">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <span className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF] truncate">
+                        {row.name}
+                      </span>
+                      {isMe && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-[#A3E635] text-[#18181B]">
+                          {texts.home.you}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-semibold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
+                      {row.district}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="truncate min-w-0">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <span className="font-extrabold text-[#2E1065] dark:text-[#FAF5FF] truncate">
-                      {row.name}
-                    </span>
-                    {isMe && (
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-[#A3E635] text-[#18181B]">
-                        {texts.home.you}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-semibold text-[#6D28D9]/60 dark:text-[#DDD6FE]/60">
-                    {row.district}
+                <div className="text-right shrink-0">
+                  <span className="font-black text-[#7C3AED] dark:text-[#A3E635] block leading-none">
+                    {row.points} {texts.home.points}
+                  </span>
+                  <span className="text-[10px] font-bold text-[#6D28D9]/50 dark:text-[#DDD6FE]/50">
+                    {row.tests} {texts.home.testsDone}
                   </span>
                 </div>
               </div>
-
-              <div className="text-right shrink-0">
-                <span className="font-black text-[#7C3AED] dark:text-[#A3E635] block leading-none">
-                  {row.points} {texts.home.points}
-                </span>
-                <span className="text-[10px] font-bold text-[#6D28D9]/50 dark:text-[#DDD6FE]/50">
-                  {row.tests} {texts.home.testsDone}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
 
         {/* If user is not in top 5, always show lime "you" row */}
         {!isUserInTop5 && userEntry && (

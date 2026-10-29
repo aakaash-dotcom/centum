@@ -7,7 +7,10 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const rawStandard = searchParams.get('standard');
-  const standard = rawStandard && rawStandard.trim() !== '' && rawStandard.trim().toLowerCase() !== 'all' ? rawStandard.trim() : '';
+  let standard = rawStandard && rawStandard.trim() !== '' && rawStandard.trim().toLowerCase() !== 'all' ? rawStandard.trim() : '';
+  if (standard && /^\d+$/.test(standard)) {
+    standard = `${standard}th`;
+  }
   const phone = searchParams.get('phone') || '';
   const userName = searchParams.get('name') || '';
   const userDistrict = searchParams.get('district') || '';
@@ -89,7 +92,8 @@ export async function GET(request: Request) {
               ok: true,
               leaderboard: sanitized,
               source: 'live',
-              gasWindow: data.window || 'last-7-days',
+              window: data.window || 'last-7-days',
+              eligibleCount: sanitized.length,
             },
             {
               headers: {
