@@ -28,4 +28,19 @@ export function isChapterAllowed(chap: unknown): boolean {
   return false;
 }
 
-export const isChapterOne = isChapterAllowed;
+export function isChapterOne(chap: unknown): boolean {
+  if (!chap) return false;
+  const s = String(chap).trim();
+
+  const match = s.match(/(?:chapter|unit|ch|அலகு|பாடம்|\b)\s*([0-9]+)\b/i);
+  if (match) {
+    return parseInt(match[1], 10) === 1;
+  }
+
+  const leadingMatch = s.match(/^([0-9]+)(?:\.|\s|-|:)/);
+  if (leadingMatch) {
+    return parseInt(leadingMatch[1], 10) === 1;
+  }
+
+  return s.toLowerCase().includes('chapter 1') || s.includes('அலகு 1');
+}
