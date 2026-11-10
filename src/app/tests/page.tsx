@@ -25,6 +25,7 @@ import {
   normalizeStream,
 } from '@/data/canonicalSubjects';
 import { ProUpsellModal, ProUpsellContext } from '@/components/ProUpsellModal';
+import { extractChapterNumber } from '@/lib/gating';
 
 export interface ChapterItem {
   rawName: string;
@@ -157,6 +158,21 @@ export function parseChapterDetails(
     };
   }
 
+  // Fallback to canonical chapter number extraction if no prefix was matched
+  const resolvedNum = extractChapterNumber(str);
+  if (resolvedNum !== null) {
+    return {
+      rawName: str,
+      number: resolvedNum,
+      displayName: isTamilMedium ? `அலகு ${resolvedNum}` : `Chapter ${resolvedNum}`,
+      cleanTitle: str,
+      sortKey: resolvedNum,
+      poolSize,
+      onewordCount,
+      conceptCount,
+    };
+  }
+
   return {
     rawName: str,
     number: 999,
@@ -188,11 +204,9 @@ function isConceptChapterFree(ch: ChapterItem, index: number): boolean {
   if ((sk >= 4 && sk <= 998) || sk >= 1004) {
     return false;
   }
-  const match = String(ch.rawName || '').match(/(?:chapter|unit|ch|அலகு|பாடம்|\b)\s*([0-9]+)\b/i);
-  if (match) {
-    const num = parseInt(match[1], 10);
-    if (num >= 1 && num <= 3) return true;
-    if (num >= 4) return false;
+  const resolved = extractChapterNumber(ch.rawName || ch.displayName || ch.cleanTitle);
+  if (resolved !== null) {
+    return resolved >= 1 && resolved <= 3;
   }
   return index < 3;
 }
@@ -468,11 +482,15 @@ function TestsContent() {
       lockedChapters.forEach((lc) => {
         const parsed = parseChapterDetails(lc.chapter, lc.count, 0, lc.count, isTamilMedium);
         const isFree = isConceptChapterFree(parsed, 0);
+        // CRITICAL GUARD: Chapters 1–3 are always free and must NEVER be appended as locked!
+        if (isFree || (parsed.number >= 1 && parsed.number <= 3)) {
+          return;
+        }
         const alreadyPresent = visibleChapters.some(
           (vc) => (vc.number !== 999 && vc.number === parsed.number) || vc.rawName === parsed.rawName
         );
         if (!alreadyPresent) {
-          parsed.isLocked = !isFree;
+          parsed.isLocked = true;
           visibleChapters.push(parsed);
         }
       });

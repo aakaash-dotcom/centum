@@ -199,13 +199,19 @@ async function testBrowserUI() {
         await new Promise((r) => setTimeout(r, 400));
 
         // Open subject dropdown and select subject via data-testid
-        await page.waitForSelector('[data-testid="subject-select-trigger"]', { timeout: 5000 });
-        await page.click('[data-testid="subject-select-trigger"]');
-        await new Promise((r) => setTimeout(r, 400));
-
+        await page.waitForSelector('[data-testid="subject-select-trigger"]', { timeout: 10000 });
         const testIdSubj = subj.toLowerCase().replace(/\s+/g, '-');
         const subjSelector = `[data-testid="subject-option-${testIdSubj}"]`;
-        await page.waitForSelector(subjSelector, { timeout: 5000 });
+
+        // Click trigger and ensure dropdown opened (retry if hydration wasn't finished)
+        for (let attempt = 0; attempt < 5; attempt++) {
+          const isOpen = await page.$(subjSelector);
+          if (isOpen) break;
+          await page.click('[data-testid="subject-select-trigger"]');
+          await new Promise((r) => setTimeout(r, 600));
+        }
+
+        await page.waitForSelector(subjSelector, { timeout: 10000 });
         await page.click(subjSelector);
 
         // Wait for loading skeleton to disappear if shown
