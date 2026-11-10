@@ -24,7 +24,7 @@
 
 import puppeteer from 'puppeteer-core';
 
-const BASE_URL = process.env.TEST_BASE_URL || 'http://localhost:3000';
+const BASE_URL = process.argv[2] || process.env.TEST_BASE_URL || 'http://localhost:3000';
 const CHROME_PATH = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 
 const SUBJECTS = ['Maths', 'Science', 'Social Science', 'English', 'Tamil'];
