@@ -417,7 +417,7 @@ function ProHomeContent() {
         chapterNo: idx + 1,
         title: chName,
         count: idx === 0 ? 15 : 18,
-        isFreeTeaser: idx === 0,
+        isFreeTeaser: idx < 3,
       }));
     }
 
@@ -436,30 +436,30 @@ function ProHomeContent() {
         chapterNo: chNo,
         title: chName,
         count: qList.length,
-        isFreeTeaser: chNo === 1,
+        isFreeTeaser: chNo <= 3,
         questions: qList,
       });
     });
 
-    // Free user server-side paywall: append locked chapters 2–8
+    // Free user server-side paywall: append locked chapters
     if (!isPro) {
       if (lockedChapters.length > 0) {
         lockedChapters.forEach((lc) => {
           const match = String(lc.chapter).match(/(\d+)/);
-          const chNo = match ? parseInt(match[1], 10) : 2;
+          const chNo = match ? parseInt(match[1], 10) : 4;
           if (!rows.some((r) => r.chapterNo === chNo)) {
             rows.push({
               chapterNo: chNo,
               title: `Chapter ${chNo}`,
               count: lc.count || 30,
-              isFreeTeaser: false,
+              isFreeTeaser: chNo <= 3,
               questions: [],
             });
           }
         });
       } else if (rows.length < 8) {
         // Fallback for standard 8 chapters
-        for (let ch = 2; ch <= 8; ch++) {
+        for (let ch = 4; ch <= 8; ch++) {
           if (!rows.some((r) => r.chapterNo === ch)) {
             rows.push({
               chapterNo: ch,
@@ -475,13 +475,10 @@ function ProHomeContent() {
 
     rows.sort((a, b) => a.chapterNo - b.chapterNo);
 
-    // Free teaser is lowest-numbered chapter with >=10 rows (or ch 1)
-    if (rows.length > 0) {
-      const teaserFound = rows.find((r) => r.count >= 10) || rows[0];
-      rows.forEach((r) => {
-        r.isFreeTeaser = r === teaserFound;
-      });
-    }
+    // Free access for Chapters 1–3, Pro lock for Chapters 4+
+    rows.forEach((r) => {
+      r.isFreeTeaser = r.chapterNo <= 3;
+    });
 
     return rows;
   }, [conceptQuestions, lockedChapters, isPro]);
@@ -894,7 +891,9 @@ function ProHomeContent() {
               return (
                 <div
                   key={row.title}
-                  data-testid={isLocked ? 'concept-ch2-locked' : 'concept-ch1-playable'}
+                  data-testid={`concept-ch${row.chapterNo}-${isLocked ? 'locked' : 'playable'}`}
+                  data-chapter-number={row.chapterNo}
+                  data-chapter-status={isLocked ? 'locked' : 'playable'}
                   onClick={() => {
                     if (isLocked) {
                       handleLockedRowClick(row.title, row.count);
@@ -1082,7 +1081,7 @@ function ProHomeContent() {
                 isPro={Boolean(isPro)}
                 onUnlock={() => openPaywall('pro-materials')}
                 hasContent={hasContent}
-                showOverlay={activeSection === 'videos' ? false : undefined}
+                showOverlay={activeSection === 'videos' || material.id === 'concept' ? false : undefined}
               >
                 {railChildren}
               </MaterialRail>

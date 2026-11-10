@@ -413,6 +413,8 @@ export async function GET(request: Request) {
     }
   }
 
+  let upstreamLockedChapters: Array<{ chapter: string; count: number; locked: boolean }> | null = null;
+
   // If in local development without direct GAS credentials, bridge to deployed live production API
   if (!rawQuestions && (!scriptUrl || !secretKey)) {
     try {
@@ -433,13 +435,15 @@ export async function GET(request: Request) {
           prodData &&
           prodData.ok &&
           Array.isArray(prodData.questions) &&
-          prodData.servedFrom === 'gas' &&
-          (prodData.totalMatching || prodData.questions.length) >= 50
+          prodData.servedFrom === 'gas'
         ) {
           rawQuestions = prodData.questions;
           upstreamTotal = prodData.totalMatching ?? prodData.sheetTotal ?? prodData.questions.length;
           servedFrom = 'gas';
           source = 'live';
+          if (Array.isArray(prodData.lockedChapters)) {
+            upstreamLockedChapters = prodData.lockedChapters;
+          }
         }
       }
     } catch (e) {
@@ -471,15 +475,26 @@ export async function GET(request: Request) {
       continue;
     }
 
-    // For chapter practice, free unauthenticated users receive Chapter 1 teaser only
+    // For chapter practice, free unauthenticated users receive Chapters 1–3 free access; Chapters 4+ require Pro
     const isConcept = q.type === 'concept';
-    if (!isGlobalCatalog && isConcept && !isPro && !isChapterOne(q.chapter)) {
-      const chKey = String(q.chapter || 'Chapter 2').trim();
+    if (!isGlobalCatalog && isConcept && !isPro && !isChapterAllowed(q.chapter)) {
+      const chKey = String(q.chapter || 'Chapter 4').trim();
       lockedChaptersMap.set(chKey, (lockedChaptersMap.get(chKey) || 0) + 1);
       continue;
     }
 
     allowedQuestions.push(q);
+  }
+
+  if (upstreamLockedChapters && upstreamLockedChapters.length > 0) {
+    upstreamLockedChapters.forEach((lc) => {
+      if (lc && lc.chapter && !isChapterAllowed(lc.chapter)) {
+        const chKey = String(lc.chapter).trim();
+        if (!lockedChaptersMap.has(chKey)) {
+          lockedChaptersMap.set(chKey, lc.count || 30);
+        }
+      }
+    });
   }
 
   const lockedChapters = Array.from(lockedChaptersMap.entries()).map(([ch, cnt]) => ({

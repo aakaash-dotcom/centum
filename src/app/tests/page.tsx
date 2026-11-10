@@ -37,13 +37,15 @@ export interface ChapterItem {
   onewordCount: number;
   conceptCount: number;
   isMegaSet?: boolean;
+  isLocked?: boolean;
 }
 
 export function parseChapterDetails(
   rawName: string,
   poolSize = 0,
   onewordCount = 0,
-  conceptCount = 0
+  conceptCount = 0,
+  isTamilMedium = false
 ): ChapterItem {
   const str = (rawName || '').trim();
 
@@ -124,12 +126,12 @@ export function parseChapterDetails(
   const stdMatch = str.match(/^(?:chapter|unit|ch|அலகு|பாடம்)\s*(\d+)\s*[-–:.]?\s*(.*)/i);
   if (stdMatch) {
     const num = parseInt(stdMatch[1], 10);
-    const isTa = str.includes('அலகு') || str.includes('பாடம்');
+    const isTa = str.includes('அலகு') || str.includes('பாடம்') || isTamilMedium;
     return {
       rawName: str,
       number: num,
       displayName: isTa ? `அலகு ${num}` : `Chapter ${num}`,
-      cleanTitle: stdMatch[2]?.trim() || str,
+      cleanTitle: stdMatch[2]?.trim() || (isTa ? `அலகு ${num}` : `Chapter ${num}`),
       sortKey: num,
       poolSize,
       onewordCount,
@@ -137,15 +139,17 @@ export function parseChapterDetails(
     };
   }
 
-  // Pure leading number: e.g. "1. Relations and Functions"
-  const leadingNumMatch = str.match(/^(\d+)\s*[-–:.]\s*(.*)/);
+  // Pure number or leading number: e.g. "1" or "1. Relations and Functions"
+  const leadingNumMatch = str.match(/^(\d+)(?:\s*[-–:.]\s*(.*))?$/);
   if (leadingNumMatch) {
     const num = parseInt(leadingNumMatch[1], 10);
+    const isTa = isTamilMedium;
+    const subTitle = leadingNumMatch[2]?.trim();
     return {
       rawName: str,
       number: num,
-      displayName: `Chapter ${num}`,
-      cleanTitle: leadingNumMatch[2]?.trim() || str,
+      displayName: isTa ? `அலகு ${num}` : `Chapter ${num}`,
+      cleanTitle: subTitle || (isTa ? `அலகு ${num}` : `Chapter ${num}`),
       sortKey: num,
       poolSize,
       onewordCount,
@@ -163,6 +167,34 @@ export function parseChapterDetails(
     onewordCount,
     conceptCount,
   };
+}
+
+// Concept Quiz Free Rule: Chapters 1–3 free, Chapter 4+ requires Pro
+function isConceptChapterFree(ch: ChapterItem, index: number): boolean {
+  if (ch.isMegaSet) return true;
+  if (ch.isLocked) return false;
+  if (ch.number >= 1 && ch.number <= 3) return true;
+  if (ch.number >= 4 && ch.number !== 999) return false;
+  const sk = ch.sortKey;
+  if (
+    (sk >= 1 && sk <= 3) ||
+    (sk >= 1001 && sk <= 1003) ||
+    (sk >= 2001 && sk <= 2003) ||
+    (sk >= 3001 && sk <= 3003) ||
+    (sk >= 4001 && sk <= 4003)
+  ) {
+    return true;
+  }
+  if ((sk >= 4 && sk <= 998) || sk >= 1004) {
+    return false;
+  }
+  const match = String(ch.rawName || '').match(/(?:chapter|unit|ch|அலகு|பாடம்|\b)\s*([0-9]+)\b/i);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num >= 1 && num <= 3) return true;
+    if (num >= 4) return false;
+  }
+  return index < 3;
 }
 
 interface ConfirmationModalState {
@@ -199,6 +231,7 @@ function TestsContent() {
     String(student?.plan || '').toLowerCase() === 'live';
 
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [lockedChapters, setLockedChapters] = useState<Array<{ chapter: string; count: number; locked: boolean }>>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isFallbackBackend, setIsFallbackBackend] = useState(false);
@@ -247,6 +280,7 @@ function TestsContent() {
     if (!subj) {
       setIsLoading(false);
       setQuestions([]);
+      setLockedChapters([]);
       return;
     }
 
@@ -279,6 +313,10 @@ function TestsContent() {
           }
         }
 
+        const locked: Array<{ chapter: string; count: number; locked: boolean }> =
+          Array.isArray(conceptData?.lockedChapters) ? conceptData.lockedChapters : [];
+        setLockedChapters(locked);
+
         setQuestions(combined);
         setIsLoading(false);
       })
@@ -286,6 +324,7 @@ function TestsContent() {
         setIsError(true);
         setIsFallbackBackend(true);
         setQuestions([]);
+        setLockedChapters([]);
         setIsLoading(false);
       });
   };
@@ -324,16 +363,12 @@ function TestsContent() {
     }
   }, [availableSubjects, selectedSubject]);
 
-  // Build POOLED chapter list & discipline mega-sets (TASK A)
-  // 1. Every chapter set pools both oneword + concept questions
-  // 2. Chapters with poolSize < 10 are hidden; their questions flow into mega-set
-  // 3. Top card: "Practice — All chapters" (or per discipline for Social Science)
   const isSocial = useMemo(() => {
     return normalizeSubject(selectedSubject).toLowerCase().includes('social');
   }, [selectedSubject]);
 
   const { megaSets, chapterCards } = useMemo(() => {
-    if (!selectedSubject || questions.length === 0) {
+    if (!selectedSubject || (questions.length === 0 && lockedChapters.length === 0)) {
       return { megaSets: [], chapterCards: [] };
     }
 
@@ -355,58 +390,64 @@ function TestsContent() {
         { id: 'Economics', en: 'Economics', ta: 'பொருளியல்' },
       ];
 
-      const discMegaSets: ChapterItem[] = [];
-      const visibleChapters: ChapterItem[] = [];
-
-      disciplines.forEach((disc) => {
-        const discQuestions = filtered.filter((q) => {
-          const c = String(q.chapter || '').toLowerCase();
-          return c.includes(disc.en.toLowerCase()) || c.includes(disc.ta);
-        });
-
-        if (discQuestions.length > 0) {
-          // Mega-set for this discipline
-          discMegaSets.push({
-            rawName: `Practice — all ${disc.en}`,
-            discipline: disc.id,
-            number: 0,
-            displayName: isTamilMedium ? `✨ ${disc.ta} — அனைத்து அலகுகள் பயிற்சி` : `✨ Practice — all ${disc.en}`,
-            cleanTitle: isTamilMedium ? 'அனைத்து அலகுகளும் இணைந்த பயிற்சி' : 'Pooled discipline practice set',
-            sortKey: disc.id === 'History' ? 100 : disc.id === 'Geography' ? 200 : disc.id === 'Civics' ? 300 : 400,
-            poolSize: discQuestions.length,
-            onewordCount: discQuestions.filter((q) => (q.type || 'oneword').toLowerCase() === 'oneword').length,
-            conceptCount: discQuestions.filter((q) => (q.type || 'oneword').toLowerCase() === 'concept').length,
-            isMegaSet: true,
-          });
-
-          // Group by chapter within discipline
-          const chapMap = new Map<string, { poolSize: number; oneword: number; concept: number }>();
-          discQuestions.forEach((q) => {
-            const ch = (q.chapter || `${disc.en} 1`).trim();
-            const curr = chapMap.get(ch) || { poolSize: 0, oneword: 0, concept: 0 };
-            curr.poolSize++;
-            if ((q.type || 'oneword').toLowerCase() === 'concept') curr.concept++;
-            else curr.oneword++;
-            chapMap.set(ch, curr);
-          });
-
-          chapMap.forEach((stats, rawName) => {
-            // Min-10 rule: only show chapters with poolSize >= 10
-            if (stats.poolSize >= 10) {
-              visibleChapters.push(parseChapterDetails(rawName, stats.poolSize, stats.oneword, stats.concept));
-            }
-          });
-        }
+      // Check if any question has explicit discipline prefix
+      const hasDisciplineSpecificQuestions = filtered.some((q) => {
+        const c = String(q.chapter || '').toLowerCase();
+        return disciplines.some((d) => c.includes(d.en.toLowerCase()) || c.includes(d.ta));
       });
 
-      visibleChapters.sort((a, b) => a.sortKey - b.sortKey);
-      return { megaSets: discMegaSets, chapterCards: visibleChapters };
+      if (hasDisciplineSpecificQuestions) {
+        const discMegaSets: ChapterItem[] = [];
+        const visibleChapters: ChapterItem[] = [];
+
+        disciplines.forEach((disc) => {
+          const discQuestions = filtered.filter((q) => {
+            const c = String(q.chapter || '').toLowerCase();
+            return c.includes(disc.en.toLowerCase()) || c.includes(disc.ta);
+          });
+
+          if (discQuestions.length > 0) {
+            discMegaSets.push({
+              rawName: `Practice — all ${disc.en}`,
+              discipline: disc.id,
+              number: 0,
+              displayName: isTamilMedium ? `✨ ${disc.ta} — அனைத்து அலகுகள் பயிற்சி` : `✨ Practice — all ${disc.en}`,
+              cleanTitle: isTamilMedium ? 'அனைத்து அலகுகளும் இணைந்த பயிற்சி' : 'Pooled discipline practice set',
+              sortKey: disc.id === 'History' ? 100 : disc.id === 'Geography' ? 200 : disc.id === 'Civics' ? 300 : 400,
+              poolSize: discQuestions.length,
+              onewordCount: discQuestions.filter((q) => (q.type || 'oneword').toLowerCase() === 'oneword').length,
+              conceptCount: discQuestions.filter((q) => (q.type || 'oneword').toLowerCase() === 'concept').length,
+              isMegaSet: true,
+            });
+
+            const chapMap = new Map<string, { poolSize: number; oneword: number; concept: number }>();
+            discQuestions.forEach((q) => {
+              const ch = (q.chapter || `${disc.en} 1`).trim();
+              const curr = chapMap.get(ch) || { poolSize: 0, oneword: 0, concept: 0 };
+              curr.poolSize++;
+              if ((q.type || 'oneword').toLowerCase() === 'concept') curr.concept++;
+              else curr.oneword++;
+              chapMap.set(ch, curr);
+            });
+
+            chapMap.forEach((stats, rawName) => {
+              if (stats.poolSize >= 10) {
+                visibleChapters.push(parseChapterDetails(rawName, stats.poolSize, stats.oneword, stats.concept, isTamilMedium));
+              }
+            });
+          }
+        });
+
+        visibleChapters.sort((a, b) => a.sortKey - b.sortKey);
+        return { megaSets: discMegaSets, chapterCards: visibleChapters };
+      }
+      // If questions are not tagged with discipline keywords (e.g. raw chapter '1'), fall through to standard subject processing!
     }
 
-    // Standard subjects (Maths, Science, English, Tamil)
+    // Standard subjects (Maths, Science, English, Tamil) & Social Science fallback
     const chapMap = new Map<string, { poolSize: number; oneword: number; concept: number }>();
     filtered.forEach((q) => {
-      const ch = (q.chapter || 'Chapter 1').trim();
+      const ch = (q.chapter || '1').trim();
       const curr = chapMap.get(ch) || { poolSize: 0, oneword: 0, concept: 0 };
       curr.poolSize++;
       if ((q.type || 'oneword').toLowerCase() === 'concept') curr.concept++;
@@ -418,14 +459,30 @@ function TestsContent() {
     chapMap.forEach((stats, rawName) => {
       // Min-10 rule: only show chapters with poolSize >= 10
       if (stats.poolSize >= 10) {
-        visibleChapters.push(parseChapterDetails(rawName, stats.poolSize, stats.oneword, stats.concept));
+        visibleChapters.push(parseChapterDetails(rawName, stats.poolSize, stats.oneword, stats.concept, isTamilMedium));
       }
     });
 
+    // For Free users: Append locked chapters from API response
+    if (!isUserPro && (selectedType === 'concept' || selectedType === 'all') && lockedChapters.length > 0) {
+      lockedChapters.forEach((lc) => {
+        const parsed = parseChapterDetails(lc.chapter, lc.count, 0, lc.count, isTamilMedium);
+        const isFree = isConceptChapterFree(parsed, 0);
+        const alreadyPresent = visibleChapters.some(
+          (vc) => (vc.number !== 999 && vc.number === parsed.number) || vc.rawName === parsed.rawName
+        );
+        if (!alreadyPresent) {
+          parsed.isLocked = !isFree;
+          visibleChapters.push(parsed);
+        }
+      });
+    }
+
     visibleChapters.sort((a, b) => a.sortKey - b.sortKey);
 
-    const mainMegaSet: ChapterItem[] = [
-      {
+    const mainMegaSet: ChapterItem[] = [];
+    if (filtered.length > 0) {
+      mainMegaSet.push({
         rawName: 'Practice — All chapters',
         number: 0,
         displayName: isTamilMedium ? '✨ அனைத்து அலகுகளும் பயிற்சி' : '✨ Practice — All chapters',
@@ -435,49 +492,23 @@ function TestsContent() {
         onewordCount: filtered.filter((q) => (q.type || 'oneword').toLowerCase() === 'oneword').length,
         conceptCount: filtered.filter((q) => (q.type || 'oneword').toLowerCase() === 'concept').length,
         isMegaSet: true,
-      },
-    ];
+      });
+    }
 
     return { megaSets: mainMegaSet, chapterCards: visibleChapters };
-  }, [questions, selectedSubject, selectedType, isSocial, medium]);
-
-  // Concept Quiz Free Rule: Chapters 1–3 free, Chapter 4+ requires Pro
-  const isConceptChapterFree = (ch: ChapterItem, index: number): boolean => {
-    if (ch.isMegaSet) return true;
-    if (ch.number >= 1 && ch.number <= 3) return true;
-    if (ch.number >= 4 && ch.number !== 999) return false;
-    const sk = ch.sortKey;
-    if (
-      (sk >= 1 && sk <= 3) ||
-      (sk >= 1001 && sk <= 1003) ||
-      (sk >= 2001 && sk <= 2003) ||
-      (sk >= 3001 && sk <= 3003) ||
-      (sk >= 4001 && sk <= 4003)
-    ) {
-      return true;
-    }
-    if ((sk >= 4 && sk <= 998) || sk >= 1004) {
-      return false;
-    }
-    const match = String(ch.rawName || '').match(/(?:chapter|unit|ch|அலகு|பாடம்|\b)\s*([0-9]+)\b/i);
-    if (match) {
-      const num = parseInt(match[1], 10);
-      if (num >= 1 && num <= 3) return true;
-      if (num >= 4) return false;
-    }
-    return index < 3;
-  };
+  }, [questions, lockedChapters, selectedSubject, selectedType, isSocial, medium, isUserPro]);
 
   // Tap on a chapter card or mega-set
   const handleChapterTap = (ch: ChapterItem, index: number) => {
     const isFree = isConceptChapterFree(ch, index);
+    const isLocked = Boolean(ch.isLocked || (selectedType === 'concept' && !isFree && !isUserPro));
 
     // Gate rule: Concept quiz chapters 4+ require Pro (first three chapters are free)
-    if (selectedType === 'concept' && !isFree && !isUserPro) {
+    if (isLocked) {
       setUpsellContext({
         subject: selectedSubject || 'Maths',
         chapter: ch.cleanTitle || ch.displayName,
-        conceptCount: ch.conceptCount || ch.poolSize || 18,
+        conceptCount: ch.conceptCount || ch.poolSize || 30,
         videoCount: 2,
         paperCount: 12,
       });
@@ -637,6 +668,7 @@ function TestsContent() {
             {/* Box 1: [📖 book-back \n one-words] */}
             <button
               type="button"
+              data-testid="bookback-filter-tab"
               onClick={() => setSelectedType((prev) => (prev === 'oneword' ? 'all' : 'oneword'))}
               className={`min-h-[88px] p-3 rounded-3xl text-center font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 border ${
                 selectedType === 'oneword'
@@ -657,6 +689,7 @@ function TestsContent() {
             {/* Box 2: [🧠 concept quiz] */}
             <button
               type="button"
+              data-testid="concept-filter-tab"
               onClick={() => setSelectedType((prev) => (prev === 'concept' ? 'all' : 'concept'))}
               className={`min-h-[88px] p-3 rounded-3xl text-center font-black transition-all cursor-pointer flex flex-col items-center justify-center gap-1 border ${
                 selectedType === 'concept'
@@ -737,6 +770,7 @@ function TestsContent() {
           <div className="w-full bg-white dark:bg-[#1B0B2E] rounded-2xl border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs overflow-hidden transition-all">
             <button
               type="button"
+              data-testid="subject-select-trigger"
               onClick={() => setIsSubjectDropdownOpen(!isSubjectDropdownOpen)}
               className={`w-full min-h-[50px] px-4 py-3 flex items-center justify-between text-xs font-black cursor-pointer transition-all ${
                 !selectedSubject
@@ -763,6 +797,7 @@ function TestsContent() {
                     <button
                       key={subj}
                       type="button"
+                      data-testid={`subject-option-${subj.toLowerCase().replace(/\s+/g, '-')}`}
                       onClick={() => {
                         setSelectedSubject(subj);
                         setIsSubjectDropdownOpen(false);
@@ -799,7 +834,9 @@ function TestsContent() {
               </p>
             </div>
           ) : isLoading ? (
-            <SkeletonCard count={3} />
+            <div data-testid="tests-loading-skeleton">
+              <SkeletonCard count={3} />
+            </div>
           ) : isError ? (
             <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
               <span className="text-4xl mb-3">👻</span>
@@ -819,15 +856,24 @@ function TestsContent() {
               {megaSets.length === 0 && chapterCards.length === 0 ? (
                 <div className="bg-white dark:bg-[#1B0B2E] rounded-3xl p-8 text-center border border-dashed border-[#DDD6FE] dark:border-[#3B2063] space-y-2">
                   <span className="text-4xl block mb-2">🌱</span>
-                  <h3 className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF]">
-                    {!hasSubjectContent(selectedSubject)
-                      ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன`
-                      : texts.tests.noChaptersYet}
+                  <h3
+                    data-testid="missing-content-heading"
+                    className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF]"
+                  >
+                    {selectedType === 'concept'
+                      ? (medium === 'tamil' ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன 🌱` : `${selectedSubject} questions in preparation 🌱`)
+                      : (!hasSubjectContent(selectedSubject)
+                          ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன 🌱`
+                          : texts.tests.noChaptersYet)}
                   </h3>
                   <p className="text-xs font-bold text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                    {!hasSubjectContent(selectedSubject)
-                      ? `${selectedSubject} பாடத்திற்கான வினாக்கள் தயாரிப்பில் உள்ளன. எங்கள் ஆசிரியர் குழு வினாக்களைத் தொகுத்து வருகிறது 🌱`
-                      : 'இப்பாடத்திற்கான வினாக்கள் விரைவில் சேர்க்கப்படும்'}
+                    {selectedType === 'concept'
+                      ? (medium === 'tamil'
+                          ? `${selectedSubject} பாடத்திற்கான கருத்து வினாக்கள் (Concept Questions) தயாரிப்பில் உள்ளன. எங்கள் ஆசிரியர் குழு வினாக்களைத் தொகுத்து வருகிறது 🌱`
+                          : `${selectedSubject} concept questions are currently in preparation. Our academic team is compiling the question sets 🌱`)
+                      : (!hasSubjectContent(selectedSubject)
+                          ? `${selectedSubject} பாடத்திற்கான வினாக்கள் தயாரிப்பில் உள்ளன. எங்கள் ஆசிரியர் குழு வினாக்களைத் தொகுத்து வருகிறது 🌱`
+                          : 'இப்பாடத்திற்கான வினாக்கள் விரைவில் சேர்க்கப்படும்')}
                   </p>
                 </div>
               ) : (
@@ -855,16 +901,22 @@ function TestsContent() {
                   {/* Restored Pre-R7 Sleek Chapter Cards (Only poolSize >= 10 rendered) */}
                   {chapterCards.map((ch, index) => {
                     const isFree = isConceptChapterFree(ch, index);
-                    const isLocked = selectedType === 'concept' && !isFree && !isUserPro;
+                    const isLocked = Boolean(ch.isLocked || (selectedType === 'concept' && !isFree && !isUserPro));
                     const chNum = ch.number !== 999 && ch.number > 0 ? ch.number : index + 1;
 
                     // Clean number prefix label: e.g. "1. Relations and Functions · 23 Q"
-                    const numberPrefix = ch.number !== 999 && ch.number > 0 ? `${ch.number}. ` : '';
+                    const isTa = medium === 'tamil' || String(ch.displayName || '').includes('அலகு');
+                    const numberPrefix =
+                      ch.number !== 999 && ch.number > 0 &&
+                      !String(ch.cleanTitle || '').toLowerCase().startsWith('chapter') &&
+                      !String(ch.cleanTitle || '').startsWith('அலகு')
+                        ? (isTa ? `அலகு ${ch.number}. ` : `Chapter ${ch.number}. `)
+                        : '';
                     const displayRow = `${numberPrefix}${ch.cleanTitle} · ${ch.poolSize} Q`;
 
                     return (
                       <div
-                        key={ch.rawName}
+                        key={`${ch.rawName}-${index}`}
                         data-testid={`concept-ch${chNum}-${isLocked ? 'locked' : 'playable'}`}
                         data-chapter-status={isLocked ? 'locked' : 'playable'}
                         data-chapter-number={chNum}
@@ -877,8 +929,9 @@ function TestsContent() {
                       >
                         <div className="flex items-center gap-2 truncate min-w-0">
                           {isLocked && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200 shrink-0">
-                              Pro 🔒
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200 shrink-0 flex items-center gap-1">
+                              <span>Pro</span>
+                              <Lock className="w-2.5 h-2.5" />
                             </span>
                           )}
                           <span className="text-xs font-black text-[#2E1065] dark:text-[#F5F0FF] truncate">
