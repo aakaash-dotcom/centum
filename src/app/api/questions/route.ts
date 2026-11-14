@@ -5,12 +5,13 @@ import { isLanguageSubject } from '@/lib/data';
 import {
   normalizeSubject,
   isSubjectAllowedForClassStream,
+  isLegacyPooledChapter,
 } from '@/data/canonicalSubjects';
 import { verifySessionToken } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
-export const normClass = (v: unknown) => {
+const normClass = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   const digits = s.replace(/\D/g, '');
   if (['6', '7', '8', '9', '10', '11', '12'].includes(digits)) {
@@ -19,26 +20,24 @@ export const normClass = (v: unknown) => {
   return s;
 };
 
-export const normMedium = (v: unknown) => {
+const normMedium = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   if (['em', 'english', 'en', 'இங்கிலீஷ்', 'ஆங்கிலம்'].includes(s)) return 'english';
   if (['tm', 'tamil', 'ta', 'தமிழ்'].includes(s)) return 'tamil';
   return s;
 };
 
-export const normPlan = (v: unknown) => {
+const normPlan = (v: unknown) => {
   const s = String(v ?? '').trim().toLowerCase();
   return s === 'pro' || s === 'live' ? s : 'free';
 };
 
-import { isChapterAllowed, isChapterOne } from '@/lib/gating';
-export { isChapterAllowed, isChapterOne };
+import { isChapterAllowed, extractChapterNumber } from '@/lib/gating';
 
-export function extractPlanFromRequest(
-  request: Request,
-  searchParams: URLSearchParams
+function extractPlanFromRequest(
+  request: Request
 ): { plan: string; isPro: boolean } {
-  // 1. Session token from cookies (centum_session) or Authorization header or x-centum-session
+  // 1. Session token from cookies (centum_session), Authorization header, or x-centum-session
   const cookieHeader = request.headers.get('cookie') || '';
   const sessionMatch = cookieHeader.match(/(?:^|;\s*)centum_session=([^;]+)/);
   const authHeader = request.headers.get('authorization') || '';
@@ -67,42 +66,13 @@ export function extractPlanFromRequest(
         studentPlan === 'pro' || studentPlan === 'live' || Boolean(payload.student.isAdmin);
       return { plan: studentPlan, isPro: isProStudent };
     }
-    if (rawToken === 'demo-pro' || rawToken === 'pro') {
+    // Only in non-production environments allow mock token
+    if (process.env.NODE_ENV !== 'production' && (rawToken === 'demo-pro' || rawToken === 'pro')) {
       return { plan: 'pro', isPro: true };
     }
   }
 
-  // 2. Secret Key check (server-to-server / admin / verification script)
-  const secretKey = process.env.APPS_SCRIPT_SECRET;
-  const reqKey = request.headers.get('x-centum-key') || searchParams.get('key');
-  if (secretKey && reqKey === secretKey) {
-    return { plan: 'pro', isPro: true };
-  }
-
-  // 3. Custom authenticated header for pro caller
-  const hPlan =
-    request.headers.get('x-user-plan') ||
-    request.headers.get('x-centum-plan') ||
-    request.headers.get('x-plan');
-  if (hPlan && (normPlan(hPlan) === 'pro' || normPlan(hPlan) === 'live')) {
-    return { plan: normPlan(hPlan), isPro: true };
-  }
-
-  // 4. Client readable plan cookie IF accompanied by a session
-  const planCookieMatch = cookieHeader.match(/(?:^|;\s*)centum_plan=([^;]+)/);
-  if (planCookieMatch && rawToken) {
-    const p = normPlan(planCookieMatch[1]);
-    if (p === 'pro' || p === 'live') {
-      return { plan: p, isPro: true };
-    }
-  }
-
-  // 5. Query parameter plan=pro (supported for verification suites and pro caller queries)
-  const qPlan = searchParams.get('plan');
-  if (qPlan && (normPlan(qPlan) === 'pro' || normPlan(qPlan) === 'live')) {
-    return { plan: normPlan(qPlan), isPro: true };
-  }
-
+  // Master secret, query parameters (?plan=pro), and unsigned cookies do NOT grant Pro entitlement.
   return { plan: 'free', isPro: false };
 }
 
@@ -124,7 +94,7 @@ let cachedRawQuestions: {
 } | null = null;
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds TTL
 
-export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
+function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
   const { classLevel, subject, chapter, type, medium, stream } = params;
   const targetClass = classLevel ? normClass(classLevel) : null;
   const targetClassNum = targetClass ? targetClass.replace(/\D/g, '') : null;
@@ -133,7 +103,7 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
   const targetSubjKey = subject ? toCanonicalSubjKey(normalizeSubject(subject)) : null;
   const targetMed = medium ? normMedium(medium) : null;
   const targetType = type ? String(type).trim().toLowerCase() : null;
-  const targetChap = chapter ? String(chapter).trim().toLowerCase() : null;
+  const targetChap = chapter ? String(chapter).trim() : null;
 
   const validQuestions: any[] = [];
   const skippedList: Array<{ id: string; reason: string }> = [];
@@ -185,19 +155,45 @@ export function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterPa
       }
     }
 
-    // 4. Type filter
+    // 4. Type filter (mock, pyq, daily, all draw across types)
     const qType = String(q.type || 'oneword').trim().toLowerCase();
-    if (targetType && targetType !== 'all' && qType !== targetType) {
+    if (
+      targetType &&
+      targetType !== 'all' &&
+      targetType !== 'mock' &&
+      targetType !== 'pyq' &&
+      targetType !== 'daily' &&
+      qType !== targetType
+    ) {
       continue;
     }
 
     // 5. Chapter filter
-    if (targetChap && targetChap !== 'all' && !targetChap.includes('all chapters') && !targetChap.includes('practice')) {
+    if (targetChap && !isLegacyPooledChapter(targetChap)) {
       const qChap = String(q.chapter || '').trim().toLowerCase();
-      const cleanTargetChap = targetChap.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, '').trim();
-      const cleanQChap = qChap.replace(/^(chapter|unit|\u0B85\u0BB2\u0B95\u0BC1)\s*\d+\s*[-–.]?\s*/i, '').trim();
-      if (qChap !== targetChap && cleanQChap !== cleanTargetChap && !qChap.includes(cleanTargetChap)) {
-        continue;
+      const normTargetChap = targetChap.toLowerCase();
+      const targetNum = extractChapterNumber(targetChap);
+      const qNum = extractChapterNumber(qChap);
+
+      if (targetNum !== null && qNum !== null) {
+        if (targetNum !== qNum) {
+          continue;
+        }
+      } else {
+        const cleanTargetChap = normTargetChap.replace(/^(chapter|unit|ch|history|geography|civics|economics|அலகு|பாடம்|வரலாறு|புவியியல்|குடிமையியல்|பொருளியல்)\s*\d+\s*[-–:.]?\s*/i, '').trim();
+        const cleanQChap = qChap.replace(/^(chapter|unit|ch|history|geography|civics|economics|அலகு|பாடம்|வரலாறு|புவியியல்|குடிமையியல்|பொருளியல்)\s*\d+\s*[-–:.]?\s*/i, '').trim();
+        if (cleanTargetChap.length > 0) {
+          if (
+            qChap !== normTargetChap &&
+            cleanQChap !== cleanTargetChap &&
+            !qChap.includes(cleanTargetChap) &&
+            !normTargetChap.includes(cleanQChap)
+          ) {
+            continue;
+          }
+        } else if (qChap !== normTargetChap) {
+          continue;
+        }
       }
     }
 
@@ -323,7 +319,7 @@ export async function GET(request: Request) {
   const count = searchParams.get('count');
   const bypassCache = searchParams.has('ts') || searchParams.has('nocache');
 
-  const { plan: callerPlan, isPro } = extractPlanFromRequest(request, searchParams);
+  const { plan: callerPlan, isPro } = extractPlanFromRequest(request);
 
   const filterParams: FilterParams = {
     classLevel,
@@ -359,14 +355,16 @@ export async function GET(request: Request) {
 
   if (!rawQuestions && scriptUrl && secretKey) {
     try {
-      // 1. Fetch raw rows directly from Questions tab via action=ops-rows
-      // This bypasses legacy cloud GAS splitOptions_ filtering that dropped JSON array rows
-      const opsUrl = new URL(scriptUrl);
-      opsUrl.searchParams.set('action', 'ops-rows');
-      opsUrl.searchParams.set('tab', 'Questions');
-      opsUrl.searchParams.set('key', secretKey);
-
-      const opsRes = await fetch(opsUrl.toString(), {
+      // 1. Fetch raw rows directly from Questions tab via POST action=ops-rows
+      // This eliminates secrets from query strings and bypasses legacy cloud GAS splitOptions_ filtering
+      const opsRes = await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ops-rows',
+          tab: 'Questions',
+          key: secretKey,
+        }),
         cache: 'no-store',
       });
 
@@ -381,20 +379,22 @@ export async function GET(request: Request) {
         }
       }
 
-      // 2. Fallback to action=questions if ops-rows failed or was empty
+      // 2. Fallback to action=questions POST if ops-rows failed or was empty
       if (!rawQuestions) {
-        const externalUrl = new URL(scriptUrl);
-        externalUrl.searchParams.set('action', 'questions');
-        externalUrl.searchParams.set('key', secretKey);
-        if (classLevel) externalUrl.searchParams.set('classLevel', classLevel);
-        if (subject) externalUrl.searchParams.set('subject', normalizeSubject(subject));
-        if (chapter) externalUrl.searchParams.set('chapter', chapter);
-        if (type) externalUrl.searchParams.set('type', type);
-        if (medium) externalUrl.searchParams.set('medium', medium);
-        if (stream) externalUrl.searchParams.set('stream', stream);
-        externalUrl.searchParams.set('count', 'all');
-
-        const res = await fetch(externalUrl.toString(), {
+        const res = await fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'questions',
+            key: secretKey,
+            classLevel: classLevel || '',
+            subject: subject ? normalizeSubject(subject) : '',
+            chapter: chapter || '',
+            type: type || '',
+            medium: medium || '',
+            stream: stream || '',
+            count: 'all',
+          }),
           cache: 'no-store',
         });
 
@@ -464,23 +464,24 @@ export async function GET(request: Request) {
   // Plan Check Server-Side:
   // Enforce server-side paywall: If caller has no valid Pro session, drop all PRO rows!
   const isGlobalCatalog = !classLevel && !subject && !chapter;
-  let allowedQuestions: any[] = [];
+  const allowedQuestions: any[] = [];
   const lockedChaptersMap = new Map<string, number>();
 
   for (const q of validQuestions) {
     const isRowPro = q.plan && String(q.plan).trim().toLowerCase() !== 'free';
-
-    // SERVER-SIDE PAYWALL: If request carries no valid Pro session, drop every pro row
-    if (!isPro && isRowPro) {
-      continue;
-    }
-
-    // For chapter practice, free unauthenticated users receive Chapters 1–3 free access; Chapters 4+ require Pro
     const isConcept = q.type === 'concept';
-    if (!isGlobalCatalog && isConcept && !isPro && !isChapterAllowed(q.chapter)) {
-      const chKey = String(q.chapter || 'Chapter 4').trim();
-      lockedChaptersMap.set(chKey, (lockedChaptersMap.get(chKey) || 0) + 1);
-      continue;
+    const isLockedChapter = !isGlobalCatalog && isConcept && !isChapterAllowed(q.chapter);
+
+    // If caller has no valid Pro session:
+    if (!isPro) {
+      if (isLockedChapter) {
+        const chKey = String(q.chapter || 'Chapter 4').trim();
+        lockedChaptersMap.set(chKey, (lockedChaptersMap.get(chKey) || 0) + 1);
+        continue;
+      }
+      if (isRowPro) {
+        continue;
+      }
     }
 
     allowedQuestions.push(q);
@@ -491,10 +492,17 @@ export async function GET(request: Request) {
       if (lc && lc.chapter && !isChapterAllowed(lc.chapter)) {
         const chKey = String(lc.chapter).trim();
         if (!lockedChaptersMap.has(chKey)) {
-          lockedChaptersMap.set(chKey, lc.count || 30);
+          lockedChaptersMap.set(chKey, typeof lc.count === 'number' ? lc.count : 0);
         }
       }
     });
+  }
+
+  if (!isGlobalCatalog && !isPro && chapter && !isChapterAllowed(chapter) && (!type || type === 'concept')) {
+    const chKey = String(chapter).trim();
+    if (!lockedChaptersMap.has(chKey)) {
+      lockedChaptersMap.set(chKey, 0);
+    }
   }
 
   const lockedChapters = Array.from(lockedChaptersMap.entries()).map(([ch, cnt]) => ({

@@ -7,21 +7,17 @@ import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { Question, QuizResult, UserAnswerRecord, TestType } from '@/types';
 import { ScoreRing } from '@/components/ScoreRing';
-import { normalizeSubject } from '@/data/canonicalSubjects';
+import { normalizeSubject, isLegacyPooledChapter } from '@/data/canonicalSubjects';
 import { isLanguageSubject } from '@/lib/data';
 import {
   ArrowLeft,
   Clock,
-  CheckCircle2,
-  XCircle,
   RotateCcw,
-  Sparkles,
   ChevronDown,
   ChevronUp,
-  Award,
-  AlertCircle,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { extractChapterNumber } from '@/lib/gating';
 
 function normalizeChapter(ch: string): string {
   return String(ch || '')
@@ -48,6 +44,11 @@ function TestRunnerContent() {
   const standardParam = searchParams.get('standard') || '';
   const countParam = searchParams.get('count') || '';
   const quizIdParam = searchParams.get('quizId') || '';
+  const mediumParam = searchParams.get('medium');
+
+  const effectiveMedium =
+    mediumParam === 'tamil' ? 'tamil' : mediumParam === 'english' ? 'english' : (medium || 'english');
+  const isTa = effectiveMedium === 'tamil';
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,34 +59,55 @@ function TestRunnerContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [isFallbackBackend, setIsFallbackBackend] = useState(false);
+  const [isBrowserOffline, setIsBrowserOffline] = useState(false);
+  const [isDiscontinuedFullPortion, setIsDiscontinuedFullPortion] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showExplanations, setShowExplanations] = useState(false);
   const [expandedReviews, setExpandedReviews] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    const updateStatus = () => {
+      setIsBrowserOffline(typeof navigator !== 'undefined' && navigator.onLine === false);
+    };
+    updateStatus();
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    return () => {
+      window.removeEventListener('online', updateStatus);
+      window.removeEventListener('offline', updateStatus);
+    };
+  }, []);
 
   const hasAnyExplanation = useMemo(() => {
     return questions.some((q) => Boolean(q.explanation && String(q.explanation).trim()));
   }, [questions]);
 
-  const questionStartTimeRef = useRef<number>(Date.now());
+  const questionStartTimeRef = useRef<number>(0);
+  const handleFinishQuizRef = useRef<() => void>(() => {});
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load and filter questions matching the exact URL contract
   const loadAndFilterQuestions = (shuffle = true) => {
     setIsLoading(true);
     setIsError(false);
+    setIsDiscontinuedFullPortion(false);
 
-    const isPracticeAll =
-      !chapterParam ||
-      chapterParam.toLowerCase() === 'all' ||
-      chapterParam.toLowerCase().includes('practice — all chapters') ||
-      chapterParam.toLowerCase().includes('all chapters');
+    // Reject stale Full Portion / pooled practice links per Requirement 3
+    const isSpecialType = (typeParam as string) === 'mock' || (typeParam as string) === 'pyq' || (typeParam as string) === 'daily';
+    const isLegacyPooled = isLegacyPooledChapter(chapterParam) || (!chapterParam && !isSpecialType);
+
+    if (isLegacyPooled) {
+      setIsDiscontinuedFullPortion(true);
+      setIsLoading(false);
+      return;
+    }
 
     const apiParams = new URLSearchParams();
     if (standardParam) apiParams.set('classLevel', standardParam);
     if (subjectParam) apiParams.set('subject', subjectParam);
-    if (chapterParam && !isPracticeAll) apiParams.set('chapter', chapterParam);
+    if (chapterParam) apiParams.set('chapter', chapterParam);
     if (typeParam && typeParam !== 'all') apiParams.set('type', typeParam);
-    if (medium) apiParams.set('medium', medium);
+    if (effectiveMedium) apiParams.set('medium', effectiveMedium);
     apiParams.set('count', 'all');
     if (student?.stream) apiParams.set('stream', student.stream);
 
@@ -97,8 +119,6 @@ function TestRunnerContent() {
       .then((data) => {
         if (data?.servedFrom && data.servedFrom !== 'gas') {
           setIsFallbackBackend(true);
-          setIsLoading(false);
-          return;
         }
 
         const pool: Question[] = data && Array.isArray(data.questions) ? data.questions : [];
@@ -112,21 +132,7 @@ function TestRunnerContent() {
 
         const normSubjParam = subjectParam.toLowerCase();
         const normStdParam = standardParam.replace(/th/gi, '').trim().toLowerCase();
-        const userMed = String(medium || '').trim().toLowerCase();
-        const isPracticeAll =
-          !chapterParam ||
-          chapterParam.toLowerCase() === 'all' ||
-          chapterParam.toLowerCase().includes('practice — all chapters') ||
-          chapterParam.toLowerCase().includes('all chapters');
-
-        const isDisciplinePractice = chapterParam.toLowerCase().includes('practice — all');
-        let targetDiscipline = '';
-        if (isDisciplinePractice) {
-          if (chapterParam.toLowerCase().includes('history') || chapterParam.includes('வரலாறு')) targetDiscipline = 'history';
-          else if (chapterParam.toLowerCase().includes('geography') || chapterParam.includes('புவியியல்')) targetDiscipline = 'geography';
-          else if (chapterParam.toLowerCase().includes('civics') || chapterParam.includes('குடிமையியல்')) targetDiscipline = 'civics';
-          else if (chapterParam.toLowerCase().includes('economics') || chapterParam.includes('பொருளியல்')) targetDiscipline = 'economics';
-        }
+        const userMed = String(effectiveMedium || '').trim().toLowerCase();
 
         const matched = pool.filter((q) => {
           // 0. Defensive structural validation (bad questions skipped, never crash session)
@@ -148,39 +154,42 @@ function TestRunnerContent() {
           const qSubj = normalizeSubject(q.subject || '').toLowerCase();
           const matchSubj = !subjectParam || qSubj === normSubjParam;
 
-          // 2. Chapter match: exact, normalized prefix stripped, practice mega-set, or discipline mega-set
+          // 2. Chapter match: exact, normalized prefix stripped, or same chapter number
           const qChap = String(q.chapter || '').trim().toLowerCase();
           const targetChap = chapterParam.trim().toLowerCase();
 
-          let matchChap = false;
-          if (isPracticeAll) {
-            matchChap = true;
-          } else if (targetDiscipline) {
-            if (targetDiscipline === 'history') matchChap = qChap.includes('history') || qChap.includes('வரலாறு');
-            else if (targetDiscipline === 'geography') matchChap = qChap.includes('geography') || qChap.includes('புவியியல்');
-            else if (targetDiscipline === 'civics') matchChap = qChap.includes('civics') || qChap.includes('குடிமையியல்');
-            else if (targetDiscipline === 'economics') matchChap = qChap.includes('economics') || qChap.includes('பொருளியல்');
-          } else {
-            const normQ = normalizeChapter(q.chapter);
-            const normT = normalizeChapter(chapterParam);
-            const qNumMatch = qChap.match(/\b\d+\b/);
-            const tNumMatch = targetChap.match(/\b\d+\b/);
-            const sameNum = Boolean(qNumMatch && tNumMatch && qNumMatch[0] === tNumMatch[0]);
+          const normQ = normalizeChapter(q.chapter);
+          const normT = normalizeChapter(chapterParam);
+          const qNumMatch = qChap.match(/\b\d+\b/);
+          const tNumMatch = targetChap.match(/\b\d+\b/);
+          const qExtracted = extractChapterNumber(q.chapter);
+          const tExtracted = extractChapterNumber(chapterParam);
+          const sameNum = Boolean(
+            (qNumMatch && tNumMatch && qNumMatch[0] === tNumMatch[0]) ||
+            (qExtracted !== null && tExtracted !== null && qExtracted === tExtracted)
+          );
 
-            matchChap =
-              !chapterParam ||
-              qChap === targetChap ||
-              Boolean(normQ && normT && (normQ === normT || qChap.includes(normT) || targetChap.includes(normQ))) ||
-              sameNum;
-          }
+          const isSpecialType = (typeParam as string) === 'mock' || (typeParam as string) === 'pyq' || (typeParam as string) === 'daily';
+          const matchChap =
+            !chapterParam ||
+            isSpecialType ||
+            qChap === targetChap ||
+            Boolean(normQ && normT && (normQ === normT || qChap.includes(normT) || targetChap.includes(normQ))) ||
+            sameNum;
 
           // 3. Class level: "10th" vs "10"
           const qStd = String(q.classLevel || '').replace(/th/gi, '').trim().toLowerCase();
           const matchStd = !standardParam || qStd === normStdParam;
 
-          // 4. Type match if present (support type=all / pooled)
+          // 4. Type match if present (support type=all / pooled / mock / pyq / daily)
           const qType = String(q.type || '').trim().toLowerCase();
-          const matchType = !typeParam || typeParam.toLowerCase() === 'all' || qType === typeParam.toLowerCase();
+          const matchType =
+            !typeParam ||
+            typeParam.toLowerCase() === 'all' ||
+            typeParam.toLowerCase() === 'mock' ||
+            typeParam.toLowerCase() === 'pyq' ||
+            typeParam.toLowerCase() === 'daily' ||
+            qType === typeParam.toLowerCase();
 
           // 5. Medium match: Tamil & English subjects common to both; others strict medium match
           const isLang = isLanguageSubject(q.subject || '');
@@ -222,33 +231,15 @@ function TestRunnerContent() {
     loadAndFilterQuestions();
   }, [medium, subjectParam, chapterParam, typeParam, standardParam, countParam, student?.stream]);
 
-  // Live timer countdown
-  useEffect(() => {
-    if (isLoading || isFinished || questions.length === 0) return;
-
-    timerIntervalRef.current = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current!);
-          handleFinishQuiz();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    };
-  }, [isLoading, isFinished, questions.length]);
-
   const recordTimeForCurrentQuestion = () => {
-    const elapsed = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
+    const now = Date.now();
+    const start = questionStartTimeRef.current || now;
+    const elapsed = Math.round((now - start) / 1000);
     setQuestionTimes((prev) => ({
       ...prev,
       [currentIndex]: (prev[currentIndex] || 0) + elapsed,
     }));
-    questionStartTimeRef.current = Date.now();
+    questionStartTimeRef.current = now;
   };
 
   const handleSelectAnswer = (optionIndex: number) => {
@@ -257,30 +248,6 @@ function TestRunnerContent() {
       ...prev,
       [currentIndex]: optionIndex,
     }));
-  };
-
-  const handleNext = () => {
-    recordTimeForCurrentQuestion();
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      handleFinishQuiz();
-    }
-  };
-
-  const handleSkip = () => {
-    recordTimeForCurrentQuestion();
-    if (selectedAnswers[currentIndex] === undefined) {
-      setSelectedAnswers((prev) => ({
-        ...prev,
-        [currentIndex]: -1,
-      }));
-    }
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-    } else {
-      handleFinishQuiz();
-    }
   };
 
   const handleFinishQuiz = () => {
@@ -326,7 +293,7 @@ function TestRunnerContent() {
           'true'
         );
         localStorage.setItem(`centum_today_quiz_completed_${dateStr}`, 'true');
-      } catch (e) {}
+      } catch {}
     }
 
     const firstQ = questions[0];
@@ -347,6 +314,54 @@ function TestRunnerContent() {
 
     saveQuizResult(quizResult);
   };
+
+  useEffect(() => {
+    handleFinishQuizRef.current = handleFinishQuiz;
+  });
+
+  const handleNext = () => {
+    recordTimeForCurrentQuestion();
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      handleFinishQuiz();
+    }
+  };
+
+  const handleSkip = () => {
+    recordTimeForCurrentQuestion();
+    if (selectedAnswers[currentIndex] === undefined) {
+      setSelectedAnswers((prev) => ({
+        ...prev,
+        [currentIndex]: -1,
+      }));
+    }
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex((prev) => prev + 1);
+    } else {
+      handleFinishQuiz();
+    }
+  };
+
+  // Live timer countdown
+  useEffect(() => {
+    if (isLoading || isFinished || questions.length === 0) return;
+
+    timerIntervalRef.current = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current!);
+          handleFinishQuizRef.current();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, [isLoading, isFinished, questions.length]);
 
   const handleRetake = () => {
     setIsFinished(false);
@@ -378,17 +393,46 @@ function TestRunnerContent() {
     );
   }
 
-  // Error State
-  if (isFallbackBackend) {
+  // Discontinued Full Portion / Pooled practice state (Requirement 3)
+  if (isDiscontinuedFullPortion) {
+    const isTa = effectiveMedium === 'tamil';
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-[#FAF5FF] dark:bg-[#0F0618] min-h-[70vh] animate-fade-in">
+        <div className="max-w-sm w-full bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 border border-[#EDE9FE] dark:border-[#3B2063] shadow-md flex flex-col items-center text-center">
+          <span className="text-4xl mb-3">📋</span>
+          <h2 className="text-base sm:text-lg font-black text-[#2E1065] dark:text-[#F5F0FF] leading-snug mb-2">
+            {isTa ? 'முழுப் பகுதி பயிற்சி இனி கிடைக்காது' : 'Full Portion Practice Discontinued'}
+          </h2>
+          <p className="text-xs font-semibold text-[#6D28D9]/70 dark:text-[#B9A6D9] mb-6">
+            {isTa
+              ? 'பல அலகுகள் இணைந்த பயிற்சி நிறுத்தப்பட்டுள்ளது. தேர்வுப் பட்டியலிலிருந்து ஒரு குறிப்பிட்ட அலகைத் தேர்ந்தெடுக்கவும்.'
+              : 'Pooled multi-chapter practice has been discontinued. Please choose an individual chapter from the test list.'}
+          </p>
+          <Link
+            href="/tests"
+            className="w-full min-h-[48px] rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black shadow-lg shadow-[#7C3AED]/25 flex items-center justify-center gap-2 transition-all"
+          >
+            <span>{isTa ? '← தேர்வுகள் பக்கத்திற்குத் திரும்பு' : '← Back to Tests'}</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback Backend Empty State (Only render blocking error if NO questions could be matched/loaded)
+  if (isFallbackBackend && questions.length === 0) {
+    const isTa = effectiveMedium === 'tamil';
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-[#FAF5FF] dark:bg-[#0F0618] min-h-[70vh] animate-fade-in">
         <div className="max-w-sm w-full bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 border-2 border-amber-500/40 shadow-xl flex flex-col items-center text-center">
           <span className="text-4xl mb-3">⚠️</span>
           <h2 className="text-base sm:text-lg font-black text-amber-900 dark:text-amber-300 leading-snug mb-2">
-            தரவு இணைப்பு தற்காலிகமாக இல்லை
+            {isTa ? 'தரவு இணைப்பு தற்காலிகமாக இல்லை' : 'Connection Temporarily Unavailable'}
           </h2>
           <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-6">
-            நேரடி வினாத்தாள் தரவுத்தள இணைப்பு தற்காலிகமாக கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.
+            {isTa
+              ? 'நேரடி வினாத்தாள் தரவுத்தள இணைப்பு தற்காலிகமாக கிடைக்கவில்லை. சிறிது நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.'
+              : 'Live question database connection is temporarily unavailable. Please try again in a few moments.'}
           </p>
           <div className="flex flex-col gap-2 w-full">
             <button
@@ -399,13 +443,13 @@ function TestRunnerContent() {
               }}
               className="w-full min-h-[44px] rounded-2xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
-              <span>மறுமுயற்சி 🔄</span>
+              <span>{isTa ? 'மறுமுயற்சி 🔄' : 'Retry 🔄'}</span>
             </button>
             <Link
               href="/tests"
               className="w-full min-h-[44px] rounded-2xl bg-white dark:bg-[#2A1247] border border-[#DDD6FE] dark:border-[#3B2063] text-[#7C3AED] dark:text-[#DDD6FE] text-xs font-black flex items-center justify-center gap-2 transition-all"
             >
-              <span>← தேர்வுகள் பக்கத்திற்குத் திரும்பு</span>
+              <span>{isTa ? '← தேர்வுகள் பக்கத்திற்குத் திரும்பு' : '← Back to Tests'}</span>
             </Link>
           </div>
         </div>
@@ -458,7 +502,6 @@ function TestRunnerContent() {
 
   const currentQ = questions[currentIndex];
   const userSelection = selectedAnswers[currentIndex];
-  const hasAnswered = userSelection !== undefined;
   const isLastQuestion = currentIndex === questions.length - 1;
   const progressPercent = ((currentIndex + 1) / questions.length) * 100;
   const isTimeCritical = secondsRemaining <= 60;
@@ -710,6 +753,26 @@ function TestRunnerContent() {
         </div>
       </div>
 
+      {/* Offline / Saved Question Bank Status Indicator */}
+      {isFallbackBackend && (
+        <div
+          role="status"
+          data-testid="test-runner-offline-banner"
+          className="mb-3 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px] font-bold flex items-center gap-2"
+        >
+          <span>⚠️</span>
+          <span>
+            {isBrowserOffline
+              ? (isTa
+                  ? 'ஆஃப்லைன் பயிற்சி நிலை · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
+                  : 'Offline practice mode · score saved locally to this device')
+              : (isTa
+                  ? 'சேமிக்கப்பட்ட வினாத்தாள் பயன்படுத்தப்படுகிறது · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
+                  : 'Using saved question bank · score saved locally to this device')}
+          </span>
+        </div>
+      )}
+
       {/* Progress Bar & Counter */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-[11px] font-black text-[#6D28D9]/70 dark:text-[#B9A6D9] mb-1 px-0.5">
@@ -770,6 +833,7 @@ function TestRunnerContent() {
                     <button
                       key={optIdx}
                       type="button"
+                      data-testid={`quiz-option-${optIdx}`}
                       onClick={() => handleSelectAnswer(optIdx)}
                       className={`w-full min-h-[50px] p-3.5 rounded-2xl border text-left flex items-center justify-between gap-3 transition-all cursor-pointer ${buttonStyle}`}
                     >
@@ -809,6 +873,7 @@ function TestRunnerContent() {
             </button>
             <button
               type="button"
+              data-testid="quiz-next-cta"
               onClick={handleNext}
               className="flex-1 min-h-[50px] rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] active:scale-[0.98] text-white font-black text-sm shadow-lg shadow-[#7C3AED]/25 transition-all cursor-pointer flex items-center justify-center gap-2"
             >

@@ -176,3 +176,41 @@ export function isSubjectAllowedForClassStream(
   const allowed = getCanonicalSubjects(classLevel, stream);
   return allowed.some((s) => s.toLowerCase() === norm.toLowerCase());
 }
+
+/**
+ * Exact set of legacy pooled / multi-chapter values.
+ * Used to reject stale bookmarks/links while allowing valid chapters
+ * (including those with "practice" in the name like "Grammar Practice").
+ */
+export function isLegacyPooledChapter(rawChapter?: string | null): boolean {
+  if (!rawChapter) return false;
+  const normalized = String(rawChapter)
+    .replace(/[✨⭐]/g, '')
+    .replace(/[\u2013\u2014]/g, '-') // em-dash, en-dash to hyphen
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  const legacyPooledExact = new Set([
+    'all',
+    'all chapters',
+    'practice - all',
+    'practice - all chapters',
+    'practice - all history',
+    'practice - all geography',
+    'practice - all civics',
+    'practice - all economics',
+    'pooled all chapters practice set',
+    'pooled discipline practice set',
+    'அனைத்து அலகுகளும் பயிற்சி',
+    'அனைத்து அலகுகளும் இணைந்த மெகா தேர்வு',
+    'அனைத்து அலகுகளும் இணைந்த பயிற்சி',
+    'வரலாறு - அனைத்து அலகுகள் பயிற்சி',
+    'புவியியல் - அனைத்து அலகுகள் பயிற்சி',
+    'குடிமையியல் - அனைத்து அலகுகள் பயிற்சி',
+    'பொருளியல் - அனைத்து அலகுகள் பயிற்சி',
+  ]);
+
+  return legacyPooledExact.has(normalized);
+}
+

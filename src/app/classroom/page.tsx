@@ -13,20 +13,12 @@ import {
   ArrowRight,
   TrendingUp,
   MessageCircle,
-  FileText,
   Clock,
-  Bell,
-  FlaskConical,
-  Award,
   ChevronRight,
-  Lock,
   ExternalLink,
   X,
   Copy,
   Check,
-  BarChart3,
-  Info,
-  Users,
 } from 'lucide-react';
 
 interface DiaryEntry {
@@ -80,7 +72,7 @@ export default function ClassroomPage() {
       try {
         const cached = localStorage.getItem('centum_last_classroom');
         if (cached) return JSON.parse(cached);
-      } catch (e) {
+      } catch {
         // ignore
       }
     }
@@ -99,28 +91,38 @@ export default function ClassroomPage() {
   const [demoStatsView, setDemoStatsView] = useState<'overview' | 'breakdown'>('overview');
 
   // TASK VI: Fetch student classroom data in parallel and swap seamlessly without blocking
-  const fetchClassroom = async () => {
-    try {
-      const phoneParam = student?.phone ? encodeURIComponent(String(student.phone)) : '';
-      const res = await fetch(`/api/classroom?phone=${phoneParam}`);
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-        if (typeof window !== 'undefined') {
-          if (json.joined && json.tuition) {
-            localStorage.setItem('centum_last_classroom', JSON.stringify(json));
-          } else {
-            localStorage.removeItem('centum_last_classroom');
+  useEffect(() => {
+    let active = true;
+    const fetchClassroom = async () => {
+      try {
+        setLoading(true);
+        const phoneParam = student?.phone ? encodeURIComponent(String(student.phone)) : '';
+        const res = await fetch(`/api/classroom?phone=${phoneParam}`);
+        if (res.ok && active) {
+          const json = await res.json();
+          setData(json);
+          if (typeof window !== 'undefined') {
+            if (json.joined && json.tuition) {
+              localStorage.setItem('centum_last_classroom', JSON.stringify(json));
+            } else {
+              localStorage.removeItem('centum_last_classroom');
+            }
           }
         }
+      } catch (err) {
+        console.error('Failed to load classroom data', err);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      console.error('Failed to load classroom data', err);
-    }
-  };
+    };
 
-  useEffect(() => {
     fetchClassroom();
+
+    return () => {
+      active = false;
+    };
   }, [student?.phone]);
 
   const handleJoinSubmit = (e: React.FormEvent) => {
@@ -168,18 +170,18 @@ export default function ClassroomPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-28 pt-4 px-4 sm:px-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 shrink-0">
             <School className="w-6 h-6" />
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-              {isTamil ? 'டியூஷன் வகுப்பறை' : 'Tuition Classroom'}
-              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex flex-wrap items-center gap-2">
+              <span>{isTamil ? 'டியூஷன் வகுப்பறை' : 'Tuition Classroom'}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
                 Centum v2
               </span>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 break-words">
               {isTamil
                 ? 'உங்கள் டியூஷன் நாள்குறிப்பு, வருகை & தேர்வு வழிகாட்டிகள்'
                 : 'Your daily tuition diary, attendance & exclusive test guidance'}
@@ -199,25 +201,25 @@ export default function ClassroomPage() {
         /* ==================== JOINED STATE ==================== */
         <div className="space-y-6 animate-fadeIn">
           {/* Tuition Card */}
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white p-5 sm:p-6 shadow-xl border border-emerald-500/30">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white p-4 sm:p-6 shadow-xl border border-emerald-500/30">
             <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 rounded-full bg-emerald-500/10 blur-2xl pointer-events-none" />
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 mb-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                  {isTamil ? 'இணைக்கப்பட்ட மாணவர்' : 'Enrolled Student'}
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">{isTamil ? 'இணைக்கப்பட்ட மாணவர்' : 'Enrolled Student'}</span>
                 </div>
-                <h2 className="text-2xl font-bold tracking-tight text-white mb-1">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white mb-1 break-words">
                   {data.tuition.name}
                 </h2>
-                <p className="text-sm text-emerald-200/90 flex items-center gap-1.5">
+                <p className="text-sm text-emerald-200/90 flex items-center gap-1.5 break-words">
                   <span>👨‍🏫</span>
                   <span>{isTamil ? 'ஆசிரியர்:' : 'Teacher:'}</span>
                   <span className="font-semibold text-white">{data.tuition.teacher}</span>
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
                 <div className="bg-slate-800/80 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-700/60 text-center">
                   <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                     {isTamil ? 'வகுப்பு குறியீடு' : 'Tuition Code'}
@@ -360,40 +362,40 @@ export default function ClassroomPage() {
         /* ==================== UNJOINED STATE: 3 CLEAN BOXES (Brief F) ==================== */
         <div className="space-y-5 animate-fade-in max-w-lg mx-auto w-full">
           {/* Box 1: Students (Seat Code Input) */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-[#7C3AED]/30 dark:border-[#7C3AED]/40 shadow-lg shadow-[#7C3AED]/5">
-            <div className="flex items-center gap-3 mb-3">
+          <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-[#7C3AED]/30 dark:border-[#7C3AED]/40 shadow-lg shadow-[#7C3AED]/5">
+            <div className="flex items-center gap-3 mb-3 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center text-lg font-black shrink-0">
                 🎓
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA] block">
                   {isTamil ? 'மாணவர்கள்' : 'For Students'}
                 </span>
-                <h3 className="text-base sm:text-lg font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight">
+                <h3 className="text-base sm:text-lg font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight break-words">
                   {isTamil ? 'டியூஷன் இருக்கை குறியீடு உள்ளதா?' : 'Have a Tuition Seat Code?'}
                 </h3>
               </div>
             </div>
 
-            <p className="text-xs text-slate-600 dark:text-purple-200/80 leading-relaxed mb-4">
+            <p className="text-xs text-slate-600 dark:text-purple-200/80 leading-relaxed mb-4 break-words">
               {isTamil
                 ? 'உங்கள் ஆசிரியர் வழங்கிய இருக்கை குறியீட்டை உள்ளிட்டு தினசரி வீட்டுப்பாடம், வருகை விவரம் & சிறப்பு தேர்வுகளை அணுகுங்கள்.'
                 : 'Enter your exclusive seat code from your tuition centre to unlock daily diary feeds, attendance tracking & board exam masterclasses.'}
             </p>
 
             <form onSubmit={handleJoinSubmit} className="space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   placeholder={isTamil ? 'எ.கா: APEX10-S01' : 'e.g. APEX10-S01'}
                   value={seatInput}
                   onChange={(e) => setSeatInput(e.target.value.toUpperCase())}
-                  className="flex-1 px-4 py-3 rounded-2xl border border-[#DDD6FE] dark:border-[#3B2063] bg-[#FAF5FF] dark:bg-[#2A1247] text-[#2E1065] dark:text-[#FAF5FF] font-mono uppercase text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#7C3AED]"
+                  className="w-full sm:flex-1 px-4 py-3 rounded-2xl border border-[#DDD6FE] dark:border-[#3B2063] bg-[#FAF5FF] dark:bg-[#2A1247] text-[#2E1065] dark:text-[#FAF5FF] font-mono uppercase text-sm tracking-wider focus:outline-none focus:ring-2 focus:ring-[#7C3AED]"
                 />
                 <button
                   type="submit"
                   disabled={!seatInput.trim()}
-                  className="px-6 py-3 rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-40 text-white text-sm font-black flex items-center gap-1.5 transition-all shadow-md shadow-[#7C3AED]/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-40 text-white text-sm font-black flex items-center justify-center gap-1.5 transition-all shadow-md shadow-[#7C3AED]/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <span>{isTamil ? 'இணை' : 'Claim'}</span>
                   <ArrowRight className="w-4 h-4" />
@@ -403,33 +405,33 @@ export default function ClassroomPage() {
           </div>
 
           {/* Box 2: Tuition Owners (Benefits + WhatsApp CTA) */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#2E1065] via-[#3B0F6E] to-[#1B0B2E] border-2 border-[#7C3AED]/40 text-white shadow-xl shadow-[#7C3AED]/15">
-            <div className="flex items-center gap-3 mb-3">
+          <div className="p-4 sm:p-6 rounded-3xl bg-gradient-to-br from-[#2E1065] via-[#3B0F6E] to-[#1B0B2E] border-2 border-[#7C3AED]/40 text-white shadow-xl shadow-[#7C3AED]/15">
+            <div className="flex items-center gap-3 mb-3 min-w-0">
               <div className="w-10 h-10 rounded-2xl bg-[#7C3AED]/30 text-[#A3E635] flex items-center justify-center text-lg font-black shrink-0 border border-[#7C3AED]/40">
                 🏫
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-[#A3E635] block">
                   {isTamil ? 'டியூஷன் ஆசிரியர்கள் & உரிமையாளர்கள்' : 'Tuition Owners & Teachers'}
                 </span>
-                <h3 className="text-base sm:text-lg font-black text-white leading-tight">
+                <h3 className="text-base sm:text-lg font-black text-white leading-tight break-words">
                   {isTamil ? 'உங்கள் டியூஷனுக்கு டிஜிட்டல் வகுப்பறை' : 'Get Your Own Digital Classroom'}
                 </h3>
               </div>
             </div>
 
             <ul className="text-xs space-y-2 mb-5 text-purple-100">
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0" />
-                <span>{isTamil ? 'பிரத்யேக டிஜிட்டல் நாள்குறிப்பு & வீட்டுப்பாட அறிவிப்புகள்' : 'Branded Digital Diary & Daily Homework Feed'}</span>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0 mt-0.5" />
+                <span className="min-w-0 break-words">{isTamil ? 'பிரத்யேக டிஜிட்டல் நாள்குறிப்பு & வீட்டுப்பாட அறிவிப்புகள்' : 'Branded Digital Diary & Daily Homework Feed'}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0" />
-                <span>{isTamil ? 'நேரடி வருகைப்பதிவு & மாணவர் முன்னேற்றப் பார்வை' : 'Real-time 30-day Attendance & Student Tracking'}</span>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0 mt-0.5" />
+                <span className="min-w-0 break-words">{isTamil ? 'நேரடி வருகைப்பதிவு & மாணவர் முன்னேற்றப் பார்வை' : 'Real-time 30-day Attendance & Student Tracking'}</span>
               </li>
-              <li className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0" />
-                <span>{isTamil ? '100/100 பொதுத்தேர்வு சிறப்பு வினாக்கள் & பொருட்கள்' : '100/100 High-Yield Board Exam Study Materials'}</span>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-[#A3E635] shrink-0 mt-0.5" />
+                <span className="min-w-0 break-words">{isTamil ? '100/100 பொதுத்தேர்வு சிறப்பு வினாக்கள் & பொருட்கள்' : '100/100 High-Yield Board Exam Study Materials'}</span>
               </li>
             </ul>
 
@@ -437,28 +439,28 @@ export default function ClassroomPage() {
               href="https://wa.me/918610653352?text=Hi%20Centum,%20I%20run%20a%20tuition%20centre%20and%20want%20to%20get%20my%20own%20digital%20classroom"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full px-5 py-3 rounded-2xl bg-[#A3E635] hover:bg-[#bef264] text-slate-950 text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full px-4 sm:px-5 py-3 rounded-2xl bg-[#A3E635] hover:bg-[#bef264] text-slate-950 text-xs sm:text-sm font-black flex items-center justify-center gap-2 shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99] text-center"
             >
-              <MessageCircle className="w-4 h-4 fill-slate-950" />
-              <span>{isTamil ? 'வாட்ஸ்அப்பில் நிறுவனருடன் பேசுக' : 'Chat with Founder on WhatsApp'}</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <MessageCircle className="w-4 h-4 fill-slate-950 shrink-0" />
+              <span className="break-words">{isTamil ? 'வாட்ஸ்அப்பில் நிறுவனருடன் பேசுக' : 'Chat with Founder on WhatsApp'}</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
             </a>
           </div>
 
           {/* Box 3: Demo Classroom ("Explore Demo Classroom") */}
-          <div className="p-6 rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-[#DDD6FE] dark:border-[#3B2063] shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
+          <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-[#DDD6FE] dark:border-[#3B2063] shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-2xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] flex items-center justify-center text-lg font-black shrink-0">
                 ✨
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
                   {isTamil ? 'முன்னோட்டம்' : 'Interactive Preview'}
                 </span>
-                <h3 className="text-sm sm:text-base font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight">
+                <h3 className="text-sm sm:text-base font-black text-[#2E1065] dark:text-[#FAF5FF] leading-tight break-words">
                   {isTamil ? 'மாதிரி வகுப்பறையைக் காண்க' : 'Explore Demo Classroom'}
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-purple-300/70 mt-0.5">
+                <p className="text-[11px] text-slate-500 dark:text-purple-300/70 mt-0.5 break-words">
                   {isTamil ? 'நேரடி நாள்குறிப்பு, வருகைப்பதிவு & புள்ளிவிவரங்களை சோதிக்கவும்.' : 'Preview how diary notes, attendance & student reports work.'}
                 </p>
               </div>
@@ -701,7 +703,7 @@ export default function ClassroomPage() {
                     <button
                       key={filter.id}
                       type="button"
-                      onClick={() => setDemoDiaryFilter(filter.id as any)}
+                      onClick={() => setDemoDiaryFilter(filter.id as 'all' | 'homework' | 'notice' | 'exam')}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                         demoDiaryFilter === filter.id
                           ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-xs'
