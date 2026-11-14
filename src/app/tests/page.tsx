@@ -238,6 +238,7 @@ function TestsContent() {
     ? student?.standard || '10th'
     : guestStandard || '10th';
 
+  const isTamilMedium = medium === 'tamil';
   const isUserPro =
     String(plan || '').toLowerCase() === 'pro' ||
     String(plan || '').toLowerCase() === 'live' ||
@@ -249,6 +250,20 @@ function TestsContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [isFallbackBackend, setIsFallbackBackend] = useState(false);
+  const [isBrowserOffline, setIsBrowserOffline] = useState(false);
+
+  useEffect(() => {
+    const updateStatus = () => {
+      setIsBrowserOffline(typeof navigator !== 'undefined' && navigator.onLine === false);
+    };
+    updateStatus();
+    window.addEventListener('online', updateStatus);
+    window.addEventListener('offline', updateStatus);
+    return () => {
+      window.removeEventListener('online', updateStatus);
+      window.removeEventListener('offline', updateStatus);
+    };
+  }, []);
 
   // 1. Quiz Type selection ('all' = Merged pool | 'oneword' | 'concept')
   const [selectedType, setSelectedType] = useState<TestType>('all');
@@ -421,19 +436,6 @@ function TestsContent() {
           });
 
           if (discQuestions.length > 0) {
-            discMegaSets.push({
-              rawName: `Practice — all ${disc.en}`,
-              discipline: disc.id,
-              number: 0,
-              displayName: isTamilMedium ? `✨ ${disc.ta} — அனைத்து அலகுகள் பயிற்சி` : `✨ Practice — all ${disc.en}`,
-              cleanTitle: isTamilMedium ? 'அனைத்து அலகுகளும் இணைந்த பயிற்சி' : 'Pooled discipline practice set',
-              sortKey: disc.id === 'History' ? 100 : disc.id === 'Geography' ? 200 : disc.id === 'Civics' ? 300 : 400,
-              poolSize: discQuestions.length,
-              onewordCount: discQuestions.filter((q) => (q.type || 'oneword').toLowerCase() === 'oneword').length,
-              conceptCount: discQuestions.filter((q) => (q.type || 'oneword').toLowerCase() === 'concept').length,
-              isMegaSet: true,
-            });
-
             const chapMap = new Map<string, { poolSize: number; oneword: number; concept: number }>();
             discQuestions.forEach((q) => {
               const ch = (q.chapter || `${disc.en} 1`).trim();
@@ -445,7 +447,7 @@ function TestsContent() {
             });
 
             chapMap.forEach((stats, rawName) => {
-              if (stats.poolSize >= 10) {
+              if (stats.poolSize > 0) {
                 visibleChapters.push(parseChapterDetails(rawName, stats.poolSize, stats.oneword, stats.concept, isTamilMedium));
               }
             });
@@ -471,8 +473,7 @@ function TestsContent() {
 
     const visibleChapters: ChapterItem[] = [];
     chapMap.forEach((stats, rawName) => {
-      // Min-10 rule: only show chapters with poolSize >= 10
-      if (stats.poolSize >= 10) {
+      if (stats.poolSize > 0) {
         visibleChapters.push(parseChapterDetails(rawName, stats.poolSize, stats.oneword, stats.concept, isTamilMedium));
       }
     });
@@ -498,22 +499,8 @@ function TestsContent() {
 
     visibleChapters.sort((a, b) => a.sortKey - b.sortKey);
 
-    const mainMegaSet: ChapterItem[] = [];
-    if (filtered.length > 0) {
-      mainMegaSet.push({
-        rawName: 'Practice — All chapters',
-        number: 0,
-        displayName: isTamilMedium ? '✨ அனைத்து அலகுகளும் பயிற்சி' : '✨ Practice — All chapters',
-        cleanTitle: isTamilMedium ? 'அனைத்து அலகுகளும் இணைந்த மெகா தேர்வு' : 'Pooled all chapters practice set',
-        sortKey: 0,
-        poolSize: filtered.length,
-        onewordCount: filtered.filter((q) => (q.type || 'oneword').toLowerCase() === 'oneword').length,
-        conceptCount: filtered.filter((q) => (q.type || 'oneword').toLowerCase() === 'concept').length,
-        isMegaSet: true,
-      });
-    }
-
-    return { megaSets: mainMegaSet, chapterCards: visibleChapters };
+    // Pooled multi-chapter practice is discontinued; return individual chapter cards
+    return { megaSets: [], chapterCards: visibleChapters };
   }, [questions, lockedChapters, selectedSubject, selectedType, isSocial, medium, isUserPro]);
 
   // Tap on a chapter card or mega-set
@@ -534,12 +521,6 @@ function TestsContent() {
       return;
     }
 
-    // Guardrail: Never render fallback content as if it were live; block starting quiz
-    if (isFallbackBackend) {
-      showToast('தரவு இணைப்பு தற்காலிகமாக இல்லை');
-      return;
-    }
-
     if (!isRegistered) {
       openGate(() => {
         showConfirmation(ch);
@@ -557,10 +538,10 @@ function TestsContent() {
 
     const typeLabel =
       selectedType === 'all'
-        ? 'Merged (Book-back + Concept)'
+        ? (isTamilMedium ? 'இணைந்த தேர்வு (புத்தக வினா + கருத்தியல்)' : 'Merged (Book-back + Concept)')
         : selectedType === 'concept'
-        ? texts.tests.concept
-        : texts.tests.oneword;
+        ? (isTamilMedium ? 'கருத்தியல்' : 'concept')
+        : (isTamilMedium ? 'புத்தக வினா' : 'book-back');
 
     setConfirmModal({
       chapterName: ch.rawName,
@@ -580,6 +561,7 @@ function TestsContent() {
       type: confirmModal.type,
       standard: effectiveStandard,
       count: String(confirmModal.count),
+      medium: medium || 'english',
     });
     setConfirmModal(null);
     router.push(`/test-runner?${params.toString()}`);
@@ -587,23 +569,31 @@ function TestsContent() {
 
   return (
     <div className="flex-1 flex flex-col px-4 pt-4 pb-12 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
-      {/* Persistent Slim Fallback Banner (Bug 5) */}
-      {isFallbackBackend && (
+      {/* Non-blocking Saved Question Bank Notice (Only shown if questions exist) */}
+      {isFallbackBackend && questions.length > 0 && (
         <div
-          role="alert"
+          role="status"
           data-testid="fallback-offline-banner"
-          className="mb-3 px-3.5 py-2.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-2 shadow-xs"
+          className="mb-3 px-3.5 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-2 shadow-xs"
         >
           <div className="flex items-center gap-2">
             <span className="text-base">⚠️</span>
-            <span>தரவு இணைப்பு தற்காலிகமாக இல்லை</span>
+            <span>
+              {isBrowserOffline
+                ? (isTamilMedium
+                    ? 'ஆஃப்லைன் பயிற்சி நிலை · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
+                    : 'Offline practice mode · score saved locally to this device')
+                : (isTamilMedium
+                    ? 'சேமிக்கப்பட்ட வினாத்தாள் பயன்படுத்தப்படுகிறது · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
+                    : 'Using saved question bank · score saved locally to this device')}
+            </span>
           </div>
           <button
             type="button"
             onClick={() => fetchQuestions()}
             className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors shrink-0"
           >
-            மறுமுயற்சி 🔄
+            {isTamilMedium ? 'மறுமுயற்சி 🔄' : 'Retry 🔄'}
           </button>
         </div>
       )}
@@ -879,19 +869,23 @@ function TestsContent() {
                     className="text-sm font-black text-[#2E1065] dark:text-[#F5F0FF]"
                   >
                     {selectedType === 'concept'
-                      ? (medium === 'tamil' ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன 🌱` : `${selectedSubject} questions in preparation 🌱`)
-                      : (!hasSubjectContent(selectedSubject)
-                          ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன 🌱`
-                          : texts.tests.noChaptersYet)}
+                      ? (isTamilMedium ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன 🌱` : `${selectedSubject} concept questions in preparation 🌱`)
+                      : selectedType === 'oneword'
+                      ? (isTamilMedium ? `${selectedSubject} புத்தக வினாக்கள் தயாரிப்பில் உள்ளன 🌱` : `${selectedSubject} book-back questions in preparation 🌱`)
+                      : (isTamilMedium ? `${selectedSubject} வினாக்கள் தயாரிப்பில் உள்ளன 🌱` : `No chapters available for ${selectedSubject} yet 🌱`)}
                   </h3>
                   <p className="text-xs font-bold text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
                     {selectedType === 'concept'
-                      ? (medium === 'tamil'
+                      ? (isTamilMedium
                           ? `${selectedSubject} பாடத்திற்கான கருத்து வினாக்கள் (Concept Questions) தயாரிப்பில் உள்ளன. எங்கள் ஆசிரியர் குழு வினாக்களைத் தொகுத்து வருகிறது 🌱`
                           : `${selectedSubject} concept questions are currently in preparation. Our academic team is compiling the question sets 🌱`)
-                      : (!hasSubjectContent(selectedSubject)
+                      : selectedType === 'oneword'
+                      ? (isTamilMedium
+                          ? `${selectedSubject} பாடத்திற்கான புத்தக ஒரு மதிப்பெண் வினாக்கள் விரைவில் சேர்க்கப்படும் 🌱`
+                          : `${selectedSubject} book-back one-word questions will be added soon 🌱`)
+                      : (isTamilMedium
                           ? `${selectedSubject} பாடத்திற்கான வினாக்கள் தயாரிப்பில் உள்ளன. எங்கள் ஆசிரியர் குழு வினாக்களைத் தொகுத்து வருகிறது 🌱`
-                          : 'இப்பாடத்திற்கான வினாக்கள் விரைவில் சேர்க்கப்படும்')}
+                          : `Practice sets for ${selectedSubject} will be available soon 🌱`)}
                   </p>
                 </div>
               ) : (
@@ -987,6 +981,7 @@ function TestsContent() {
         >
           <div
             className="w-full max-w-md bg-white dark:bg-[#1B0B2E] rounded-3xl p-6 shadow-2xl border border-[#EDE9FE] dark:border-[#3B2063] max-h-[90dvh] overflow-y-auto flex flex-col gap-4 text-[#2E1065] dark:text-[#F5F0FF] transition-colors"
+            data-testid="confirm-quiz-modal"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header / Close */}
@@ -1030,6 +1025,7 @@ function TestsContent() {
             {/* "start →" Action Button */}
             <button
               type="button"
+              data-testid="confirm-start-quiz-btn"
               onClick={handleConfirmStart}
               className="w-full min-h-[52px] flex items-center justify-center gap-2 font-black text-sm text-[#18181B] bg-[#A3E635] hover:bg-[#84CC16] active:scale-[0.98] rounded-2xl shadow-lg shadow-[#A3E635]/25 transition-all cursor-pointer"
             >

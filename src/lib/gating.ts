@@ -36,13 +36,17 @@ export function extractChapterNumber(chap: unknown): number | null {
 
   const lower = s.toLowerCase();
 
-  // Known Class 10 Chapter 1 titles
+  // Known Class 10/11/12 Chapter 1 titles
   if (
     lower.includes('relation') ||
     lower.includes('சார்புகள') ||
     lower.includes('உறவுகள') ||
     lower.includes('motion') ||
     lower.includes('இயக்க') ||
+    lower.includes('electrostatics') ||
+    lower.includes('நிலை மின்னியல்') ||
+    lower.includes('sets') ||
+    lower.includes('கணங்கள்') ||
     lower.includes('outbreak of world war') ||
     lower.includes('world war i') ||
     lower.includes('முதல் உலகப்போர்') ||
