@@ -17,8 +17,9 @@ import {
   ChevronRight,
   ExternalLink,
   X,
-  Copy,
-  Check,
+  Sun,
+  Moon,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface DiaryEntry {
@@ -81,14 +82,42 @@ export default function ClassroomPage() {
   const [loading, setLoading] = useState(false);
   const [seatInput, setSeatInput] = useState('');
   const [isDemoOpen, setIsDemoOpen] = useState(false);
-  // TASK D: Guided Demo interactive states
-  const [demoTab, setDemoTab] = useState<'info' | 'diary' | 'attendance' | 'stats'>('info');
-  const [demoCopied, setDemoCopied] = useState(false);
-  const [demoPerksExpanded, setDemoPerksExpanded] = useState(false);
+  // Redesigned Student Demo states
+  const [demoTheme, setDemoTheme] = useState<'light' | 'dark'>('light');
+  const [demoView, setDemoView] = useState<'dashboard' | 'diary' | 'attendance' | 'performance'>('dashboard');
   const [demoDiaryFilter, setDemoDiaryFilter] = useState<'all' | 'homework' | 'notice' | 'exam'>('all');
   const [demoActiveDiaryId, setDemoActiveDiaryId] = useState<string | null>(null);
   const [demoSelectedDay, setDemoSelectedDay] = useState<number | null>(null);
-  const [demoStatsView, setDemoStatsView] = useState<'overview' | 'breakdown'>('overview');
+
+  // Initialize theme preference from localStorage and check ?demo=1 query
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedTheme = localStorage.getItem('centum_demo_theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+          setDemoTheme(savedTheme);
+        }
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('demo') === '1' || params.get('demo') === 'true') {
+          setIsDemoOpen(true);
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }, []);
+
+  const toggleDemoTheme = () => {
+    const nextTheme = demoTheme === 'light' ? 'dark' : 'light';
+    setDemoTheme(nextTheme);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('centum_demo_theme', nextTheme);
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   // TASK VI: Fetch student classroom data in parallel and swap seamlessly without blocking
   useEffect(() => {
@@ -478,235 +507,370 @@ export default function ClassroomPage() {
         </div>
       )}
 
-      {/* TASK D: Full-bleed interactive guided demo classroom */}
+      {/* Redesigned Student Demo Classroom Modal */}
       {isDemoOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Interactive Demo Classroom Preview"
-          className="fixed inset-0 z-[9999] flex flex-col bg-slate-950 text-slate-100 overflow-hidden animate-fade-in"
+          className={`fixed inset-0 z-[9999] flex flex-col overflow-hidden animate-fade-in ${
+            demoTheme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-slate-950 text-slate-100'
+          }`}
         >
           {/* Top Bar Header */}
-          <div className="shrink-0 px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center text-white text-sm font-black shadow-xs">
-                👑
-              </div>
+          <div
+            className={`shrink-0 px-4 py-3 backdrop-blur-md border-b flex items-center justify-between gap-3 ${
+              demoTheme === 'light'
+                ? 'bg-white/95 border-slate-200 text-slate-900 shadow-xs'
+                : 'bg-slate-900/90 border-slate-800 text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <img
+                src="https://i.imgur.com/PxSCGbL.png"
+                alt="Ravi's Tuition Centre"
+                className={`w-9 h-9 object-contain rounded-xl p-0.5 border shadow-xs ${
+                  demoTheme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-800 border-slate-700'
+                }`}
+              />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Live Demo · DEMO10
+                  <span className="text-[10px] font-black tracking-wider uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    Student Demo
                   </span>
-                  <span className="text-xs font-black text-white">
-                    {isTamil ? 'மாதிரி வகுப்பறை' : 'Classroom Demo'}
+                  <span className="text-xs sm:text-sm font-black">
+                    {data?.preview?.sampleTuition?.name || "Ravi's Tuition Centre"}
                   </span>
                 </div>
-                <p className="text-[11px] font-medium text-slate-400 mt-0.5 line-clamp-1">
-                  {isTamil ? 'மாணவர்கள் அனுபவிக்கும் நேரடி வடிவம்' : 'Experience daily diary, attendance & stats'}
+                <p
+                  className={`text-[11px] font-medium line-clamp-1 ${
+                    demoTheme === 'light' ? 'text-slate-500' : 'text-slate-400'
+                  }`}
+                >
+                  {isTamil ? 'மாணவர் மாதிரி வகுப்பறை' : 'Student-facing demo classroom'}
                 </p>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsDemoOpen(false)}
-              className="w-8 h-8 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center shrink-0 cursor-pointer transition-colors"
-              aria-label="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Section Navigation Tabs: Class Info · Diary · Attendance · Stats */}
-          <div className="shrink-0 px-3 py-2 bg-slate-900 border-b border-slate-800/80">
-            <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+            <div className="flex items-center gap-2">
+              {/* Theme Toggle Button */}
               <button
                 type="button"
-                data-testid="demo-tab-info"
-                onClick={() => setDemoTab('info')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
-                  demoTab === 'info'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                data-testid="demo-theme-toggle"
+                onClick={toggleDemoTheme}
+                aria-label={demoTheme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+                className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  demoTheme === 'light'
+                    ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                 }`}
               >
-                <span>🏫</span>
-                <span className="truncate">Class Info</span>
+                {demoTheme === 'light' ? (
+                  <>
+                    <Sun className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-[11px]">Light</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="text-[11px]">Dark</span>
+                  </>
+                )}
               </button>
 
+              {/* Close Button */}
               <button
                 type="button"
-                data-testid="demo-tab-diary"
-                onClick={() => setDemoTab('diary')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
-                  demoTab === 'diary'
+                data-testid="close-demo-btn"
+                onClick={() => setIsDemoOpen(false)}
+                className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 cursor-pointer transition-colors border ${
+                  demoTheme === 'light'
+                    ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 border-slate-200'
+                    : 'bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border-slate-700'
+                }`}
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Navigation Pill Bar */}
+          <div
+            className={`shrink-0 px-3 py-2 border-b ${
+              demoTheme === 'light' ? 'bg-white border-slate-200' : 'bg-slate-900 border-slate-800'
+            }`}
+          >
+            <div
+              className={`grid grid-cols-4 gap-1 p-1 rounded-2xl border ${
+                demoTheme === 'light' ? 'bg-slate-100 border-slate-200' : 'bg-slate-950 border-slate-800'
+              }`}
+            >
+              <button
+                type="button"
+                data-testid="demo-tab-dashboard"
+                onClick={() => setDemoView('dashboard')}
+                className={`py-1.5 px-1 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  demoView === 'dashboard'
                     ? 'bg-emerald-600 text-white shadow-xs'
+                    : demoTheme === 'light'
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
-                <span>📖</span>
-                <span className="truncate">Diary</span>
+                <span>🏠</span>
+                <span className="truncate">{isTamil ? 'முகப்பு' : 'Overview'}</span>
               </button>
 
               <button
                 type="button"
                 data-testid="demo-tab-attendance"
-                onClick={() => setDemoTab('attendance')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
-                  demoTab === 'attendance'
+                onClick={() => setDemoView('attendance')}
+                className={`py-1.5 px-1 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  demoView === 'attendance'
                     ? 'bg-emerald-600 text-white shadow-xs'
+                    : demoTheme === 'light'
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
                 <span>📅</span>
-                <span className="truncate">Attendance</span>
+                <span className="truncate">{isTamil ? 'வருகை' : 'Attendance'}</span>
               </button>
 
               <button
                 type="button"
-                data-testid="demo-tab-stats"
-                onClick={() => setDemoTab('stats')}
-                className={`py-2 px-1 rounded-xl text-[11px] font-black transition-all flex flex-col sm:flex-row items-center justify-center gap-1 cursor-pointer ${
-                  demoTab === 'stats'
+                data-testid="demo-tab-diary"
+                onClick={() => setDemoView('diary')}
+                className={`py-1.5 px-1 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  demoView === 'diary'
                     ? 'bg-emerald-600 text-white shadow-xs'
+                    : demoTheme === 'light'
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-white'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                }`}
+              >
+                <span>📖</span>
+                <span className="truncate">{isTamil ? 'நாள்குறிப்பு' : 'Diary'}</span>
+              </button>
+
+              <button
+                type="button"
+                data-testid="demo-tab-performance"
+                onClick={() => setDemoView('performance')}
+                className={`py-1.5 px-1 rounded-xl text-[11px] font-black transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  demoView === 'performance'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : demoTheme === 'light'
+                    ? 'text-slate-600 hover:text-slate-900 hover:bg-white'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
                 <span>📊</span>
-                <span className="truncate">Stats</span>
+                <span className="truncate">{isTamil ? 'முன்னேற்றம்' : 'Performance'}</span>
               </button>
             </div>
           </div>
 
-          {/* Scrollable Tab Content Container */}
+          {/* Scrollable Content Container */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-2xl mx-auto w-full">
-            {/* TAB 1: Class Info */}
-            {demoTab === 'info' && (
-              <div className="space-y-3.5 animate-fadeIn">
-                {/* Tuition Hero Card */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 text-white p-5 shadow-xl border border-emerald-500/30">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* ENROLLED CLASSROOM CARD (shows ONLY classroom name and teacher name, NO access code, NO batch details) */}
+            <div
+              data-testid="demo-enrolled-card"
+              className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 text-white p-4 sm:p-5 shadow-lg border border-emerald-400/30"
+            >
+              <div className="flex items-center gap-3.5">
+                <img
+                  src="https://i.imgur.com/PxSCGbL.png"
+                  alt="Ravi's Tuition Centre"
+                  className="w-12 h-12 object-contain rounded-xl bg-white p-1 shadow-xs border border-white/40 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30 mb-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                    <span>{isTamil ? 'இணைக்கப்பட்ட வகுப்பறை' : 'Enrolled Classroom'}</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+                    {data?.preview?.sampleTuition?.name || "Ravi's Tuition Centre"}
+                  </h3>
+                  <p className="text-xs text-emerald-100 flex items-center gap-1 mt-0.5">
+                    <span>👨‍🏫</span>
+                    <span>{isTamil ? 'ஆசிரியர்:' : 'Teacher:'}</span>
+                    <strong className="text-white font-bold">
+                      {data?.preview?.sampleTuition?.teacher || 'Dr. Ravi'}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* VIEW 1: FIRST DASHBOARD (Compact with Three Tiles: Attendance, Diary, Performance) */}
+            {demoView === 'dashboard' && (
+              <div className="space-y-4 animate-fadeIn">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Tile 1: Attendance */}
+                  <div
+                    data-testid="demo-tile-attendance"
+                    onClick={() => setDemoView('attendance')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 hover:border-emerald-500'
+                        : 'bg-slate-900 border-slate-800 hover:border-emerald-500'
+                    }`}
+                  >
                     <div>
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 mb-2">
-                        <Sparkles className="w-3 h-3 text-emerald-400" />
-                        <span>Enrolled Classroom</span>
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                          🌟 93%
+                        </span>
                       </div>
-                      <h3 className="text-xl sm:text-2xl font-black text-white">
-                        {data?.preview?.sampleTuition?.name || 'Apex Centum Academy'}
-                      </h3>
-                      <p className="text-xs text-emerald-200/90 mt-1 flex items-center gap-1.5">
-                        <span>👨‍🏫</span>
-                        <span>Teacher: <strong className="text-white">{data?.preview?.sampleTuition?.teacher || 'Ramesh Kumar Sir'}</strong> (M.Sc., B.Ed.)</span>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {isTamil ? 'வருகை' : 'Attendance'}
+                      </h4>
+                      <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 my-1">
+                        93%
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        28 / 30 {isTamil ? 'நாட்கள் பிரசன்னம்' : 'Days Present'}
                       </p>
                     </div>
-
-                    <div className="bg-slate-800/90 backdrop-blur-md p-3 rounded-2xl border border-slate-700/80 text-center self-start sm:self-auto min-w-[130px]">
-                      <span className="block text-[10px] uppercase font-extrabold text-slate-400 tracking-wider">
-                        Tuition Code
-                      </span>
-                      <span className="text-base font-black tracking-widest text-emerald-400 font-mono block my-0.5">
-                        {data?.preview?.sampleTuition?.code || 'DEMO10'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                            navigator.clipboard.writeText(data?.preview?.sampleTuition?.code || 'DEMO10');
-                          }
-                          setDemoCopied(true);
-                          setTimeout(() => setDemoCopied(false), 2000);
-                        }}
-                        className="w-full mt-1 px-2 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
-                      >
-                        {demoCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                        <span>{demoCopied ? 'Copied! ✓' : 'Copy Code'}</span>
-                      </button>
+                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                      <span>{isTamil ? 'பதிவை காண்க' : 'Open Record'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
-                </div>
 
-                {/* Batch & Schedule Card */}
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Batch Details
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Active Term
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Standard & Subject</span>
-                      <span className="font-bold text-white mt-0.5 block">Class 10th · Maths & Science Centum Mastery</span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80">
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Timings & Days</span>
-                      <span className="font-bold text-white mt-0.5 block">Mon — Fri, 6:00 PM – 7:30 PM (Evening)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Interactive Expander: Classroom Syllabus & Perks */}
-                <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setDemoPerksExpanded(!demoPerksExpanded)}
-                    className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-850 transition-colors cursor-pointer"
+                  {/* Tile 2: Diary (Opens teacher's notes) */}
+                  <div
+                    data-testid="demo-tile-diary"
+                    onClick={() => setDemoView('diary')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 hover:border-blue-500'
+                        : 'bg-slate-900 border-slate-800 hover:border-blue-500'
+                    }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-black text-white">
-                        Classroom Perks & Syllabus Flow
-                      </span>
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                          📝 3 {isTamil ? 'குறிப்புகள்' : 'Notes'}
+                        </span>
+                      </div>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {isTamil ? 'நாள்குறிப்பு' : 'Diary'}
+                      </h4>
+                      <div className="text-2xl font-black text-blue-600 dark:text-blue-400 my-1">
+                        3 Notes
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                        {isTamil ? 'கடைசி: கணிதம் HW' : 'Latest: Maths Ch 1 HW'}
+                      </p>
                     </div>
-                    <span className="text-xs font-bold text-emerald-400">
-                      {demoPerksExpanded ? 'Hide ▲' : 'View Perks ▼'}
-                    </span>
-                  </button>
+                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                      <span>{isTamil ? 'குறிப்புகள் திறக்க' : 'Open Notes'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
 
-                  {demoPerksExpanded && (
-                    <div className="p-4 pt-1 border-t border-slate-800 text-xs space-y-2 text-slate-300 animate-fadeIn">
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>Daily 15-minute formula recap & instant concept checking.</span>
+                  {/* Tile 3: Performance (Individual stats only) */}
+                  <div
+                    data-testid="demo-tile-performance"
+                    onClick={() => setDemoView('performance')}
+                    className={`p-4 rounded-2xl border transition-all cursor-pointer shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] flex flex-col justify-between ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 hover:border-purple-500'
+                        : 'bg-slate-900 border-slate-800 hover:border-purple-500'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-2">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                          🔥 14d Streak
+                        </span>
                       </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>Personalized homework tracking & board exam answer writing drills.</span>
+                      <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                        {isTamil ? 'முன்னேற்றம்' : 'Performance'}
+                      </h4>
+                      <div className="text-2xl font-black text-purple-600 dark:text-purple-400 my-1">
+                        92%
                       </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>Automatic WhatsApp parent notification on student attendance check-in.</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>Monthly Centum mock board examinations with district rank analysis.</span>
-                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        12 {isTamil ? 'தேர்வுகள் முடிந்தது' : 'Tests Completed'}
+                      </p>
                     </div>
-                  )}
+                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-purple-600 dark:text-purple-400">
+                      <span>{isTamil ? 'புள்ளிகள் காண்க' : 'View Stats'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Helpful Student Teaser */}
+                <div
+                  className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2.5 ${
+                    demoTheme === 'light'
+                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+                      : 'bg-emerald-950/40 border-emerald-900/60 text-emerald-200'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <p className="leading-relaxed">
+                    {isTamil
+                      ? 'இது உங்கள் டியூஷன் வகுப்பறையின் நேரடி மாணவர் வடிவம். ஆசிரியர் நாள்குறிப்பு மற்றும் உங்கள் தனிப்பட்ட தேர்வு விவரங்களை அறிய மேலே உள்ள அட்டைகளைத் தட்டவும்.'
+                      : "Experience your student dashboard at Ravi's Tuition Centre. Tap any tile above to open daily teacher notes, 30-day attendance, or personal quiz metrics."}
+                  </p>
                 </div>
               </div>
             )}
 
-            {/* TAB 2: Diary */}
-            {demoTab === 'diary' && (
+            {/* VIEW 2: DIARY (Teacher's Notes Feed) */}
+            {demoView === 'diary' && (
               <div className="space-y-3.5 animate-fadeIn">
-                {/* Interactive Filter Chips */}
-                <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    data-testid="demo-back-dashboard"
+                    onClick={() => setDemoView('dashboard')}
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>{isTamil ? 'முகப்புக்குத் திரும்பு' : 'Back to Dashboard'}</span>
+                  </button>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    👨‍🏫 {isTamil ? 'ஆசிரியரின் நாள்குறிப்பு' : "Teacher's Notes"}
+                  </span>
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                   {[
-                    { id: 'all', label: 'All Entries', icon: '📝' },
-                    { id: 'homework', label: 'Homework', icon: '✍️' },
-                    { id: 'notice', label: 'Notices', icon: '📢' },
-                    { id: 'exam', label: 'Exams', icon: '🧪' },
+                    { id: 'all', label: isTamil ? 'அனைத்தும்' : 'All Notes', icon: '📝' },
+                    { id: 'homework', label: isTamil ? 'வீட்டுப்பாடம்' : 'Homework', icon: '✍️' },
+                    { id: 'notice', label: isTamil ? 'அறிவிப்புகள்' : 'Notices', icon: '📢' },
+                    { id: 'exam', label: isTamil ? 'தேர்வுகள்' : 'Exams', icon: '🧪' },
                   ].map((filter) => (
                     <button
                       key={filter.id}
                       type="button"
-                      onClick={() => setDemoDiaryFilter(filter.id as 'all' | 'homework' | 'notice' | 'exam')}
+                      onClick={() => setDemoDiaryFilter(filter.id as any)}
                       className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer border ${
                         demoDiaryFilter === filter.id
-                          ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black shadow-xs'
+                          ? 'bg-emerald-600 text-white border-emerald-500 font-black shadow-xs'
+                          : demoTheme === 'light'
+                          ? 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
                           : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
                       }`}
                     >
@@ -716,72 +880,103 @@ export default function ClassroomPage() {
                   ))}
                 </div>
 
-                {/* Diary Entries Feed with Interactive Row Tap */}
+                {/* Notes Feed */}
                 <div className="space-y-2.5">
                   {[
                     {
                       id: 'd1',
                       tag: 'homework',
-                      text: 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
-                      date: 'Today, 4:30 PM',
-                      detail: 'Teacher Note: Show full Cartesian product step mappings. Important for 5-mark board question.',
-                      status: 'Pending Submission',
+                      text: isTamil
+                        ? 'கணிதம் பாடம் 1 பயிற்சி 1.2 — வினா 1 முதல் 5 வரை தீர்க்கவும். நாளை நோட்டுப் புத்தகத்தை கொண்டு வரவும்.'
+                        : 'Maths Chapter 1 Exercise 1.2 — Solve Question 1 to 5. Bring completed notebook tomorrow.',
+                      date: isTamil ? 'இன்று, மாலை 4:30' : 'Today, 4:30 PM',
+                      detail: isTamil
+                        ? 'ஆசிரியர் குறிப்பு: கார்ட்டீசியன் பெருக்கல் வரைபடங்களை முழுமையாக வரையவும். 5 மதிப்பெண் வினாவிற்கு முக்கியமானது.'
+                        : 'Teacher Note: Show full Cartesian product step mappings. Important for 5-mark board question.',
+                      status: isTamil ? 'நிலுவையில் உள்ளது' : 'Pending Submission',
                     },
                     {
                       id: 'd2',
                       tag: 'notice',
-                      text: 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
-                      date: 'Yesterday',
-                      detail: 'Venue: Apex Academy Hall A. Carry your state board textbook and graph sheets.',
-                      status: 'Mandatory Attendance',
+                      text: isTamil
+                        ? 'இருபடிச் சமன்பாடுகள் திருப்புதல் சிறப்பு வகுப்பு இந்த சனிக்கிழமை காலை 10:00 மணிக்கு நடைபெறும்.'
+                        : 'Special revision masterclass this Saturday at 10:00 AM on Quadratic Equations.',
+                      date: isTamil ? 'நேற்று' : 'Yesterday',
+                      detail: isTamil
+                        ? "இடம்: ரவி டியூஷன் அரங்கம். பாடப்புத்தகம் மற்றும் வரைபடத்தாள்களை உடன் கொண்டு வரவும்."
+                        : "Venue: Ravi's Tuition Centre Main Hall. Carry your state board textbook and graph sheets.",
+                      status: isTamil ? 'முக்கிய அறிவிப்பு' : 'Important Notice',
                     },
                     {
                       id: 'd3',
                       tag: 'exam',
-                      text: 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
-                      date: '2 days ago',
-                      detail: 'Review question #4 and #8 solution tricks. Average score: 22/25.',
-                      status: 'Answer Key Live',
+                      text: isTamil
+                        ? 'அலகுத் தேர்வு 1 விடைக்குறிப்புகள் பதிவேற்றப்பட்டுள்ளன.'
+                        : 'Unit Test 1 answer keys and high-yield scoring tricks uploaded to Pro Materials.',
+                      date: isTamil ? '2 நாட்களுக்கு முன்' : '2 days ago',
+                      detail: isTamil
+                        ? 'கேள்வி #4 மற்றும் #8 தீர்வு வழிமுறைகளை சரிபார்க்கவும். சராசரி மதிப்பெண்: 22/25.'
+                        : 'Review question #4 and #8 solution tricks. Average score: 22/25.',
+                      status: isTamil ? 'விடைகள் தயார்' : 'Answer Key Available',
                     },
                     {
                       id: 'd4',
                       tag: 'homework',
-                      text: 'Science Chapter 1 — Practice ray diagrams and Newton second law numericals.',
-                      date: '3 days ago',
-                      detail: 'Submit numerical workout sheet to Ramesh Sir before 6:15 PM.',
-                      status: 'Completed ✓',
+                      text: isTamil
+                        ? 'அறிவியல் பாடம் 1 — கதிர் வரைபடங்கள் மற்றும் நியூட்டனின் இரண்டாம் விதி கணக்குகளை பயிற்சி செய்யவும்.'
+                        : 'Science Chapter 1 — Practice ray diagrams and Newton second law numericals.',
+                      date: isTamil ? '3 நாட்களுக்கு முன்' : '3 days ago',
+                      detail: isTamil
+                        ? 'கணக்கு தீர்வுத்தாளை மாலை 6:15 மணிக்குள் டாக்டர் ரவி சாரிடம் சமர்ப்பிக்கவும்.'
+                        : 'Submit numerical workout sheet to Dr. Ravi before 6:15 PM.',
+                      status: isTamil ? 'நிறைவுற்றது ✓' : 'Completed ✓',
                     },
                   ]
                     .filter((item) => demoDiaryFilter === 'all' || item.tag === demoDiaryFilter)
                     .map((item) => {
                       const isExpanded = demoActiveDiaryId === item.id;
-
                       return (
                         <div
                           key={item.id}
                           onClick={() => setDemoActiveDiaryId(isExpanded ? null : item.id)}
-                          className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 transition-all cursor-pointer shadow-xs space-y-2"
+                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer shadow-xs space-y-2 ${
+                            demoTheme === 'light'
+                              ? 'bg-white border-slate-200 hover:border-slate-300'
+                              : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                          }`}
                         >
                           <div className="flex items-center justify-between gap-2">
                             {renderTagChip(item.tag)}
                             <span className="text-[11px] font-medium text-slate-400">{item.date}</span>
                           </div>
 
-                          <p className="text-xs sm:text-sm text-slate-200 font-medium leading-relaxed">
+                          <p
+                            className={`text-xs sm:text-sm font-medium leading-relaxed ${
+                              demoTheme === 'light' ? 'text-slate-800' : 'text-slate-200'
+                            }`}
+                          >
                             {item.text}
                           </p>
 
-                          {/* Interactive Detail Drawer on Tap */}
+                          {/* Expandable Teacher Note */}
                           {isExpanded ? (
-                            <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1.5 animate-fadeIn">
-                              <p className="text-emerald-300 font-semibold">{item.detail}</p>
-                              <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-[10px]">
-                                <span className="text-slate-400">Status: <strong className="text-white">{item.status}</strong></span>
-                                <span className="text-slate-500">Tap to collapse ▲</span>
+                            <div
+                              className={`p-3 rounded-xl border text-xs space-y-1.5 animate-fadeIn ${
+                                demoTheme === 'light'
+                                  ? 'bg-slate-50 border-slate-200'
+                                  : 'bg-slate-950/80 border-slate-800'
+                              }`}
+                            >
+                              <p className="text-emerald-600 dark:text-emerald-400 font-semibold">{item.detail}</p>
+                              <div className="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800 text-[10px]">
+                                <span className="text-slate-500">
+                                  Status: <strong className="font-bold">{item.status}</strong>
+                                </span>
+                                <span className="text-slate-400">Tap to collapse ▲</span>
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-end text-[10px] text-slate-500 font-bold">
+                            <div className="flex items-center justify-end text-[10px] text-slate-400 font-bold">
                               <span>Tap for teacher notes & instructions ▼</span>
                             </div>
                           )}
@@ -792,42 +987,74 @@ export default function ClassroomPage() {
               </div>
             )}
 
-            {/* TAB 3: Attendance */}
-            {demoTab === 'attendance' && (
+            {/* VIEW 3: ATTENDANCE (30-day interactive record) */}
+            {demoView === 'attendance' && (
               <div className="space-y-3.5 animate-fadeIn">
-                {/* Attendance Summary */}
-                <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    data-testid="demo-back-dashboard"
+                    onClick={() => setDemoView('dashboard')}
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>{isTamil ? 'முகப்புக்குத் திரும்பு' : 'Back to Dashboard'}</span>
+                  </button>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    📅 {isTamil ? 'வருகைப் பதிவு' : 'Attendance Log'}
+                  </span>
+                </div>
+
+                {/* Summary Box */}
+                <div
+                  className={`p-5 rounded-2xl border space-y-3 ${
+                    demoTheme === 'light'
+                      ? 'bg-white border-slate-200 text-slate-900 shadow-sm'
+                      : 'bg-slate-900 border-slate-800 text-white'
+                  }`}
+                >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-white font-bold text-sm">
-                      <Calendar className="w-4 h-4 text-emerald-400" />
-                      <span>Classroom Attendance (Last 30 Days)</span>
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      <Calendar className="w-4 h-4 text-emerald-500" />
+                      <span>{isTamil ? 'எனது வருகை (கடந்த 30 நாட்கள்)' : 'My Attendance (Last 30 Days)'}</span>
                     </div>
-                    <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
                       🌟 Excellent
                     </span>
                   </div>
 
                   <div className="flex items-baseline gap-3 my-1">
-                    <span className="text-4xl font-black text-emerald-400">93%</span>
-                    <span className="text-xs text-slate-400 font-bold">28 of 30 Days Present</span>
+                    <span className="text-4xl font-black text-emerald-600 dark:text-emerald-400">93%</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">
+                      28 of 30 Days Present
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-amber-300 font-bold bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/20">
+                  <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 font-bold bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/20">
                     <span>🔥</span>
                     <span>14 Days Continuous Active Streak! Centum Eligible.</span>
                   </div>
                 </div>
 
-                {/* Interactive 30-Day Mini Attendance Chips */}
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
+                {/* Interactive 30-Day Mini Chips */}
+                <div
+                  className={`p-4 rounded-2xl border space-y-3 ${
+                    demoTheme === 'light'
+                      ? 'bg-white border-slate-200 shadow-sm'
+                      : 'bg-slate-900 border-slate-800'
+                  }`}
+                >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-300">
-                      Tap a day chip to view check-in log:
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {isTamil ? 'தேதியைத் தட்டி பதிவு விவரங்களைக் காணுங்கள்:' : 'Tap a day chip to view check-in log:'}
                     </span>
                     <span className="text-[10px] text-slate-400 font-semibold">30-Day Record</span>
                   </div>
 
-                  {/* 30 Chips Grid */}
                   <div className="grid grid-cols-6 sm:grid-cols-10 gap-1.5">
                     {Array.from({ length: 30 }).map((_, idx) => {
                       const day = idx + 1;
@@ -841,10 +1068,10 @@ export default function ClassroomPage() {
                           onClick={() => setDemoSelectedDay(day)}
                           className={`p-2 rounded-xl text-center text-xs font-black transition-all cursor-pointer border ${
                             isSelected
-                              ? 'ring-2 ring-emerald-400 scale-105 shadow-md bg-emerald-500 text-slate-950 border-emerald-400'
+                              ? 'ring-2 ring-emerald-500 scale-105 shadow-md bg-emerald-600 text-white border-emerald-500'
                               : isLeave
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/30'
+                              ? 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
+                              : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
                           }`}
                         >
                           <span className="block text-[10px] text-slate-400 font-normal">D{day}</span>
@@ -854,138 +1081,171 @@ export default function ClassroomPage() {
                     })}
                   </div>
 
-                  {/* Interactive Status Popover */}
                   {demoSelectedDay !== null ? (
-                    <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 flex items-center justify-between animate-fadeIn">
+                    <div
+                      className={`p-3 rounded-xl border text-xs flex items-center justify-between animate-fadeIn ${
+                        demoTheme === 'light'
+                          ? 'bg-slate-50 border-slate-200 text-slate-800'
+                          : 'bg-slate-950 border-slate-800 text-slate-200'
+                      }`}
+                    >
                       <div>
-                        <span className="font-bold text-white">Day {demoSelectedDay}: </span>
+                        <span className="font-bold">Day {demoSelectedDay}: </span>
                         {demoSelectedDay === 12 || demoSelectedDay === 22 ? (
-                          <span className="text-amber-400 font-semibold">Excused Leave (Prior Notice Received)</span>
+                          <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                            Excused Leave (Prior Notice Received)
+                          </span>
                         ) : (
-                          <span className="text-emerald-400 font-semibold">Present ✓ — Checked in at 6:05 PM</span>
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                            Present ✓ — Checked in at 6:05 PM
+                          </span>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => setDemoSelectedDay(null)}
-                        className="text-[10px] text-slate-400 hover:text-white ml-2 underline"
+                        className="text-[10px] text-slate-400 hover:text-slate-600 dark:hover:text-white ml-2 underline"
                       >
                         Dismiss
                       </button>
                     </div>
                   ) : (
-                    <p className="text-[11px] text-slate-500 text-center">
-                      Tap any Day (D1–D30) above to inspect timestamp & verification details.
+                    <p className="text-[11px] text-slate-400 text-center">
+                      Tap any Day (D1–D30) above to inspect timestamp details.
                     </p>
                   )}
                 </div>
               </div>
             )}
 
-            {/* TAB 4: Stats */}
-            {demoTab === 'stats' && (
+            {/* VIEW 4: PERFORMANCE (Individual Student Stats ONLY — never batch-wide) */}
+            {demoView === 'performance' && (
               <div className="space-y-3.5 animate-fadeIn">
-                {/* Seat Stats Bar */}
-                <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                      Academy Seat Capacity
-                    </span>
-                    <span className="text-xs font-black text-emerald-400">
-                      18 / 20 Seats Claimed (90%)
-                    </span>
-                  </div>
-
-                  {/* Visual Progress Bar */}
-                  <div className="w-full h-3 rounded-full bg-slate-950 overflow-hidden border border-slate-800">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500"
-                      style={{ width: '90%' }}
-                    />
-                  </div>
-
-                  <p className="text-[11px] text-slate-400 flex items-center justify-between">
-                    <span>Only 2 Seats Remaining for this Batch</span>
-                    <span className="text-emerald-400 font-bold">Fast Filling 🔥</span>
-                  </p>
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    data-testid="demo-back-dashboard"
+                    onClick={() => setDemoView('dashboard')}
+                    className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1.5 rounded-xl border transition-colors cursor-pointer ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                        : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                    }`}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>{isTamil ? 'முகப்புக்குத் திரும்பு' : 'Back to Dashboard'}</span>
+                  </button>
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                    📊 {isTamil ? 'எனது தனிப்பட்ட தேர்வு விவரங்கள்' : 'My Personal Stats'}
+                  </span>
                 </div>
 
-                {/* Interactive Metric Switcher */}
-                <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">Performance Metrics</span>
-                    <div className="inline-flex p-0.5 rounded-lg bg-slate-950 border border-slate-800">
-                      <button
-                        type="button"
-                        onClick={() => setDemoStatsView('overview')}
-                        className={`px-2.5 py-1 text-[10px] font-black rounded-md transition-all cursor-pointer ${
-                          demoStatsView === 'overview'
-                            ? 'bg-emerald-600 text-white'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Overview
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDemoStatsView('breakdown')}
-                        className={`px-2.5 py-1 text-[10px] font-black rounded-md transition-all cursor-pointer ${
-                          demoStatsView === 'breakdown'
-                            ? 'bg-emerald-600 text-white'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Subjects
-                      </button>
-                    </div>
+                {/* Individual 3-Card Metrics (NO batch averages, NO class ranks) */}
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div
+                    className={`p-3.5 rounded-2xl border text-center ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 shadow-sm'
+                        : 'bg-slate-900 border-slate-800'
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
+                      {isTamil ? 'சராசரி மதிப்பெண்' : 'Quiz Accuracy'}
+                    </span>
+                    <span className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 block mt-1">
+                      92%
+                    </span>
                   </div>
 
-                  {demoStatsView === 'overview' ? (
-                    <div className="grid grid-cols-3 gap-2.5 pt-1 text-center">
-                      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                        <span className="text-xs text-slate-400 block font-bold">Class Average</span>
-                        <span className="text-lg font-black text-emerald-400 block mt-1">88.5%</span>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                        <span className="text-xs text-slate-400 block font-bold">Class Rank</span>
-                        <span className="text-lg font-black text-teal-400 block mt-1">#3 / 18</span>
-                      </div>
-                      <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800">
-                        <span className="text-xs text-slate-400 block font-bold">Tests Completed</span>
-                        <span className="text-lg font-black text-amber-400 block mt-1">12</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 pt-1">
-                      {[
-                        { subj: 'Mathematics', score: 92, rank: 'Top 5%' },
-                        { subj: 'Science', score: 89, rank: 'Top 10%' },
-                        { subj: 'Social Science', score: 85, rank: 'Top 15%' },
-                      ].map((s) => (
-                        <div
-                          key={s.subj}
-                          className="p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 flex items-center justify-between text-xs"
-                        >
-                          <span className="font-bold text-white">{s.subj}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-emerald-400 font-black">{s.score}%</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">{s.rank}</span>
-                          </div>
+                  <div
+                    className={`p-3.5 rounded-2xl border text-center ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 shadow-sm'
+                        : 'bg-slate-900 border-slate-800'
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
+                      {isTamil ? 'தேர்வுகள்' : 'Tests Done'}
+                    </span>
+                    <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 block mt-1">
+                      12
+                    </span>
+                  </div>
+
+                  <div
+                    className={`p-3.5 rounded-2xl border text-center ${
+                      demoTheme === 'light'
+                        ? 'bg-white border-slate-200 shadow-sm'
+                        : 'bg-slate-900 border-slate-800'
+                    }`}
+                  >
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
+                      {isTamil ? 'தொடர் கற்றல்' : 'Daily Streak'}
+                    </span>
+                    <span className="text-xl sm:text-2xl font-black text-amber-500 block mt-1">
+                      14d 🔥
+                    </span>
+                  </div>
+                </div>
+
+                {/* Individual Subject Mastery */}
+                <div
+                  className={`p-4 rounded-2xl border space-y-3 ${
+                    demoTheme === 'light'
+                      ? 'bg-white border-slate-200 shadow-sm'
+                      : 'bg-slate-900 border-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                      {isTamil ? 'எனது பாடவாரியான தேர்ச்சி' : 'My Subject Mastery'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold">Personal Record</span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {[
+                      { subj: 'Mathematics', score: 92, count: '5 tests' },
+                      { subj: 'Science', score: 89, count: '4 tests' },
+                      { subj: 'Social Science', score: 85, count: '3 tests' },
+                    ].map((s) => (
+                      <div
+                        key={s.subj}
+                        className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                          demoTheme === 'light'
+                            ? 'bg-slate-50 border-slate-200'
+                            : 'bg-slate-950/70 border-slate-800'
+                        }`}
+                      >
+                        <div>
+                          <span className="font-bold block">{s.subj}</span>
+                          <span className="text-[10px] text-slate-400">{s.count} completed</span>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <div className="text-right">
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 block">
+                            {s.score}%
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Sticky Bottom Actions */}
-          <div className="shrink-0 p-3 sm:p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 max-w-2xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div
+            className={`shrink-0 p-3 sm:p-4 border-t max-w-2xl mx-auto w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 ${
+              demoTheme === 'light'
+                ? 'bg-white/95 border-slate-200'
+                : 'bg-slate-900/95 border-slate-800'
+            }`}
+          >
             <Link
               href="/join"
               onClick={() => setIsDemoOpen(false)}
-              className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <span>{isTamil ? 'உங்கள் வகுப்பறையில் இணையவும் 🚀' : 'Join your classroom'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -994,9 +1254,13 @@ export default function ClassroomPage() {
               href="https://wa.me/918610653352?text=Hi%20Centum,%20I%20saw%20the%20demo%20classroom%20and%20want%20to%20get%20my%20own%20tuition%20classroom"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full min-h-[46px] px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white text-xs font-black border border-slate-700 flex items-center justify-center gap-2 transition-all cursor-pointer"
+              className={`w-full min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-black border flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                demoTheme === 'light'
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border-slate-700'
+              }`}
             >
-              <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-500" />
               <span>{isTamil ? 'டியூஷன் நடத்துகிறீர்களா? உங்கள் சொந்தத்தைப் பெறுங்கள்' : 'Running a tuition? get yours 💬'}</span>
             </a>
           </div>

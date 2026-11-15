@@ -1531,8 +1531,8 @@ export function getMockClassroomView(rawPhone: string) {
       myAttendance: null,
       preview: {
         sampleTuition: {
-          name: 'Apex Centum Academy',
-          teacher: 'Ramesh Kumar Sir',
+          name: "Ravi's Tuition Centre",
+          teacher: 'Dr. Ravi',
           code: 'DEMO10',
         },
         sampleDiary: [

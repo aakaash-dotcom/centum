@@ -3,11 +3,13 @@
 /**
  * scripts/tests/demo-classroom.mjs
  * 
- * Verifies Task D: Interactive Demo Classroom (not a dead modal)
- * Asserts:
- *  - 4 Tappable section buttons: Class Info · Diary · Attendance · Stats
- *  - Real rendered DEMO10 content
- *  - At least one interactive moment per section
+ * Verifies Student-facing Demo Classroom:
+ *  - Light theme by default + theme toggle
+ *  - 3 compact tiles: Attendance, Diary, Performance
+ *  - Enrolled classroom card with ONLY classroom and teacher name
+ *  - Removed student-visible access code and batch-details box
+ *  - Diary opens teacher notes
+ *  - Performance shows ONLY individual student stats
  *  - "Join your classroom" CTA present
  */
 
@@ -15,7 +17,7 @@ import fs from 'fs';
 import path from 'path';
 
 console.log('===============================================================');
-console.log('   TASK D: INTERACTIVE DEMO CLASSROOM VERIFICATION');
+console.log('   STUDENT DEMO CLASSROOM VERIFICATION');
 console.log('===============================================================\n');
 
 function testDemoClassroom() {
@@ -26,13 +28,13 @@ function testDemoClassroom() {
 
   // 1. Verify 4 section tab buttons
   const tabs = [
-    { id: 'demo-tab-info', label: 'Class Info' },
+    { id: 'demo-tab-dashboard', label: 'Overview / Dashboard' },
     { id: 'demo-tab-diary', label: 'Diary' },
     { id: 'demo-tab-attendance', label: 'Attendance' },
-    { id: 'demo-tab-stats', label: 'Stats' },
+    { id: 'demo-tab-performance', label: 'Performance' },
   ];
 
-  console.log('Checking 4 guided demo section tabs:');
+  console.log('Checking student demo section tabs:');
   tabs.forEach((tab) => {
     const hasTab = content.includes(tab.id);
     if (!hasTab) {
@@ -43,46 +45,62 @@ function testDemoClassroom() {
     }
   });
 
-  // 2. Check interactive moments in code
-  console.log('\nChecking interactive moments per section:');
-
-  // Info: Copy code or expander
-  const hasCopyOrPerks = content.includes('setDemoCopied') && content.includes('setDemoPerksExpanded');
-  if (!hasCopyOrPerks) {
-    console.error('  ❌ FAIL: Missing interactive Copy Code or Syllabus Perks expander in Class Info');
+  // 2. Theme & 3 compact tiles
+  console.log('\nChecking theme toggle & 3 compact dashboard tiles:');
+  const hasThemeToggle = content.includes('demo-theme-toggle') && content.includes('centum_demo_theme');
+  if (!hasThemeToggle) {
+    console.error('  ❌ FAIL: Missing theme toggle button or persistence');
     passed = false;
   } else {
-    console.log('  ✓ Class Info interactive moment verified (Code copy + Perks expander)');
+    console.log('  ✓ Light/dark theme toggle verified with localStorage persistence');
   }
 
-  // Diary: Filter or detail popover
-  const hasDiaryInteraction = content.includes('setDemoDiaryFilter') && content.includes('setDemoActiveDiaryId');
-  if (!hasDiaryInteraction) {
-    console.error('  ❌ FAIL: Missing filter chips or expandable rows in Diary');
+  const hasThreeTiles =
+    content.includes('demo-tile-attendance') &&
+    content.includes('demo-tile-diary') &&
+    content.includes('demo-tile-performance');
+  if (!hasThreeTiles) {
+    console.error('  ❌ FAIL: Missing 3 compact tiles (Attendance, Diary, Performance)');
     passed = false;
   } else {
-    console.log('  ✓ Diary interactive moment verified (Tag filters + Row detail expander)');
+    console.log('  ✓ 3 compact tiles verified on first dashboard');
   }
 
-  // Attendance: 30-day interactive day chips
-  const hasAttendanceChips = content.includes('setDemoSelectedDay') && content.includes('demoSelectedDay');
-  if (!hasAttendanceChips) {
-    console.error('  ❌ FAIL: Missing interactive 30-day attendance chips grid in Attendance');
+  // 3. Enrolled card without code or batch box
+  console.log('\nChecking enrolled classroom card:');
+  const hasEnrolledCard = content.includes('demo-enrolled-card');
+  const hasNoAccessCode = !content.includes('DEMO10') && !content.includes('Copy Code');
+  const hasNoBatchBox = !content.includes('Batch Details') && !content.includes('Active Term');
+
+  if (!hasEnrolledCard || !hasNoAccessCode || !hasNoBatchBox) {
+    console.error('  ❌ FAIL: Enrolled card must show only classroom and teacher name without access code or batch box');
     passed = false;
   } else {
-    console.log('  ✓ Attendance interactive moment verified (30-day check-in inspection chips)');
+    console.log('  ✓ Enrolled card verified (only classroom name + teacher name, zero access code or batch box)');
   }
 
-  // Stats: View toggle
-  const hasStatsToggle = content.includes('setDemoStatsView') && content.includes('demoStatsView');
-  if (!hasStatsToggle) {
-    console.error('  ❌ FAIL: Missing interactive metric switcher in Stats');
+  // 4. Diary & Performance
+  console.log('\nChecking Diary and Performance views:');
+  const hasDiaryFeed = content.includes("demoView === 'diary'") && content.includes('demoDiaryFilter');
+  if (!hasDiaryFeed) {
+    console.error('  ❌ FAIL: Diary must open teacher notes feed');
     passed = false;
   } else {
-    console.log('  ✓ Stats interactive moment verified (Overview vs Subject breakdown switcher)');
+    console.log('  ✓ Diary opens teacher notes feed with filter chips');
   }
 
-  // 3. Check "Join your classroom" CTA
+  const hasIndividualOnlyPerformance =
+    content.includes("demoView === 'performance'") &&
+    !content.includes('Class Average') &&
+    !content.includes('Class Rank');
+  if (!hasIndividualOnlyPerformance) {
+    console.error('  ❌ FAIL: Performance must display individual stats only (no batch-wide stats)');
+    passed = false;
+  } else {
+    console.log('  ✓ Performance displays individual student stats only');
+  }
+
+  // 5. Check "Join your classroom" CTA
   const hasJoinCta = content.includes('Join your classroom') || content.includes('உங்கள் வகுப்பறையில் இணையவும்');
   if (!hasJoinCta) {
     console.error('  ❌ FAIL: Missing "Join your classroom" CTA');
@@ -93,12 +111,12 @@ function testDemoClassroom() {
 
   console.log('\n===============================================================');
   if (passed) {
-    console.log('✅ TASK D VERIFICATION PASSED');
+    console.log('✅ STUDENT DEMO CLASSROOM VERIFICATION PASSED');
     console.log('verifyRef: demo-classroom [VERIFIED]');
     console.log('===============================================================\n');
     process.exitCode = 0;
   } else {
-    console.error('❌ TASK D VERIFICATION FAILED');
+    console.error('❌ STUDENT DEMO CLASSROOM VERIFICATION FAILED');
     console.log('===============================================================\n');
     process.exitCode = 1;
   }

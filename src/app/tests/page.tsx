@@ -569,35 +569,6 @@ function TestsContent() {
 
   return (
     <div className="flex-1 flex flex-col px-4 pt-4 pb-12 animate-fade-in text-[#2E1065] dark:text-[#F5F0FF]">
-      {/* Non-blocking Saved Question Bank Notice (Only shown if questions exist) */}
-      {isFallbackBackend && questions.length > 0 && (
-        <div
-          role="status"
-          data-testid="fallback-offline-banner"
-          className="mb-3 px-3.5 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center justify-between gap-2 shadow-xs"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-base">⚠️</span>
-            <span>
-              {isBrowserOffline
-                ? (isTamilMedium
-                    ? 'ஆஃப்லைன் பயிற்சி நிலை · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
-                    : 'Offline practice mode · score saved locally to this device')
-                : (isTamilMedium
-                    ? 'சேமிக்கப்பட்ட வினாத்தாள் பயன்படுத்தப்படுகிறது · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
-                    : 'Using saved question bank · score saved locally to this device')}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => fetchQuestions()}
-            className="px-2.5 py-1 rounded-xl bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors shrink-0"
-          >
-            {isTamilMedium ? 'மறுமுயற்சி 🔄' : 'Retry 🔄'}
-          </button>
-        </div>
-      )}
-
       {/* Top Header */}
       <div className="flex items-center justify-between mb-4 gap-2">
         <div>
@@ -847,16 +818,18 @@ function TestsContent() {
             </div>
           ) : isError ? (
             <div className="flex-1 flex flex-col items-center justify-center py-12 text-center">
-              <span className="text-4xl mb-3">👻</span>
-              <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#B9A6D9] mb-3">
-                {texts.states.signalGhost}
+              <span className="text-4xl mb-3">📡</span>
+              <p className="text-sm font-bold text-[#6D28D9]/75 dark:text-[#B9A6D9] mb-3 max-w-xs">
+                {isTamilMedium
+                  ? 'தற்போது வினாத்தாள்களை ஏற்ற முடியவில்லை. இணைய இணைப்பை சரிபார்க்கவும்.'
+                  : 'Unable to load chapters right now. Please check your connection.'}
               </p>
               <button
                 type="button"
                 onClick={() => fetchQuestions()}
                 className="min-h-[44px] px-5 py-2 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
               >
-                retry 🔄
+                {isTamilMedium ? 'மீண்டும் முயல்க 🔄' : 'Retry 🔄'}
               </button>
             </div>
           ) : (

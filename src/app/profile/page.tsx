@@ -382,6 +382,15 @@ export default function ProfilePage() {
               </span>
             </div>
           </div>
+
+          <p className="text-[10px] text-[#6D28D9]/70 dark:text-[#B9A6D9]/70 font-semibold mt-3 text-center flex items-center justify-center gap-1.5">
+            <span>💾</span>
+            <span>
+              {medium === 'tamil'
+                ? 'மதிப்பெண்கள் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படுகின்றன'
+                : 'Scores are saved locally on this device'}
+            </span>
+          </p>
         </div>
       )}
 

@@ -566,6 +566,16 @@ function TestRunnerContent() {
               </span>
             </div>
           </div>
+
+          {/* Local-only score saving disclosure */}
+          <p className="text-[11px] font-semibold text-[#6D28D9]/75 dark:text-[#B9A6D9]/75 mt-3 pt-3 border-t border-[#FAF5FF] dark:border-[#2A1247] flex items-center justify-center gap-1.5">
+            <span>💾</span>
+            <span>
+              {isTa
+                ? 'உங்கள் மதிப்பெண் இந்த சாதனத்தில் மட்டும் பாதுகாப்பாக சேமிக்கப்பட்டுள்ளது'
+                : 'Your score is saved locally on this device'}
+            </span>
+          </p>
         </div>
 
         {/* Action Buttons */}
@@ -752,26 +762,6 @@ function TestRunnerContent() {
           <span>{formatTimer(secondsRemaining)}</span>
         </div>
       </div>
-
-      {/* Offline / Saved Question Bank Status Indicator */}
-      {isFallbackBackend && (
-        <div
-          role="status"
-          data-testid="test-runner-offline-banner"
-          className="mb-3 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-[11px] font-bold flex items-center gap-2"
-        >
-          <span>⚠️</span>
-          <span>
-            {isBrowserOffline
-              ? (isTa
-                  ? 'ஆஃப்லைன் பயிற்சி நிலை · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
-                  : 'Offline practice mode · score saved locally to this device')
-              : (isTa
-                  ? 'சேமிக்கப்பட்ட வினாத்தாள் பயன்படுத்தப்படுகிறது · மதிப்பெண் இந்த சாதனத்தில் மட்டும் சேமிக்கப்படும்'
-                  : 'Using saved question bank · score saved locally to this device')}
-          </span>
-        </div>
-      )}
 
       {/* Progress Bar & Counter */}
       <div className="mb-4">

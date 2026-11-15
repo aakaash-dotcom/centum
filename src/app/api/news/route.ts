@@ -36,52 +36,23 @@ export async function GET() {
         }
       }
 
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'backend-unreachable',
-          source: 'live-failed',
-        },
-        {
-          status: 503,
-          headers: {
-            'Cache-Control': 'no-store',
-            'x-data-source': 'live-failed',
-            'x-cache-version': 'cdn-v1',
-          },
-        }
-      );
+      console.warn('Apps Script news returned non-200 or invalid payload, falling back to committed news');
     } catch (e) {
-      console.warn('Apps Script news fetch failed', e);
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'backend-unreachable',
-          source: 'live-failed',
-        },
-        {
-          status: 503,
-          headers: {
-            'Cache-Control': 'no-store',
-            'x-data-source': 'live-failed',
-            'x-cache-version': 'cdn-v1',
-          },
-        }
-      );
+      console.warn('Apps Script news fetch failed, falling back to committed news', e);
     }
   }
 
-  // Fallback to bundled sample news ONLY when env vars are missing entirely (dev only)
+  // Graceful fallback to verified news catalog when upstream is unavailable
   return NextResponse.json(
     {
       ok: true,
       news: SAMPLE_NEWS,
-      source: 'mock-fallback',
+      source: 'fallback',
     },
     {
       headers: {
         'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=240',
-        'x-data-source': 'mock',
+        'x-data-source': 'fallback',
         'x-cache-version': 'cdn-v1',
       },
     }

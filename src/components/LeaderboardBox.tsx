@@ -50,8 +50,8 @@ export const LeaderboardBox: React.FC = () => {
   if (isError) {
     return (
       <div className="w-full bg-white dark:bg-[#3B0F6E] rounded-3xl p-5 border border-[#EDE9FE] dark:border-[#DDD6FE]/20 shadow-xs text-center py-6">
-        <span className="text-3xl mb-2 block">👻</span>
-        <p className="text-xs font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3">
+        <span className="text-3xl mb-2 block">📡</span>
+        <p className="text-xs font-bold text-[#6D28D9]/75 dark:text-[#DDD6FE]/75 mb-3 max-w-xs mx-auto">
           {texts.states.signalGhost}
         </p>
         <button
@@ -59,7 +59,7 @@ export const LeaderboardBox: React.FC = () => {
           onClick={fetchLeaderboard}
           className="min-h-[36px] px-4 py-1.5 rounded-xl bg-[#7C3AED] text-white text-xs font-black shadow-xs hover:bg-[#6D28D9] transition-all cursor-pointer"
         >
-          retry 🔄
+          Retry 🔄
         </button>
       </div>
     );

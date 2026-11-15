@@ -148,7 +148,10 @@ export const rawTexts = {
   states: {
     empty: { en: 'nothing here 🐶', ta: 'இங்கு எதுவும் இல்லை 🐶' },
     error: { en: 'the sheet ghosted us 👻 retry', ta: 'தகவல் கிடைக்கவில்லை 👻 மீண்டும் முயல்க' },
-    signalGhost: { en: 'signal ghost 👻 retry', ta: 'இணைப்பு துண்டிக்கப்பட்டது 👻 மீண்டும் முயல்க' },
+    signalGhost: {
+      en: 'Unable to connect. Please check your internet or retry.',
+      ta: 'இணைக்க முடியவில்லை. இணைய இணைப்பை சரிபார்த்து மீண்டும் முயல்க.',
+    },
     loading: { en: 'loading... ⚡', ta: 'ஏற்றுகிறது... ⚡' },
     lost: { en: 'lost? home → 🏠', ta: 'முகப்புக்குச் செல்ல → 🏠' },
     demoFootnote: { en: 'demo content', ta: 'மாதிரி உள்ளடக்கம்' },
