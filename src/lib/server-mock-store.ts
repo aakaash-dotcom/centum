@@ -1532,7 +1532,7 @@ export function getMockClassroomView(rawPhone: string) {
       preview: {
         sampleTuition: {
           name: "Ravi's Tuition Centre",
-          teacher: 'Dr. Ravi',
+          teacher: 'Ravichandran',
           code: 'DEMO10',
         },
         sampleDiary: [

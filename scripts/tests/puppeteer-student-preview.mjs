@@ -188,7 +188,7 @@ async function runPreviewSuite() {
 
     const hasNameAndTeacher =
       cardText.includes("Ravi's Tuition Centre") &&
-      cardText.includes('Dr. Ravi');
+      cardText.includes('Ravichandran');
     const hasNoCodeOrBatch =
       !cardText.includes('DEMO10') &&
       !cardText.includes('Batch Details') &&

@@ -134,8 +134,8 @@ assert(
 assert(
   classroomContent.includes('data-testid="demo-enrolled-card"') &&
   classroomContent.includes("data?.preview?.sampleTuition?.name || \"Ravi's Tuition Centre\"") &&
-  classroomContent.includes("data?.preview?.sampleTuition?.teacher || 'Dr. Ravi'"),
-  'Enrolled classroom card displays Ravi’s Tuition Centre name and Dr. Ravi teacher name'
+  classroomContent.includes("data?.preview?.sampleTuition?.teacher || 'Ravichandran'"),
+  'Enrolled classroom card displays Ravi’s Tuition Centre name and Ravichandran teacher name'
 );
 
 assert(

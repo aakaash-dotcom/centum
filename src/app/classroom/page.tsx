@@ -698,7 +698,7 @@ export default function ClassroomPage() {
                     <span>👨‍🏫</span>
                     <span>{isTamil ? 'ஆசிரியர்:' : 'Teacher:'}</span>
                     <strong className="text-white font-bold">
-                      {data?.preview?.sampleTuition?.teacher || 'Dr. Ravi'}
+                      {data?.preview?.sampleTuition?.teacher || 'Ravichandran'}
                     </strong>
                   </p>
                 </div>
@@ -934,8 +934,8 @@ export default function ClassroomPage() {
                         : 'Science Chapter 1 — Practice ray diagrams and Newton second law numericals.',
                       date: isTamil ? '3 நாட்களுக்கு முன்' : '3 days ago',
                       detail: isTamil
-                        ? 'கணக்கு தீர்வுத்தாளை மாலை 6:15 மணிக்குள் டாக்டர் ரவி சாரிடம் சமர்ப்பிக்கவும்.'
-                        : 'Submit numerical workout sheet to Dr. Ravi before 6:15 PM.',
+                        ? 'கணக்கு தீர்வுத்தாளை மாலை 6:15 மணிக்குள் ரவிச்சந்திரன் அவர்களிடம் சமர்ப்பிக்கவும்.'
+                        : 'Submit numerical workout sheet to Ravichandran before 6:15 PM.',
                       status: isTamil ? 'நிறைவுற்றது ✓' : 'Completed ✓',
                     },
                   ]

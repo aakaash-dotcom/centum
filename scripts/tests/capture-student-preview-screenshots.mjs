@@ -7,7 +7,7 @@
  * 1. Tests page (Desktop & Mobile) - verifies no persistent banner
  * 2. News page (Desktop & Mobile) - verifies sample notice banner
  * 3. Leaderboard / Home (Desktop & Mobile) - verifies sample preview badge & notice
- * 4. Classroom (Light Theme Desktop & Mobile) - verifies light mode default, 3 tiles, Dr. Ravi, demo labels
+ * 4. Classroom (Light Theme Desktop & Mobile) - verifies light mode default, 3 tiles, Ravichandran, demo labels
  * 5. Classroom (Dark Theme Toggle Desktop & Mobile) - verifies dark mode toggle and styling
  */
 
