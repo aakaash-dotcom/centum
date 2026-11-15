@@ -167,6 +167,30 @@ assert(
 );
 
 // --------------------------------------------------------------------------
+// SUITE 4: Truthful Sample / Demo Identifiers
+// --------------------------------------------------------------------------
+console.log('\n--- 4. Testing Truthful Sample / Demo Identifiers ---');
+assert(
+  newsPageContent.includes('data-testid="news-sample-banner"') &&
+  newsPageContent.includes('Sample Updates · Live news feed currently offline'),
+  'News page shows explicit sample banner when using fallback data'
+);
+
+assert(
+  leaderboardBoxContent.includes('data-testid="leaderboard-sample-badge"') &&
+  leaderboardBoxContent.includes('Sample Preview') &&
+  leaderboardBoxContent.includes('data-testid="leaderboard-sample-banner"'),
+  'LeaderboardBox clearly identifies sample rankings and unavailable live state'
+);
+
+assert(
+  classroomContent.includes('data-testid="classroom-demo-banner"') &&
+  classroomContent.includes('93% · Demo') &&
+  classroomContent.includes('Sample Data'),
+  'Classroom attendance and performance figures are explicitly labeled as sample demo data'
+);
+
+// --------------------------------------------------------------------------
 // Summary
 // --------------------------------------------------------------------------
 console.log('\n===============================================================');

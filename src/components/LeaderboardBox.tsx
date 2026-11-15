@@ -11,6 +11,7 @@ export const LeaderboardBox: React.FC = () => {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [isFallback, setIsFallback] = useState(false);
 
   const studentStandard = student?.standard ? String(student.standard) : '10th';
   const studentPhone = student?.phone ? String(student.phone) : '';
@@ -32,6 +33,7 @@ export const LeaderboardBox: React.FC = () => {
         const data = await res.json();
         if (data && data.leaderboard && Array.isArray(data.leaderboard)) {
           setEntries(data.leaderboard);
+          setIsFallback(data.source === 'fallback');
         } else {
           setIsError(true);
         }
@@ -106,10 +108,39 @@ export const LeaderboardBox: React.FC = () => {
           </h2>
         </div>
 
-        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635]">
-          {texts.home.windowLabel}
-        </span>
+        {isFallback ? (
+          <span
+            data-testid="leaderboard-sample-badge"
+            className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-700 dark:text-amber-300"
+          >
+            Sample Preview
+          </span>
+        ) : (
+          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FAF5FF] dark:bg-[#230542] border border-[#DDD6FE] dark:border-[#DDD6FE]/20 text-[#7C3AED] dark:text-[#A3E635]">
+            {texts.home.windowLabel}
+          </span>
+        )}
       </div>
+
+      {/* Truthful Fallback Sample Notice */}
+      {isFallback && (
+        <div
+          data-testid="leaderboard-sample-banner"
+          className="mb-3 px-3 py-2 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs text-amber-800 dark:text-amber-200"
+        >
+          <div className="flex items-center gap-1.5 font-bold text-[11px]">
+            <span>ℹ️</span>
+            <span>Sample Rankings · Live leaderboard unavailable</span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchLeaderboard}
+            className="text-[10px] font-black text-amber-700 dark:text-amber-300 underline hover:opacity-80 ml-2 shrink-0 cursor-pointer"
+          >
+            Retry 🔄
+          </button>
+        </div>
+      )}
 
       {/* Rows */}
       <div className="space-y-2">

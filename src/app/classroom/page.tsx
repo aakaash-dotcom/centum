@@ -497,6 +497,7 @@ export default function ClassroomPage() {
 
             <button
               type="button"
+              data-testid="explore-demo-btn"
               onClick={() => setIsDemoOpen(true)}
               className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] border border-[#7C3AED] text-[#7C3AED] dark:text-[#A78BFA] hover:bg-[#7C3AED] hover:text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
             >
@@ -547,7 +548,7 @@ export default function ClassroomPage() {
                     demoTheme === 'light' ? 'text-slate-500' : 'text-slate-400'
                   }`}
                 >
-                  {isTamil ? 'மாணவர் மாதிரி வகுப்பறை' : 'Student-facing demo classroom'}
+                  {isTamil ? 'மாணவர் மாதிரி வகுப்பறை (மாதிரி தரவு)' : 'Student demo classroom · Sample data preview'}
                 </p>
               </div>
             </div>
@@ -688,7 +689,7 @@ export default function ClassroomPage() {
                 <div className="min-w-0 flex-1">
                   <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white border border-white/30 mb-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-300" />
-                    <span>{isTamil ? 'இணைக்கப்பட்ட வகுப்பறை' : 'Enrolled Classroom'}</span>
+                    <span>{isTamil ? 'இணைக்கப்பட்ட வகுப்பறை · மாதிரி' : 'Enrolled Classroom · Demo Preview'}</span>
                   </div>
                   <h3 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
                     {data?.preview?.sampleTuition?.name || "Ravi's Tuition Centre"}
@@ -724,17 +725,17 @@ export default function ClassroomPage() {
                           <Calendar className="w-4 h-4" />
                         </div>
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                          🌟 93%
+                          🌟 93% · Demo
                         </span>
                       </div>
                       <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        {isTamil ? 'வருகை' : 'Attendance'}
+                        {isTamil ? 'வருகை (மாதிரி)' : 'Attendance (Demo)'}
                       </h4>
                       <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 my-1">
                         93%
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        28 / 30 {isTamil ? 'நாட்கள் பிரசன்னம்' : 'Days Present'}
+                        28 / 30 {isTamil ? 'நாட்கள் (மாதிரி பதிவு)' : 'Days (Demo Record)'}
                       </p>
                     </div>
                     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -759,7 +760,7 @@ export default function ClassroomPage() {
                           <BookOpen className="w-4 h-4" />
                         </div>
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                          📝 3 {isTamil ? 'குறிப்புகள்' : 'Notes'}
+                          📝 3 Sample Notes
                         </span>
                       </div>
                       <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -769,7 +770,7 @@ export default function ClassroomPage() {
                         3 Notes
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                        {isTamil ? 'கடைசி: கணிதம் HW' : 'Latest: Maths Ch 1 HW'}
+                        {isTamil ? 'மாதிரி ஆசிரியர் குறிப்புகள்' : 'Sample Teacher Diary'}
                       </p>
                     </div>
                     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-blue-600 dark:text-blue-400">
@@ -794,17 +795,17 @@ export default function ClassroomPage() {
                           <TrendingUp className="w-4 h-4" />
                         </div>
                         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400">
-                          🔥 14d Streak
+                          🔥 14d Streak · Demo
                         </span>
                       </div>
                       <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                        {isTamil ? 'முன்னேற்றம்' : 'Performance'}
+                        {isTamil ? 'முன்னேற்றம் (மாதிரி)' : 'Performance (Demo)'}
                       </h4>
                       <div className="text-2xl font-black text-purple-600 dark:text-purple-400 my-1">
                         92%
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                        12 {isTamil ? 'தேர்வுகள் முடிந்தது' : 'Tests Completed'}
+                        12 {isTamil ? 'தேர்வுகள் (மாதிரி விவரம்)' : 'Tests (Demo Stats)'}
                       </p>
                     </div>
                     <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] font-bold text-purple-600 dark:text-purple-400">
@@ -814,20 +815,26 @@ export default function ClassroomPage() {
                   </div>
                 </div>
 
-                {/* Helpful Student Teaser */}
+                {/* Explicit Demo Data Notice */}
                 <div
-                  className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2.5 ${
+                  data-testid="classroom-demo-banner"
+                  className={`p-3.5 rounded-2xl border text-xs flex items-start gap-2.5 ${
                     demoTheme === 'light'
-                      ? 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
-                      : 'bg-emerald-950/40 border-emerald-900/60 text-emerald-200'
+                      ? 'bg-amber-500/10 border-amber-500/25 text-amber-900'
+                      : 'bg-amber-500/10 border-amber-500/25 text-amber-200'
                   }`}
                 >
-                  <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <p className="leading-relaxed">
-                    {isTamil
-                      ? 'இது உங்கள் டியூஷன் வகுப்பறையின் நேரடி மாணவர் வடிவம். ஆசிரியர் நாள்குறிப்பு மற்றும் உங்கள் தனிப்பட்ட தேர்வு விவரங்களை அறிய மேலே உள்ள அட்டைகளைத் தட்டவும்.'
-                      : "Experience your student dashboard at Ravi's Tuition Centre. Tap any tile above to open daily teacher notes, 30-day attendance, or personal quiz metrics."}
-                  </p>
+                  <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <span className="font-black uppercase tracking-wider text-[10px] block mb-0.5 text-amber-700 dark:text-amber-300">
+                      {isTamil ? 'மாதிரி வகுப்பறை அறிவிப்பு · டெமோ தரவு' : 'Demo Classroom Notice · Sample Data'}
+                    </span>
+                    <p>
+                      {isTamil
+                        ? 'இங்கு காட்டப்பட்டுள்ள வருகை (93%), ஆசிரியர் குறிப்புகள் மற்றும் தேர்வு தேர்ச்சி (92%) புள்ளிவிவரங்கள் மாதிரி வகுப்பறை வடிவத்தை மாணவர்களுக்கு விளக்க உருவாக்கப்பட்ட மாதிரி எண்களாகும்.'
+                        : 'The attendance (93%), teacher diary notes, and quiz performance (92%) metrics displayed here are sample demonstration figures to illustrate your daily dashboard at Ravi’s Tuition Centre.'}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1022,21 +1029,21 @@ export default function ClassroomPage() {
                       <Calendar className="w-4 h-4 text-emerald-500" />
                       <span>{isTamil ? 'எனது வருகை (கடந்த 30 நாட்கள்)' : 'My Attendance (Last 30 Days)'}</span>
                     </div>
-                    <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
-                      🌟 Excellent
+                    <span className="text-xs font-black px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25">
+                      🌟 93% · Demo Record
                     </span>
                   </div>
 
                   <div className="flex items-baseline gap-3 my-1">
                     <span className="text-4xl font-black text-emerald-600 dark:text-emerald-400">93%</span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">
-                      28 of 30 Days Present
+                      28 of 30 Days Present (Sample)
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300 font-bold bg-amber-500/10 px-3 py-2 rounded-xl border border-amber-500/20">
                     <span>🔥</span>
-                    <span>14 Days Continuous Active Streak! Centum Eligible.</span>
+                    <span>14 Days Continuous Active Streak! (Demo Preview)</span>
                   </div>
                 </div>
 
@@ -1140,6 +1147,14 @@ export default function ClassroomPage() {
                   </span>
                 </div>
 
+                {/* Demo Data Notice */}
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                  <span>ℹ️</span>
+                  <span>
+                    <strong>{isTamil ? 'மாதிரி தரவு:' : 'Demo Data:'}</strong> {isTamil ? 'கீழே காட்டப்பட்டுள்ள வினாடி வினா துல்லியம் (92%) மற்றும் பாடவாரியான மதிப்பெண்கள் மாதிரி எண்களாகும்.' : 'The quiz accuracy (92%) and subject scores shown below are sample demonstration figures.'}
+                  </span>
+                </div>
+
                 {/* Individual 3-Card Metrics (NO batch averages, NO class ranks) */}
                 <div className="grid grid-cols-3 gap-2.5">
                   <div
@@ -1150,10 +1165,13 @@ export default function ClassroomPage() {
                     }`}
                   >
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                      {isTamil ? 'சராசரி மதிப்பெண்' : 'Quiz Accuracy'}
+                      {isTamil ? 'சராசரி (மாதிரி)' : 'Quiz Accuracy'}
                     </span>
                     <span className="text-xl sm:text-2xl font-black text-purple-600 dark:text-purple-400 block mt-1">
                       92%
+                    </span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block mt-0.5">
+                      Sample Data
                     </span>
                   </div>
 
@@ -1165,10 +1183,13 @@ export default function ClassroomPage() {
                     }`}
                   >
                     <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
-                      {isTamil ? 'தேர்வுகள்' : 'Tests Done'}
+                      {isTamil ? 'தேர்வுகள் (மாதிரி)' : 'Tests Done'}
                     </span>
                     <span className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 block mt-1">
                       12
+                    </span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block mt-0.5">
+                      Sample Data
                     </span>
                   </div>
 
@@ -1184,6 +1205,9 @@ export default function ClassroomPage() {
                     </span>
                     <span className="text-xl sm:text-2xl font-black text-amber-500 block mt-1">
                       14d 🔥
+                    </span>
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block mt-0.5">
+                      Sample Data
                     </span>
                   </div>
                 </div>

@@ -11,6 +11,7 @@ export default function NewsPage() {
   const [newsList, setNewsList] = useState<News[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [isFallback, setIsFallback] = useState(false);
 
   const fetchNews = () => {
     setIsLoading(true);
@@ -27,6 +28,7 @@ export default function NewsPage() {
         const data = await res.json();
         if (data && data.ok && Array.isArray(data.news)) {
           setNewsList(data.news);
+          setIsFallback(data.source === 'fallback');
         } else {
           setIsError(true);
           setNewsList([]);
@@ -57,6 +59,28 @@ export default function NewsPage() {
           </p>
         </div>
       </div>
+
+      {/* Fallback Sample News Notice */}
+      {isFallback && !isLoading && !isError && (
+        <div
+          data-testid="news-sample-banner"
+          className="mb-4 px-3.5 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between text-xs text-amber-800 dark:text-amber-200"
+        >
+          <div className="flex items-center gap-2">
+            <span>ℹ️</span>
+            <span className="font-semibold">
+              Sample Updates · Live news feed currently offline
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={fetchNews}
+            className="text-[11px] font-bold text-amber-700 dark:text-amber-300 underline hover:opacity-80 ml-2 shrink-0 cursor-pointer"
+          >
+            Check Live 🔄
+          </button>
+        </div>
+      )}
 
       {/* News Card Feed */}
       <div className="flex-1 flex flex-col">
