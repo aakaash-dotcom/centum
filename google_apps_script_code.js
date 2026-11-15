@@ -340,6 +340,12 @@ function doPost(e) {
       return opsDelete_(body);
     } else if (body.type === "ops-set") {
       return opsSet_(body);
+    } else if (body.type === "ops-rows" || body.action === "ops-rows") {
+      const tab = body.tab;
+      if (!SCHEMA[tab]) return json_({ ok: false, error: "unknown-tab" });
+      return json_({ ok: true, tab: tab, rows: rows_(tab) });
+    } else if (body.type === "questions" || body.action === "questions") {
+      return json_(questionsQuery_(body));
     } else if (body.type === "referral-code") {
       // v5 — idempotent: one auto-generated share code per student, stored in Coupons
       return json_(referralCodeFor_(String(body.phone || ""), String(body.name || "student")));
@@ -405,11 +411,12 @@ function importQuestions() {
       added++;
     } catch (e) { skipped.push("row " + (i + 1) + ": " + e.message); }
   });
-  imp.getRange("A2").setValue(JSON.stringify([{ note: "✅ " + added + " questions added " + new Date().toLocaleString() + (skipped.length ? " — skipped: " + skipped.join("; ") : "") }], null, 2));
-  ui.alert("✅ Added " + added + " questions." + (skipped.length ? "
-Skipped:
-" + skipped.join("
-") : ""));
+  imp.getRange("A2").setValue(JSON.stringify([{ note: "Added " + added + " questions " + new Date().toLocaleString() + (skipped.length ? " - skipped: " + skipped.join("; ") : "") }], null, 2));
+  var summaryText = "Added " + added + " questions.";
+  if (skipped.length > 0) {
+    summaryText = summaryText + " Skipped: " + skipped.join("; ");
+  }
+  ui.alert(summaryText);
 }
 
 // =================== v4.1/v4.2 ops implementations (shared by GET + POST) ===================

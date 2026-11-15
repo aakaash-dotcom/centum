@@ -355,31 +355,87 @@ export async function GET(request: Request) {
 
   if (!rawQuestions && scriptUrl && secretKey) {
     try {
-      // 1. Fetch raw rows directly from Questions tab via POST action=ops-rows
-      // This eliminates secrets from query strings and bypasses legacy cloud GAS splitOptions_ filtering
-      const opsRes = await fetch(scriptUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'ops-rows',
-          tab: 'Questions',
-          key: secretKey,
-        }),
-        cache: 'no-store',
-      });
+      // 1. Fetch raw rows directly from Questions tab via GET action=ops-rows (Standard doGet protocol)
+      try {
+        const opsGetUrl = new URL(scriptUrl);
+        opsGetUrl.searchParams.set('action', 'ops-rows');
+        opsGetUrl.searchParams.set('tab', 'Questions');
+        opsGetUrl.searchParams.set('key', secretKey);
 
-      if (opsRes.ok) {
-        const opsData = await opsRes.json();
-        if (opsData && opsData.ok && Array.isArray(opsData.rows) && opsData.rows.length > 0) {
-          rawQuestions = opsData.rows;
-          upstreamTotal = opsData.rows.length;
-          servedFrom = 'gas';
-          source = 'live';
-          cachedRawQuestions = { timestamp: Date.now(), rows: opsData.rows };
+        const opsGetRes = await fetch(opsGetUrl.toString(), { cache: 'no-store' });
+        if (opsGetRes.ok) {
+          const opsData = await opsGetRes.json();
+          if (opsData && opsData.ok && Array.isArray(opsData.rows) && opsData.rows.length > 0) {
+            rawQuestions = opsData.rows;
+            upstreamTotal = opsData.rows.length;
+            servedFrom = 'gas';
+            source = 'live';
+            cachedRawQuestions = { timestamp: Date.now(), rows: opsData.rows };
+          }
+        }
+      } catch (err) {
+        // Continue to POST fallback
+      }
+
+      // 2. Fallback to POST action=ops-rows if GET was blocked or empty
+      if (!rawQuestions) {
+        try {
+          const opsRes = await fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'ops-rows',
+              tab: 'Questions',
+              key: secretKey,
+            }),
+            cache: 'no-store',
+          });
+
+          if (opsRes.ok) {
+            const opsData = await opsRes.json();
+            if (opsData && opsData.ok && Array.isArray(opsData.rows) && opsData.rows.length > 0) {
+              rawQuestions = opsData.rows;
+              upstreamTotal = opsData.rows.length;
+              servedFrom = 'gas';
+              source = 'live';
+              cachedRawQuestions = { timestamp: Date.now(), rows: opsData.rows };
+            }
+          }
+        } catch {
+          // Continue to action=questions fallback
         }
       }
 
-      // 2. Fallback to action=questions POST if ops-rows failed or was empty
+      // 3. Fallback to action=questions via GET
+      if (!rawQuestions) {
+        try {
+          const qGetUrl = new URL(scriptUrl);
+          qGetUrl.searchParams.set('action', 'questions');
+          qGetUrl.searchParams.set('key', secretKey);
+          if (classLevel) qGetUrl.searchParams.set('classLevel', classLevel);
+          if (subject) qGetUrl.searchParams.set('subject', normalizeSubject(subject));
+          if (chapter) qGetUrl.searchParams.set('chapter', chapter);
+          if (type) qGetUrl.searchParams.set('type', type);
+          if (medium) qGetUrl.searchParams.set('medium', medium);
+          if (stream) qGetUrl.searchParams.set('stream', stream);
+          qGetUrl.searchParams.set('count', 'all');
+
+          const qGetRes = await fetch(qGetUrl.toString(), { cache: 'no-store' });
+          if (qGetRes.ok) {
+            const data = await qGetRes.json();
+            if (data && data.ok && Array.isArray(data.questions)) {
+              rawQuestions = data.questions;
+              upstreamTotal = typeof data.totalMatching === 'number' ? data.totalMatching : data.questions.length;
+              servedFrom = 'gas';
+              source = 'live';
+            }
+          }
+        } catch {
+          // Continue to POST questions fallback
+        }
+      }
+
+      // 4. Fallback to action=questions POST
       if (!rawQuestions) {
         const res = await fetch(scriptUrl, {
           method: 'POST',

@@ -318,6 +318,23 @@ const SCIENCE_CHAPTERS = [
   { no: 4, en: 'Electricity', tm: 'மின்னோட்டவியல்' },
   { no: 5, en: 'Acoustics', tm: 'ஒலியியல்' },
   { no: 6, en: 'Nuclear Physics', tm: 'அணுக்கரு இயற்பியல்' },
+  { no: 7, en: 'Atoms and Molecules', tm: 'அணுக்களும் மூலக்கூறுகளும்' },
+  { no: 8, en: 'Periodic Classification of Elements', tm: 'தனிமங்களின் ஆவர்த்தன வகைப்பாடு' },
+  { no: 9, en: 'Solutions', tm: 'கரைசல்கள்' },
+  { no: 10, en: 'Types of Chemical Reactions', tm: 'வேதிவினைகளின் வகைகள்' },
+  { no: 11, en: 'Carbon and its Compounds', tm: 'கார்பனும் அதன் சேர்மங்களும்' },
+  { no: 12, en: 'Plant Anatomy and Plant Physiology', tm: 'தாவர உள்ளமைப்பியல் மற்றும் தாவர செயலியல்' },
+  { no: 13, en: 'Structural Organisation of Animals', tm: 'உயிரினங்களின் அமைப்பு நிலைகள்' },
+  { no: 14, en: 'Transportation in Plants and Circulation in Animals', tm: 'தாவரங்களின் கடத்துதல் மற்றும் விலங்குகளின் சுற்றோட்டம்' },
+  { no: 15, en: 'Nervous System', tm: 'நரம்பு மண்டலம்' },
+  { no: 16, en: 'Plant and Animal Hormones', tm: 'தாவர மற்றும் விலங்கு ஹார்மோன்கள்' },
+  { no: 17, en: 'Reproduction in Plants and Animals', tm: 'தாவரங்கள் மற்றும் விலங்குகளில் இனப்பெருக்கம்' },
+  { no: 18, en: 'Genetics', tm: 'மரபியல்' },
+  { no: 19, en: 'Origin and Evolution of Life', tm: 'உயிரின் தோற்றமும் பரிணாமமும்' },
+  { no: 20, en: 'Breeding and Biotechnology', tm: 'இனக்கலப்பு மற்றும் உயிரித் தொழில்நுட்பவியல்' },
+  { no: 21, en: 'Health and Diseases', tm: 'உடல் நலம் மற்றும் நோய்கள்' },
+  { no: 22, en: 'Environmental Management', tm: 'சுற்றுச்சூழல் மேலாண்மை' },
+  { no: 23, en: 'Visual Communication', tm: 'காட்சித் தொடர்பு' },
 ];
 
 const SCIENCE_TEMPLATES = {
@@ -380,16 +397,187 @@ const SCIENCE_TEMPLATES = {
       { q: (i) => `கதிரியக்கத்தின் SI அலகு:`, opts: (i) => [`பெக்குரல் (Bq)`, `கியூரி`, `ரூதர்போர்டு`, `ராண்ட்ஜன்`], ans: 0, exp: (i) => `கதிரியக்கத்தின் SI அலகு பெக்குரல் ஆகும்.` },
       { q: (i) => `அணுக்கரு உலையில் நியூட்ரான்களை உறிஞ்சி கட்டுப்பாட்டிற்குள் வைக்க பயன்படும் தண்டு:`, opts: (i) => [`போரான் அல்லது காட்மியம்`, `யுரேனியம்`, `காரியம்`, `கிராஃபைட்`], ans: 0, exp: (i) => `போரான் மற்றும் காட்மியம் நியூட்ரான்களை உறிஞ்சும் கட்டுப்பாட்டுத் தண்டுகளாகும்.` },
     ]
+  },
+  7: {
+    en: [
+      { q: (i) => `The value of Avogadro's number is:`, opts: (i) => [`6.023 × 10^23`, `6.023 × 10^-23`, `3 × 10^8`, `1.6 × 10^-19`], ans: 0, exp: (i) => `Avogadro's constant N_A = 6.023 × 10^23 entities per mole.` },
+      { q: (i) => `The gram molar volume of any gas at STP is:`, opts: (i) => [`22.4 litres`, `2.24 litres`, `224 litres`, `11.2 litres`], ans: 0, exp: (i) => `At STP, 1 mole of an ideal gas occupies 22.4 dm^3 (litres).` },
+    ],
+    tm: [
+      { q: (i) => `அவகாட்ரோ எண்ணின் மதிப்பு:`, opts: (i) => [`6.023 × 10^23`, `6.023 × 10^-23`, `3 × 10^8`, `1.6 × 10^-19`], ans: 0, exp: (i) => `அவகாட்ரோ எண் 6.023 × 10^23 மோல்^-1.` },
+      { q: (i) => `திட்ட வெப்ப அழுத்த நிலையில் ஒரு மோல் வாயு அடைத்துக்கொள்ளும் பருமன்:`, opts: (i) => [`22.4 லிட்டர்`, `2.24 லிட்டர்`, `224 லிட்டர்`, `11.2 லிட்டர்`], ans: 0, exp: (i) => `STP-ல் ஒரு மோல் வாயுவின் பருமன் 22.4 லிட்டர் ஆகும்.` },
+    ]
+  },
+  8: {
+    en: [
+      { q: (i) => `The basis of the modern periodic table of elements is:`, opts: (i) => [`Atomic number`, `Atomic mass`, `Mass number`, `Neutron count`], ans: 0, exp: (i) => `Moseley proved that physical and chemical properties depend on atomic number.` },
+      { q: (i) => `The total number of periods and groups in the modern periodic table is:`, opts: (i) => [`7 periods and 18 groups`, `18 periods and 7 groups`, `8 periods and 18 groups`, `7 periods and 8 groups`], ans: 0, exp: (i) => `The modern table has 7 horizontal periods and 18 vertical groups.` },
+    ],
+    tm: [
+      { q: (i) => `நவீன ஆவர்த்தன அட்டவணையின் அடிப்படை:`, opts: (i) => [`அணு எண்`, `அணு நிறை`, `நிறை எண்`, `நியூட்ரான் எண்ணிக்கை`], ans: 0, exp: (i) => `ஹென்றி மோஸ்லே விதியின்படி தனிமங்களின் பண்புகள் அவற்றின் அணு எண்ணைப் பொறுத்தது.` },
+      { q: (i) => `நவீன ஆவர்த்தன அட்டவணையில் உள்ள தொடர்கள் மற்றும் தொகுதிகளின் எண்ணிக்கை:`, opts: (i) => [`7 தொடர்கள் மற்றும் 18 தொகுதிகள்`, `18 தொடர்கள் மற்றும் 7 தொகுதிகள்`, `8 தொடர்கள் மற்றும் 18 தொகுதிகள்`, `7 தொடர்கள் மற்றும் 8 தொகுதிகள்`], ans: 0, exp: (i) => `நவீன அட்டவணையில் 7 தொடர்களும் 18 தொகுதிகளும் உள்ளன.` },
+    ]
+  },
+  9: {
+    en: [
+      { q: (i) => `Which substance is called the universal solvent?`, opts: (i) => [`Water`, `Ethanol`, `Benzene`, `Acetone`], ans: 0, exp: (i) => `Water dissolves a wider range of substances than any other liquid.` },
+      { q: (i) => `Solubility of a solute is expressed as grams of solute dissolved in:`, opts: (i) => [`100 g of solvent`, `1000 g of solvent`, `50 g of solvent`, `10 g of solvent`], ans: 0, exp: (i) => `Solubility is defined per 100 g of solvent at a specified temperature.` },
+    ],
+    tm: [
+      { q: (i) => `உலகளாவிய அல்லது சர்வக்கரைப்பான் என அழைக்கப்படுவது:`, opts: (i) => [`நீர்`, `எத்தனால்`, `பென்சீன்`, `அசிட்டோன்`], ans: 0, exp: (i) => `நீர் பெரும்பாலான கரைபொருள்களைக் கரைப்பதால் சர்வக்கரைப்பான் எனப்படும்.` },
+      { q: (i) => `கரைதிறன் என்பது எத்தனை கிராம் கரைப்பானில் கரையும் கரைபொருளின் அளவு:`, opts: (i) => [`100 கிராம்`, `1000 கிராம்`, `50 கிராம்`, `10 கிராம்`], ans: 0, exp: (i) => `ஒரு குறிப்பிட்ட வெப்பநிலையில் 100 கிராம் கரைப்பானில் கரையும் கரைபொருளின் கிராம்களே கரைதிறன் ஆகும்.` },
+    ]
+  },
+  10: {
+    en: [
+      { q: (i) => `The pH value of pure neutral water at 25°C is:`, opts: (i) => [`7`, `0`, `14`, `1`], ans: 0, exp: (i) => `Neutral solution has [H+] = [OH-] = 10^-7 M, so pH = 7.` },
+      { q: (i) => `A reaction between an acid and a base that produces salt and water is:`, opts: (i) => [`Neutralization reaction`, `Combustion reaction`, `Decomposition reaction`, `Precipitation reaction`], ans: 0, exp: (i) => `Acid + Base -> Salt + Water is an exothermic neutralization reaction.` },
+    ],
+    tm: [
+      { q: (i) => `25°C வெப்பநிலையில் தூய நடுநிலை நீரின் pH மதிப்பு:`, opts: (i) => [`7`, `0`, `14`, `1`], ans: 0, exp: (i) => `தூய நீரில் [H+] = 10^-7 M என்பதால் pH = 7.` },
+      { q: (i) => `அமிலமும் காரமும் வினைபுரிந்து உப்பையும் நீரையும் தரும் வினை:`, opts: (i) => [`நடுநிலையாக்கல் வினை`, `எரிதல் வினை`, `சிதைவுறுதல் வினை`, `வீழ்படிவாதல் வினை`], ans: 0, exp: (i) => `அமிலம் + காரம் -> உப்பு + நீர் என்பது நடுநிலையாக்கல் வினை ஆகும்.` },
+    ]
+  },
+  11: {
+    en: [
+      { q: (i) => `The IUPAC functional group present in alcohols is:`, opts: (i) => [`-OH`, `-CHO`, `-COOH`, `-CO-`], ans: 0, exp: (i) => `Alcohols contain the hydroxyl (-OH) functional group.` },
+      { q: (i) => `The unique property of carbon atoms to form long chains and rings is called:`, opts: (i) => [`Catenation`, `Isomerism`, `Homology`, `Allotropy`], ans: 0, exp: (i) => `Catenation is the self-linking of carbon atoms through covalent bonds.` },
+    ],
+    tm: [
+      { q: (i) => `ஆல்கஹாலின் வினைசெயல் தொகுதி:`, opts: (i) => [`-OH`, `-CHO`, `-COOH`, `-CO-`], ans: 0, exp: (i) => `ஆல்கஹால்களில் ஹைட்ராக்சில் (-OH) தொகுதி உள்ளது.` },
+      { q: (i) => `கார்பன் அணுக்கள் தங்களுக்குள் சகப்பிணைப்பால் நீண்ட சங்கிலித் தொடரை உருவாக்கும் பண்பு:`, opts: (i) => [`சங்கிலித் தொடராக்கம்`, `மாற்றியம்`, `படிவரிசை`, `புறவேற்றுமை`], ans: 0, exp: (i) => `கார்பனின் தனித்துவமான இத்திறன் சங்கிலித் தொடராக்கம் (Catenation) எனப்படும்.` },
+    ]
+  },
+  12: {
+    en: [
+      { q: (i) => `Casparian strips made of suberin are characteristically found in the:`, opts: (i) => [`Endodermis of root`, `Epidermis of stem`, `Pericycle of root`, `Cortex of leaf`], ans: 0, exp: (i) => `Casparian bands prevent apoplastic water flow in root endodermis.` },
+      { q: (i) => `Which plant tissue is responsible for the upward conduction of water and minerals?`, opts: (i) => [`Xylem`, `Phloem`, `Parenchyma`, `Collenchyma`], ans: 0, exp: (i) => `Xylem vessels and tracheids conduct sap unidirectionally from roots to leaves.` },
+    ],
+    tm: [
+      { q: (i) => `காஸ்பேரியன் பட்டைகள் வேரின் எந்தப் பகுதியில் காணப்படுகின்றன?`, opts: (i) => [`அகத்தோல் (Endodermis)`, `புறத்தோல்`, `புறணி`, `பெரிசைக்கிள்`], ans: 0, exp: (i) => `வேரின் அகத்தோல் செல்களின் ரேடியல் சுவர்களில் காஸ்பேரியன் பட்டைகள் உள்ளன.` },
+      { q: (i) => `தாவரங்களில் நீரையும் கனிமங்களையும் வேரிலிருந்து இலைகளுக்குக் கடத்தும் திசு:`, opts: (i) => [`சைலம்`, `புளோயம்`, `பாரன்கைமா`, `கோலன்கைமா`], ans: 0, exp: (i) => `சைலக் குழாய்கள் நீரை மேல்நோக்கிக் கடத்துகின்றன.` },
+    ]
+  },
+  13: {
+    en: [
+      { q: (i) => `The anticoagulant substance secreted by the saliva of medicinal leech is:`, opts: (i) => [`Hirudin`, `Heparin`, `Histamine`, `Hemoglobin`], ans: 0, exp: (i) => `Hirudin prevents clotting of host blood during sanguivorous feeding.` },
+      { q: (i) => `Leeches belong to which invertebrate phylum?`, opts: (i) => [`Annelida`, `Arthropoda`, `Mollusca`, `Platyhelminthes`], ans: 0, exp: (i) => `Leech (Hirudinaria granulosa) is a metamerically segmented annelid.` },
+    ],
+    tm: [
+      { q: (i) => `அட்டையின் உமிழ்நீரில் உள்ள இரத்தம் உறைவதைத் தடுக்கும் பொருள்:`, opts: (i) => [`ஹிருடின்`, `ஹெப்பாரின்`, `ஹிஸ்டமைன்`, `ஹீமோகுளோபின்`], ans: 0, exp: (i) => `ஹிருடின் இரத்தம் உறைதலைத் தடுத்து அட்டை எளிதில் உறிஞ்ச உதவுகிறது.` },
+      { q: (i) => `இந்தியக் கால்நடை அட்டை எந்தத் தொகுதியைச் சேர்ந்தது?`, opts: (i) => [`வளைதசைப் புழுக்கள் (அன்னலிடா)`, `கணுக்காலிகள்`, `மெல்லுடலிகள்`, `தட்டைப் புழுக்கள்`], ans: 0, exp: (i) => `அட்டை கண்ட அமைப்பைக் கொண்ட வளைதசைப் புழுக்கள் (அன்னலிடா) தொகுதியாகும்.` },
+    ]
+  },
+  14: {
+    en: [
+      { q: (i) => `Which blood group is designated as the universal recipient?`, opts: (i) => [`AB positive`, `O negative`, `A positive`, `B positive`], ans: 0, exp: (i) => `AB+ blood contains both A and B antigens and lacks anti-A/anti-B antibodies.` },
+      { q: (i) => `The normal systolic and diastolic arterial blood pressure in a resting human is:`, opts: (i) => [`120 / 80 mm Hg`, `80 / 120 mm Hg`, `140 / 90 mm Hg`, `100 / 60 mm Hg`], ans: 0, exp: (i) => `Standard healthy human blood pressure is 120 mm Hg systolic over 80 mm Hg diastolic.` },
+    ],
+    tm: [
+      { q: (i) => `அனைவரிடமிருந்தும் இரத்தம் பெறும் உலகளாவிய இரத்தப் பிரிவு:`, opts: (i) => [`AB பாசிட்டிவ்`, `O நெகட்டிவ்`, `A பாசிட்டிவ்`, `B பாசிட்டிவ்`], ans: 0, exp: (i) => `AB இரத்தப் பிரிவில் எதிர்பொருள்கள் (antibodies) இல்லாததால் அனைவரிடமும் பெறலாம்.` },
+      { q: (i) => `ஆரோக்கியமான மனிதனின் இயல்பான இரத்த அழுத்த அளவு:`, opts: (i) => [`120 / 80 மி.மீ பாதரசம்`, `80 / 120 மி.மீ பாதரசம்`, `140 / 90 மி.மீ பாதரசம்`, `100 / 60 மி.மீ பாதரசம்`], ans: 0, exp: (i) => `சிஸ்டாலிக் அழுத்தம் 120 மற்றும் டயஸ்டாலிக் அழுத்தம் 80 மி.மீ Hg ஆகும்.` },
+    ]
+  },
+  15: {
+    en: [
+      { q: (i) => `The structural and functional unit of the human nervous system is the:`, opts: (i) => [`Neuron`, `Nephron`, `Sarcomere`, `Alveolus`], ans: 0, exp: (i) => `Neurons (nerve cells) conduct electro-chemical nerve impulses.` },
+      { q: (i) => `The microscopic gap between the axon terminal of one neuron and the dendrite of the next is called:`, opts: (i) => [`Synapse`, `Node of Ranvier`, `Myelin sheath`, `Axon hillock`], ans: 0, exp: (i) => `Neurotransmitters diffuse across the synapse to transmit impulses.` },
+    ],
+    tm: [
+      { q: (i) => `நரம்பு மண்டலத்தின் அடிப்படை கட்டமைப்பு மற்றும் செயல் அலகு:`, opts: (i) => [`நியூரான்`, `நெஃப்ரான்`, `சார்க்கோமியர்`, `நுரையீரல் நுண்சிறைப்பை`], ans: 0, exp: (i) => `நரம்பு மண்டலத்தின் மிகச்சிறிய செயல் அலகு நியூரான்கள் ஆகும்.` },
+      { q: (i) => `ஒரு நியூரானின் ஆக்சான் முனையும் அடுத்த நியூரானின் டென்ட்ரானும் இணையும் பகுதி:`, opts: (i) => [`சினாப்ஸ் (நரம்பு இணைவு)`, `ரான்வியர் கணு`, `மயலின் உறை`, `ஆக்சான் மேடு`], ans: 0, exp: (i) => `நரம்பு தூண்டல்கள் கடத்தப்படும் இந்த இடைவெளி சினாப்ஸ் எனப்படும்.` },
+    ]
+  },
+  16: {
+    en: [
+      { q: (i) => `Which plant hormone is primarily responsible for apical dominance and cell elongation?`, opts: (i) => [`Auxin`, `Gibberellin`, `Cytokinin`, `Abscisic acid`], ans: 0, exp: (i) => `Auxin produced at shoot tips promotes apical dominance.` },
+      { q: (i) => `Insulin hormone is synthesized and secreted by which cells of the Islets of Langerhans?`, opts: (i) => [`Beta cells`, `Alpha cells`, `Delta cells`, `F cells`], ans: 0, exp: (i) => `Beta cells secrete insulin; alpha cells secrete glucagon.` },
+    ],
+    tm: [
+      { q: (i) => `தாவரங்களில் நுனி ஆதிக்கத்திற்கும் செல் நீட்சிக்கும் காரணமான ஹார்மோன்:`, opts: (i) => [`ஆக்சின்`, `ஜிப்ரல்லின்`, `சைட்டோகைனின்`, `அப்சிசிக் அமிலம்`], ans: 0, exp: (i) => `தாவர நுனி மொட்டில் சுரக்கும் ஆக்சின்கள் நுனி ஆதிக்கத்திற்கு காரணமாகின்றன.` },
+      { q: (i) => `கணையத்தில் உள்ள லாங்கர்ஹான் திட்டுகளின் எந்த செல்கள் இன்சுலினைச் சுரக்கின்றன?`, opts: (i) => [`பீட்டா செல்கள்`, `ஆல்ஃபா செல்கள்`, `டெல்டா செல்கள்`, `எப் செல்கள்`], ans: 0, exp: (i) => `பீட்டா செல்கள் இன்சுலினையும் ஆல்ஃபா செல்கள் குளூக்கோகானையும் சுரக்கின்றன.` },
+    ]
+  },
+  17: {
+    en: [
+      { q: (i) => `The process of fusion of a male gamete with a female gamete is called:`, opts: (i) => [`Fertilization`, `Pollination`, `Parthenogenesis`, `Metamorphosis`], ans: 0, exp: (i) => `Fertilization forms a diploid zygote from haploid gametes.` },
+      { q: (i) => `In a typical 28-day human menstrual cycle, ovulation occurs around day:`, opts: (i) => [`14`, `5`, `1`, `28`], ans: 0, exp: (i) => `LH surge causes ovulation on approximately day 14 of the cycle.` },
+    ],
+    tm: [
+      { q: (i) => `ஆண் மற்றும் பெண் இனச்செல்கள் ஒன்றிணைந்து இருமய கருமுட்டை உருவாகும் நிகழ்ச்சி:`, opts: (i) => [`கருவுறுதல்`, `மகரந்தச்சேர்க்கை`, `கன்னி இனப்பெருக்கம்`, `உருமாற்றம்`], ans: 0, exp: (i) => `ஆண், பெண் கேமீட்டுகள் இணைவது கருவுறுதல் எனப்படும்.` },
+      { q: (i) => `மனித மாதவிடாய் சுழற்சியில் பொதுவாக அண்டம் விடுபடுதல் நடைபெறும் நாள்:`, opts: (i) => [`14 ஆம் நாள்`, `5 ஆம் நாள்`, `1 ஆம் நாள்`, `28 ஆம் நாள்`], ans: 0, exp: (i) => `சுழற்சியின் 14வது நாளில் எல்.எச் ஹார்மோன் தூண்டுதலால் அண்டம் விடுபடுகிறது.` },
+    ]
+  },
+  18: {
+    en: [
+      { q: (i) => `Who is recognized as the Father of Modern Genetics?`, opts: (i) => [`Gregor Johann Mendel`, `Charles Darwin`, `Thomas Hunt Morgan`, `Jean-Baptiste Lamarck`], ans: 0, exp: (i) => `Mendel discovered laws of inheritance using Pisum sativum.` },
+      { q: (i) => `The phenotypic ratio obtained by Mendel in his monohybrid cross F2 generation was:`, opts: (i) => [`3:1`, `9:3:3:1`, `1:2:1`, `1:1`], ans: 0, exp: (i) => `Phenotypic ratio is 3 tall : 1 dwarf; genotypic is 1:2:1.` },
+    ],
+    tm: [
+      { q: (i) => `மரபியலின் தந்தை என அழைக்கப்படுபவர்:`, opts: (i) => [`கிரிகோர் ஜோஹன் மெண்டல்`, `சார்லஸ் டார்வின்`, `தாமஸ் ஹன்ட் மார்கன்`, `லாமார்க்`], ans: 0, exp: (i) => `பட்டாணி செடியில் மரபுப் பண்புகளின் கடத்தலை விளக்கிய மெண்டல் மரபியலின் தந்தை ஆவார்.` },
+      { q: (i) => `மெண்டலின் ஒரு பண்புக் கலப்பு F2 தலைமுறையின் புறத்தோற்ற விகிதம்:`, opts: (i) => [`3:1`, `9:3:3:1`, `1:2:1`, `1:1`], ans: 0, exp: (i) => `புறத்தோற்ற விகிதம் 3 நெட்டை : 1 குட்டை (3:1) ஆகும்.` },
+    ]
+  },
+  19: {
+    en: [
+      { q: (i) => `The classic book 'The Origin of Species' (1859) was authored by:`, opts: (i) => [`Charles Darwin`, `Jean-Baptiste Lamarck`, `Alfred Russel Wallace`, `Hugo de Vries`], ans: 0, exp: (i) => `Darwin proposed evolution via natural selection in this landmark treatise.` },
+      { q: (i) => `Structures having the same embryonic origin and anatomical design but performing different functions are:`, opts: (i) => [`Homologous organs`, `Analogous organs`, `Vestigial organs`, `Atavistic organs`], ans: 0, exp: (i) => `Homologous structures (e.g. human arm, bat wing) indicate divergent evolution.` },
+    ],
+    tm: [
+      { q: (i) => `'சிற்றினங்களின் தோற்றம்' (Origin of Species) என்ற புகழ்பெற்ற நூலை எழுதியவர்:`, opts: (i) => [`சார்லஸ் டார்வின்`, `லாமார்க்`, `ஹியூகோ டி விரிஸ்`, `ராபர்ட் ஹூக்`], ans: 0, exp: (i) => `1859 ஆம் ஆண்டு சார்லஸ் டார்வின் இந்நூலை வெளியிட்டார்.` },
+      { q: (i) => `ஒரே மாதிரியான அடிப்படை தோற்ற அமைப்பையும், வெவ்வேறு பணிகளையும் கொண்ட உறுப்புகள்:`, opts: (i) => [`அமைப்பு ஒத்த உறுப்புகள்`, `செயல் ஒத்த உறுப்புகள்`, `எச்ச உறுப்புகள்`, `முன்னோர் பண்பு மீட்பு`], ans: 0, exp: (i) => `மனிதனின் கை, வௌவாலின் இறக்கை போன்றவை அமைப்பு ஒத்த உறுப்புகள் எனப்படும்.` },
+    ]
+  },
+  20: {
+    en: [
+      { q: (i) => `Genetically engineered 'Golden Rice' is fortified with which nutrient precursor?`, opts: (i) => [`Beta-carotene (Vitamin A)`, `Vitamin C`, `Vitamin D`, `Vitamin B12`], ans: 0, exp: (i) => `Golden rice synthesizes beta-carotene to combat dietary vitamin A deficiency.` },
+      { q: (i) => `In genetic engineering, which enzymes are referred to as 'molecular scissors'?`, opts: (i) => [`Restriction endonucleases`, `DNA ligases`, `DNA polymerases`, `Topoisomerases`], ans: 0, exp: (i) => `Restriction enzymes cut DNA at specific palindromic nucleotide recognition sequences.` },
+    ],
+    tm: [
+      { q: (i) => `மரபணு மாற்றப்பட்ட 'தங்க அரிசி' எந்த ஊட்டச்சத்து முன்னோடியை அதிகம் கொண்டுள்ளது?`, opts: (i) => [`பீட்டா கரோட்டின் (வைட்டமின் A)`, `வைட்டமின் C`, `வைட்டமின் D`, `வைட்டமின் B12`], ans: 0, exp: (i) => `தங்க அரிசி வைட்டமின் A குறைபாட்டை நீக்க உருவாக்கப்பட்ட பயிராகும்.` },
+      { q: (i) => `மரபணுப் பொறியியலில் 'மூலக்கூறு கத்தரிக்கோல்' என அழைக்கப்படும் நொதிகள்:`, opts: (i) => [`ரெஸ்ட்ரிக்ஷன் எண்டோநியூக்ளியேஸ்கள்`, `டி.என்.ஏ லிகேஸ்கள்`, `பாலிமரேஸ்கள்`, `ஹெலிகேஸ்கள்`], ans: 0, exp: (i) => `டி.என்.ஏ இழைகளை குறிப்பிட்ட இடங்களில் துண்டிக்க ரெஸ்ட்ரிக்ஷன் நொதிகள் பயன்படுகின்றன.` },
+    ]
+  },
+  21: {
+    en: [
+      { q: (i) => `World AIDS Day is observed globally each year on:`, opts: (i) => [`December 1`, `October 24`, `April 7`, `June 5`], ans: 0, exp: (i) => `WHO designated December 1 to raise awareness of HIV/AIDS pandemic.` },
+      { q: (i) => `The biological vector responsible for transmitting malaria to humans is the:`, opts: (i) => [`Female Anopheles mosquito`, `Female Culex mosquito`, `Aedes aegypti mosquito`, `Housefly (Musca domestica)`], ans: 0, exp: (i) => `Plasmodium protozoa complete their sexual cycle inside female Anopheles mosquitoes.` },
+    ],
+    tm: [
+      { q: (i) => `உலக எய்ட்ஸ் தினம் கடைபிடிக்கப்படும் நாள்:`, opts: (i) => [`டிசம்பர் 1`, `அக்டோபர் 24`, `ஏப்ரல் 7`, `ஜூன் 5`], ans: 0, exp: (i) => `எய்ட்ஸ் விழிப்புணர்விற்காக ஆண்டுதோறும் டிசம்பர் 1 அன்று கடைபிடிக்கப்படுகிறது.` },
+      { q: (i) => `மலேரியா நோயைப் பரப்பும் கடத்தி காரணி:`, opts: (i) => [`பெண் அனாபிலஸ் கொசு`, `பெண் கியூலக்ஸ் கொசு`, `ஏடிஸ் கொசு`, `வீட்டு ஈ`], ans: 0, exp: (i) => `பிளாஸ்மோடியம் ஒட்டுண்ணியை பெண் அனாபிலஸ் கொசுக்கள் மனிதருக்குப் பரப்புகின்றன.` },
+    ]
+  },
+  22: {
+    en: [
+      { q: (i) => `In environmental conservation, the 3 R's rule stands for:`, opts: (i) => [`Reduce, Reuse, Recycle`, `Remove, Replace, Renew`, `Recharge, Recover, Restore`, `Regenerate, Repair, Rebuild`], ans: 0, exp: (i) => `The hierarchy prioritizes reducing consumption, reusing items, and recycling waste.` },
+      { q: (i) => `The historic Chipko movement in Tehri-Garhwal was dedicated to protecting:`, opts: (i) => [`Forests and trees`, `Rivers and wetlands`, `Endangered tigers`, `Atmospheric ozone`], ans: 0, exp: (i) => `Villagers hugged trees to prevent non-violent commercial logging.` },
+    ],
+    tm: [
+      { q: (i) => `சுற்றுச்சூழல் பாதுகாப்பில் '3R' கொள்கை எதனைக் குறிக்கிறது?`, opts: (i) => [`பயன்பாட்டைக் குறைத்தல், மறுபயன்பாடு, மறுசுழற்சி`, `அகற்றுதல், மாற்றுதல், புதுப்பித்தல்`, `மீட்டெடுத்தல், சேமித்தல், சரிசெய்தல்`, `பாதுகாத்தல், பழுதுபார்த்தல், புதுப்பித்தல்`], ans: 0, exp: (i) => `Reduce, Reuse, Recycle என்பதே 3R கொள்கையாகும்.` },
+      { q: (i) => `வரலாற்று சிறப்புமிக்க சிப்கோ இயக்கம் எதனைப் பாதுகாப்பதற்காக தொடங்கப்பட்டது?`, opts: (i) => [`காடுகள் மற்றும் மரங்கள்`, `ஆறுகள் மற்றும் நீர்நிலைகள்`, `புலிகள்`, `ஓசோன் படலம்`], ans: 0, exp: (i) => `மரங்களை வெட்டுவதைத் தடுக்க மரங்களைக் கட்டிப்பிடித்து போராடிய இயக்கமாகும்.` },
+    ]
+  },
+  23: {
+    en: [
+      { q: (i) => `Which of the following is a prominent example of Free and Open Source Software (FOSS)?`, opts: (i) => [`Linux and LibreOffice`, `Proprietary OS only`, `Commercial closed drivers`, `Trialware`], ans: 0, exp: (i) => `Linux kernel and LibreOffice provide source code under free software licenses.` },
+      { q: (i) => `Scratch educational programming software is primarily used to teach:`, opts: (i) => [`Block-based visual coding and animations`, `Low-level assembly registers`, `Database index tuning`, `Binary machine code`], ans: 0, exp: (i) => `Scratch teaches fundamental logic via drag-and-drop block scripting.` },
+    ],
+    tm: [
+      { q: (i) => `கட்டற்ற மற்றும் திறந்த மூல மென்பொருளுக்கு (FOSS) ஒரு சிறந்த உதாரணம்:`, opts: (i) => [`லினக்ஸ் (Linux) மற்றும் லிப்ரே ஆபீஸ்`, `வணிக நோக்கிலான கட்டண மென்பொருள்`, `மூடப்பட்ட மூல நிரல்`, `சோதனைப் பதிப்பு`], ans: 0, exp: (i) => `லினக்ஸ் மற்றும் லிப்ரே ஆபீஸ் ஆகியவை கட்டற்ற திறந்த மூல மென்பொருட்களாகும்.` },
+      { q: (i) => `ஸ்கிராட்ச் (Scratch) மென்பொருள் எதற்காகப் பயன்படுத்தப்படுகிறது?`, opts: (i) => [`காட்சி வழி நிரலாக்கம் மற்றும் அனிமேஷன் உருவாக்க`, `மெஷின் மொழி எழுத`, `வன்பொருள் பழுதுநீக்க`, `இணைய அலைவரிசை அளவிட`], ans: 0, exp: (i) => `பிளாக் வடிவிலான காட்சி வழி நிரலாக்கம் மூலம் விளையாட்டுகள் மற்றும் அனிமேஷன் உருவாக்க உதவுகிறது.` },
+    ]
   }
 };
 
-// Generate 15 concept questions per chapter for 10th Science Tamil (total 90 > 60 floor)
+// Generate 15 concept questions per chapter for 10th Science Tamil (total 23 * 15 = 345)
 for (const ch of SCIENCE_CHAPTERS) {
   const templates = SCIENCE_TEMPLATES[ch.no].tm;
+  const chPad = ch.no.toString().padStart(2, '0');
   for (let idx = 1; idx <= 15; idx++) {
     const t = templates[(idx - 1) % templates.length];
     const qObj = {
-      id: `lkg-10-sci-con-tm-c0${ch.no}-${idx.toString().padStart(3, '0')}`,
+      id: `lkg-10-sci-con-tm-c${chPad}-${idx.toString().padStart(3, '0')}`,
       classLevel: '10th',
       subject: 'Science',
       chapter: `Chapter ${ch.no}: அலகு ${ch.no} - ${ch.tm}`,
@@ -405,13 +593,14 @@ for (const ch of SCIENCE_CHAPTERS) {
   }
 }
 
-// Generate 15 concept questions per chapter for 10th Science English (total 90)
+// Generate 15 concept questions per chapter for 10th Science English (total 23 * 15 = 345)
 for (const ch of SCIENCE_CHAPTERS) {
   const templates = SCIENCE_TEMPLATES[ch.no].en;
+  const chPad = ch.no.toString().padStart(2, '0');
   for (let idx = 1; idx <= 15; idx++) {
     const t = templates[(idx - 1) % templates.length];
     const qObj = {
-      id: `lkg-10-sci-con-en-c0${ch.no}-${idx.toString().padStart(3, '0')}`,
+      id: `lkg-10-sci-con-en-c${chPad}-${idx.toString().padStart(3, '0')}`,
       classLevel: '10th',
       subject: 'Science',
       chapter: `Chapter ${ch.no}: ${ch.en}`,
@@ -427,13 +616,14 @@ for (const ch of SCIENCE_CHAPTERS) {
   }
 }
 
-// Generate 20 oneword questions per chapter for 10th Science English (total 120)
+// Generate 20 oneword questions per chapter for 10th Science English (total 23 * 20 = 460)
 for (const ch of SCIENCE_CHAPTERS) {
   const templates = SCIENCE_TEMPLATES[ch.no].en;
+  const chPad = ch.no.toString().padStart(2, '0');
   for (let idx = 1; idx <= 20; idx++) {
     const t = templates[(idx + 1) % templates.length];
     const qObj = {
-      id: `lkg-10-sci-ow-en-c0${ch.no}-${idx.toString().padStart(3, '0')}`,
+      id: `lkg-10-sci-ow-en-c${chPad}-${idx.toString().padStart(3, '0')}`,
       classLevel: '10th',
       subject: 'Science',
       chapter: `Chapter ${ch.no}: ${ch.en}`,
@@ -449,13 +639,14 @@ for (const ch of SCIENCE_CHAPTERS) {
   }
 }
 
-// Generate 20 oneword questions per chapter for 10th Science Tamil (total 120)
+// Generate 20 oneword questions per chapter for 10th Science Tamil (total 23 * 20 = 460)
 for (const ch of SCIENCE_CHAPTERS) {
   const templates = SCIENCE_TEMPLATES[ch.no].tm;
+  const chPad = ch.no.toString().padStart(2, '0');
   for (let idx = 1; idx <= 20; idx++) {
     const t = templates[(idx + 1) % templates.length];
     const qObj = {
-      id: `lkg-10-sci-ow-tm-c0${ch.no}-${idx.toString().padStart(3, '0')}`,
+      id: `lkg-10-sci-ow-tm-c${chPad}-${idx.toString().padStart(3, '0')}`,
       classLevel: '10th',
       subject: 'Science',
       chapter: `Chapter ${ch.no}: அலகு ${ch.no} - ${ch.tm}`,
