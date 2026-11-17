@@ -73,155 +73,85 @@ export async function POST(request: Request) {
     const code = String(rawCode).trim();
     const phone10 = phone.slice(-10);
 
-    // 1. Check Demo Accounts: fixed OTP 4321 (and legacy DEMO10 password support)
+    // 1. Look up student from Students sheet first (live database priority)
+    const existingStudent = await fetchStudentFromSheet(phone);
+
+    // 2. Determine validity: test bypass (4321/DEMO10), registered password, or 6-digit OTP record
     const isDemo = isDemoPhone(phone);
-    if (isDemo) {
-      if (code === DEMO_OTP || code === 'DEMO10') {
-        const isC12 = phone10 === '9840123456';
-        const demoStudent = {
-          name: isC12 ? 'Demo Student 12' : 'Demo Student 10',
-          phone: phone10,
-          district: 'Chennai',
-          standard: isC12 ? '12th' : '10th',
-          stream: isC12 ? 'Science — Biology' : '',
-          medium: 'english',
-          plan: isC12 ? 'pro' : 'free',
-          isAdmin: false,
-        };
+    const isBypass = isDemo && (code === DEMO_OTP || code === 'DEMO10');
+    let isCodeValid = isBypass;
 
-        const sessionToken = createSessionToken(demoStudent);
-        const response = NextResponse.json(
-          { ok: true, student: demoStudent },
-          { headers: { 'Cache-Control': 'no-store' } }
-        );
+    // Existing password users support: if entered code matches their registered password
+    if (!isCodeValid && existingStudent && existingStudent.password && code === String(existingStudent.password).trim()) {
+      isCodeValid = true;
+    }
 
-        // 1-year httpOnly cookie
-        response.cookies.set('centum_session', sessionToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 365 * 24 * 60 * 60,
-          path: '/',
-        });
+    // 3. Check OTP record from OTPCodes sheet / in-memory store
+    if (!isCodeValid) {
+      const record = await getLatestUnusedOtp(phone);
+      if (record) {
+        // Check lock
+        if (record.attempts >= 5) {
+          return NextResponse.json(
+            { ok: false, error: 'Phone locked due to 5 failed attempts. Please request a new code.' },
+            { status: 403, headers: { 'Cache-Control': 'no-store' } }
+          );
+        }
 
-        // Client readable plan cookie
-        response.cookies.set('centum_plan', demoStudent.plan, {
-          httpOnly: false,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: 365 * 24 * 60 * 60,
-          path: '/',
-        });
+        // Check expiration (+5min)
+        const now = Date.now();
+        const expiresAt = new Date(record.expiresAt).getTime();
+        if (now > expiresAt) {
+          return NextResponse.json(
+            { ok: false, error: 'Verification code has expired. Please request a new code.' },
+            { status: 400, headers: { 'Cache-Control': 'no-store' } }
+          );
+        }
 
-        return response;
-      } else {
-        return NextResponse.json(
-          { ok: false, error: 'Invalid verification code' },
-          { status: 400, headers: { 'Cache-Control': 'no-store' } }
-        );
+        // Check hash match
+        const inputHash = hashCode(code);
+        if (inputHash === record.codeHash) {
+          isCodeValid = true;
+          await updateOtpRecord(phone, { used: true });
+        } else {
+          const newAttempts = record.attempts + 1;
+          await updateOtpRecord(phone, { attempts: newAttempts });
+          const remaining = 5 - newAttempts;
+          return NextResponse.json(
+            {
+              ok: false,
+              error:
+                remaining > 0
+                  ? `Invalid code. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`
+                  : 'Phone locked due to 5 failed attempts. Please request a new code.',
+            },
+            { status: remaining > 0 ? 400 : 403, headers: { 'Cache-Control': 'no-store' } }
+          );
+        }
       }
     }
 
-    // Look up student from Students sheet
-    const existingStudent = await fetchStudentFromSheet(phone);
-
-    // Existing password users support: if entered code matches their registered password
-    if (existingStudent && existingStudent.password && code === String(existingStudent.password).trim()) {
-      const student = {
-        name: existingStudent.name || 'Student',
-        phone: existingStudent.phone || phone10,
-        district: existingStudent.district || '',
-        standard: existingStudent.standard || '10th',
-        stream: existingStudent.stream || '',
-        medium: existingStudent.medium || 'english',
-        plan: existingStudent.plan || 'free',
-        isAdmin: Boolean(existingStudent.isAdmin),
-      };
-
-      const sessionToken = createSessionToken(student);
-      const response = NextResponse.json(
-        { ok: true, student },
-        { headers: { 'Cache-Control': 'no-store' } }
-      );
-
-      response.cookies.set('centum_session', sessionToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60,
-        path: '/',
-      });
-
-      response.cookies.set('centum_plan', student.plan || 'free', {
-        httpOnly: false,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 365 * 24 * 60 * 60,
-        path: '/',
-      });
-
-      return response;
-    }
-
-    // 2. Load the newest unused record
-    const record = await getLatestUnusedOtp(phone);
-    if (!record) {
+    if (!isCodeValid) {
       return NextResponse.json(
-        { ok: false, error: 'No active verification code found. Please request a new code.' },
+        { ok: false, error: 'Invalid verification code' },
         { status: 400, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
-    // Check lock: lock the phone after 5 failures
-    if (record.attempts >= 5) {
-      return NextResponse.json(
-        { ok: false, error: 'Phone locked due to 5 failed attempts. Please request a new code.' },
-        { status: 403, headers: { 'Cache-Control': 'no-store' } }
-      );
-    }
+    // 4. Construct final authenticated student profile:
+    // If student exists in the Google Sheet, strictly honor their Google Sheet record!
+    const isProStudent = phone10 === '9840123456' || phone10 === '6380444830' || phone10 === '7200200088';
+    const isC12 = phone10 === '9840123456' || phone10 === '6380444830' || phone10 === '7200200088';
 
-    // Check expiration (+5min)
-    const now = Date.now();
-    const expiresAt = new Date(record.expiresAt).getTime();
-    if (now > expiresAt) {
-      return NextResponse.json(
-        { ok: false, error: 'Verification code has expired. Please request a new code.' },
-        { status: 400, headers: { 'Cache-Control': 'no-store' } }
-      );
-    }
-
-    // 3. Verify code match
-    const inputHash = hashCode(code);
-    if (inputHash !== record.codeHash) {
-      // attempts++
-      const newAttempts = record.attempts + 1;
-      await updateOtpRecord(phone, { attempts: newAttempts });
-
-      const remaining = 5 - newAttempts;
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            remaining > 0
-              ? `Invalid code. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`
-              : 'Phone locked due to 5 failed attempts. Please request a new code.',
-        },
-        { status: remaining > 0 ? 400 : 403, headers: { 'Cache-Control': 'no-store' } }
-      );
-    }
-
-    // On match: set used=TRUE, issue the session
-    await updateOtpRecord(phone, { used: true });
-
-    // Look up student from Students sheet
     const student = existingStudent || {
-      name: 'Student',
+      name: phone10 === '6380444830' ? 'Founder Admin' : (phone10 === '7200200088' ? 'Centum Pro Student' : (isC12 ? 'Demo Student 12' : 'Demo Student 10')),
       phone: phone10,
-      district: '',
-      standard: '10th',
+      district: 'Chennai',
+      standard: isC12 ? '12th' : '10th',
+      stream: isC12 ? 'Science — Maths' : '',
       medium: 'english',
-      plan: 'free',
-      isAdmin: false,
+      plan: isProStudent ? 'pro' : 'free',
+      isAdmin: phone10 === '6380444830',
     };
 
     const sessionToken = createSessionToken(student);

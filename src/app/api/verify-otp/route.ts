@@ -26,9 +26,9 @@ export async function POST(request: Request) {
     const phone = formatWhatsAppPhone(rawPhone);
     const cleanOtp = String(rawOtp).trim();
 
-    // TASK 9: Demo-only OTP verify override (fixed OTP 4321)
+    // Demo/Test OTP verify override (fixed OTP 4321)
     const normalized10 = phone.slice(-10);
-    if (normalized10 === '9123456780' || normalized10 === '9840123456') {
+    if (['9123456780', '9840123456', '6380444830', '7200200088'].includes(normalized10)) {
       if (cleanOtp === '4321') {
         return NextResponse.json({
           ok: true,

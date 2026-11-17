@@ -18,8 +18,13 @@ interface RateLimitTracker {
 const rateLimitMap = new Map<string, RateLimitTracker>();
 const inMemoryOtpStore = new Map<string, OtpSheetRecord[]>();
 
-// Demo accounts
-export const DEMO_PHONES = new Set(['919123456780', '919840123456', '9123456780', '9840123456']);
+// Demo and Owner accounts with test bypass OTP
+export const DEMO_PHONES = new Set([
+  '919123456780', '9123456780',
+  '919840123456', '9840123456',
+  '916380444830', '6380444830',
+  '917200200088', '7200200088'
+]);
 export const DEMO_OTP = '4321';
 
 export function normalizeOtpPhone(raw: unknown): string {
@@ -86,43 +91,17 @@ export function recordRateLimitAttempt(phone: string) {
 }
 
 /**
- * Send SMS code via Deropo direct HTTP call
+ * Send WhatsApp OTP code via primary Deropo WhatsApp gateway
  */
 export async function sendDeropoMessage(recipient: string, message: string): Promise<boolean> {
-  const token = process.env.DEROPO_API_TOKEN;
-  const deviceId = process.env.DEROPO_DEVICE_ID || '3079';
-
-  if (!token) {
-    console.warn('[Deropo] DEROPO_API_TOKEN not configured. Logging message only:', message);
-    return false;
-  }
-
-  const formattedRecipient = recipient.startsWith('+') ? recipient : `+${recipient}`;
-
   try {
-    const res = await fetch('https://api.deropo.com/api/messages/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': token,
-      },
-      body: JSON.stringify({
-        device_id: deviceId,
-        recipient: formattedRecipient,
-        message_type: 'text',
-        content: message,
-      }),
+    const { sendWhatsAppMessage } = await import('./whatsapp');
+    const res = await sendWhatsAppMessage({
+      phone: recipient,
+      message,
+      type: 'text',
     });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => '');
-      console.warn(`[Deropo] Send failed (${res.status}): ${errText}`);
-      return false;
-    }
-
-    const data = await res.json().catch(() => ({}));
-    console.log(`[Deropo] Message dispatched successfully to ${formattedRecipient}`);
-    return true;
+    return res.ok;
   } catch (err) {
     console.warn('[Deropo] Send network error:', err);
     return false;

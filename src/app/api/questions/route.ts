@@ -471,7 +471,7 @@ export async function GET(request: Request) {
 
   let upstreamLockedChapters: Array<{ chapter: string; count: number; locked: boolean }> | null = null;
 
-  // If in local development without direct GAS credentials, bridge to deployed live production API
+  // If in local development without direct GAS credentials, bridge to deployed live production API (with 2s timeout)
   if (!rawQuestions && (!scriptUrl || !secretKey)) {
     try {
       const prodUrl = new URL('https://centum-omega.vercel.app/api/questions');
@@ -484,7 +484,10 @@ export async function GET(request: Request) {
       if (isPro) prodUrl.searchParams.set('plan', 'pro');
       prodUrl.searchParams.set('count', 'all');
 
-      const prodRes = await fetch(prodUrl.toString(), { cache: 'no-store' });
+      const prodRes = await fetch(prodUrl.toString(), {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(2000),
+      });
       if (prodRes.ok) {
         const prodData = await prodRes.json();
         if (
@@ -503,7 +506,7 @@ export async function GET(request: Request) {
         }
       }
     } catch (e) {
-      console.warn('Local dev bridge to live questions failed', e);
+      console.warn('Local dev bridge to live questions timed out or failed, using local last-known-good catalog', e);
     }
   }
 

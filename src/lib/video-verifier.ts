@@ -3,6 +3,7 @@
  * Re-exports core verification functions from resource-verifier.ts for backward compatibility.
  */
 
+export { isValidLiveVideoMeta, filterValidLiveVideos } from './resource-verifier';
 export * from './resource-verifier';
 
 export async function verifyDriveVideoResource(driveFileId: string) {

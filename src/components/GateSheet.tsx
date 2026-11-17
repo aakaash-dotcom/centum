@@ -253,7 +253,7 @@ export const GateSheet: React.FC = () => {
     }
   };
 
-  const isDemoNumber = ['9123456780', '9840123456'].includes(phone.replace(/\D/g, '').slice(-10));
+  const isDemoNumber = ['9123456780', '9840123456', '6380444830', '7200200088'].includes(phone.replace(/\D/g, '').slice(-10));
 
   return (
     <div

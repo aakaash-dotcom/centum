@@ -22,6 +22,15 @@ export interface ProVideoPlayerProps {
   className?: string;
 }
 
+function extractDriveId(str?: string): string {
+  if (!str) return '';
+  const trimmed = str.trim();
+  const match = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  if (/^[a-zA-Z0-9_-]{15,}$/.test(trimmed) && !trimmed.startsWith('http')) return trimmed;
+  return trimmed;
+}
+
 function extractYouTubeId(url?: string): string {
   if (!url) return '';
   if (url.includes('embed/')) {
@@ -98,24 +107,22 @@ export function ProVideoPlayer({
   const [isPortraitDetected, setIsPortraitDetected] = useState(isPortraitMeta);
   const isPortrait = isPortraitMeta || isPortraitDetected;
 
-  // Primary source: Drive streaming URL
-  const initialSourceMode = video.driveFileId ? 'drive' : 'youtube';
-  const [sourceMode, setSourceMode] = useState<'drive' | 'youtube'>(initialSourceMode);
-  const [hasFallbackTriggered, setHasFallbackTriggered] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isEnded, setIsEnded] = useState(false);
-
-  const driveStreamUrl = video.driveFileId
-    ? video.driveFileId.startsWith('http')
-      ? video.driveFileId
-      : `https://drive.google.com/uc?export=download&id=${encodeURIComponent(video.driveFileId)}`
-    : '';
+  const cleanDriveId = extractDriveId(video.driveFileId);
+  const isDirectMp4 = video.driveFileId ? video.driveFileId.toLowerCase().includes('.mp4') : false;
+  const drivePreviewUrl = cleanDriveId ? `https://drive.google.com/file/d/${cleanDriveId}/preview` : '';
 
   const ytId = extractYouTubeId(video.ytUrl);
   const ytEmbedUrl = ytId
     ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&modestbranding=1&rel=0&playsinline=1`
     : (video.ytUrl || '');
+
+  // Choose initial mode: prefer drive if cleanDriveId or isDirectMp4, else youtube
+  const initialSourceMode: 'drive' | 'youtube' = (cleanDriveId || isDirectMp4) ? 'drive' : 'youtube';
+  const [sourceMode, setSourceMode] = useState<'drive' | 'youtube'>(initialSourceMode);
+  const [hasFallbackTriggered, setHasFallbackTriggered] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isEnded, setIsEnded] = useState(false);
 
   const posterUrl = getSubjectPosterSvg(subjectName, video.topic);
 
@@ -278,7 +285,7 @@ export function ProVideoPlayer({
               : 'bg-[#7C3AED]/90 text-white'
           }`}
         >
-          <span>{sourceMode === 'drive' ? '⚡ Drive Native' : '📺 YouTube Backup'}</span>
+          <span>{sourceMode === 'drive' ? '⚡ Google Drive' : '📺 YouTube'}</span>
         </span>
         {hasFallbackTriggered && (
           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/90 text-white backdrop-blur-md animate-fade-in">
@@ -302,8 +309,16 @@ export function ProVideoPlayer({
         )}
       </button>
 
-      {/* PRIMARY: HTML5 <video> using Drive Native Stream */}
-      {sourceMode === 'drive' ? (
+      {/* PRIMARY VIDEO DISPLAY (Drive Preview iframe / Direct MP4 / YouTube embed) */}
+      {sourceMode === 'drive' && drivePreviewUrl ? (
+        <iframe
+          src={drivePreviewUrl}
+          title={video.topic}
+          className="w-full h-full bg-black border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowFullScreen
+        />
+      ) : sourceMode === 'drive' && isDirectMp4 ? (
         <video
           ref={videoRef}
           controls
@@ -318,11 +333,11 @@ export function ProVideoPlayer({
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={() => setIsEnded(true)}
         >
-          {driveStreamUrl && <source src={driveStreamUrl} type="video/mp4" />}
+          <source src={video.driveFileId} type="video/mp4" />
           Your browser does not support HTML5 video streaming.
         </video>
       ) : (
-        /* FALLBACK: YouTube Unlisted Minimal Chrome Embed */
+        /* YouTube Minimal Chrome Embed */
         <iframe
           src={ytEmbedUrl}
           title={video.topic}

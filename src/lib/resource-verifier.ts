@@ -44,15 +44,15 @@ export function isValidLiveVideoMeta(v: any): boolean {
   if (!v || typeof v !== 'object') return false;
 
   const status = String(v.status || '').trim().toLowerCase();
-  if (status !== 'live') return false;
+  // Only reject if explicitly marked non-live
+  if (status === 'draft' || status === 'archived' || status === 'disabled' || status === 'hidden') return false;
 
-  const driveId = String(v.driveFileId || v.driveUrl || '').trim();
-  const ytUrl = String(v.ytUrl || v.videoEmbedUrl || '').trim();
+  const driveId = String(v.driveFileId || v.driveUrl || v.drive || v.fileId || '').trim();
+  const ytUrl = String(v.ytUrl || v.videoEmbedUrl || v.youtube || v.youtubeUrl || v.videoUrl || v.url || v.link || '').trim();
 
   if (hasForbiddenToken(driveId) || hasForbiddenToken(ytUrl)) return false;
 
   if (!driveId && !ytUrl) return false;
-  if (driveId && driveId.length < 15 && !driveId.startsWith('http')) return false;
 
   return true;
 }

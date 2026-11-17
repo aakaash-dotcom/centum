@@ -28,9 +28,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // TASK 9: Demo-only OTP override (strictly sandboxed, NO WhatsApp dispatch)
+    // Demo/Test OTP override (strictly sandboxed test bypass)
     const normalized10 = phone.slice(-10);
-    if (normalized10 === '9123456780' || normalized10 === '9840123456') {
+    if (['9123456780', '9840123456', '6380444830', '7200200088'].includes(normalized10)) {
       return NextResponse.json({
         ok: true,
         status: 'demo',

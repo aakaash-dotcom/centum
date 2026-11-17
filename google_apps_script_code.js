@@ -62,22 +62,32 @@ const APP_NAME = "CENTUM DB";
 const DRIVE_FOLDER_NAME = "CENTUM Papers";
 
 const SCHEMA = {
-  Papers:        ["id","classLevel","category","subject","exam","year","medium","title","driveFileId","featured","plan","pdfUrl","isBilingual"],
-  News:          ["id","title","date","category","summary","body","sourceUrl","imageUrl","pinned"],
-  Questions:     ["id","classLevel","subject","chapter","type","question","options","answerIndex","explanation","medium","plan"],
-  DailyQuiz:     ["date","classLevel","stream","subject","chapter","question","options","answerIndex","explanation","medium"],
-  Students:      ["timestamp","name","phone","district","standard","stream","medium","source","plan","planExpiry","passwordHash"],
-  Scores:        ["timestamp","phone","name","district","standard","subject","chapter","testType","score","total","seconds"],
-  Waitlist:      ["timestamp","name","phone","plan","notes"],
-  Coupons:       ["code","discountPercent","referrerName","referrerPhone","referrerUpi","active"],
-  Referrals:     ["timestamp","code","buyerPhone","plan","amount","discountGiven","referrerShare","payoutStatus"],
-  Subscriptions: ["timestamp","phone","plan","amount","paymentId","couponCode","status"],
-  Admins:        ["phone","name","passwordHash","active"],
-  CoinLedger:    ["timestamp","phone","delta","balance","reason","ref","note"],
-  QuizSchedule:  ["date","classLevel","medium","subject","chapter","type","count"],
-  Import:        ["help","json"],
-  Textbooks:     ["classLevel","subject","medium","type","unitNo","unitTitle","pageStart","pageEnd","pageCount","driveFileId","fileUrl","sizeMB","sourceUrl","qcNote","updatedAt"],
-  OTPCodes:      ["phone","codeHash","createdAt","expiresAt","attempts","used"]
+  Papers:            ["id","classLevel","category","subject","exam","year","medium","title","driveFileId","featured","plan","pdfUrl","isBilingual"],
+  News:              ["id","title","date","category","summary","body","sourceUrl","imageUrl","pinned"],
+  Questions:         ["id","classLevel","subject","chapter","type","question","options","answerIndex","explanation","medium","plan"],
+  DailyQuiz:         ["date","classLevel","stream","subject","chapter","question","options","answerIndex","explanation","medium"],
+  Students:          ["timestamp","name","phone","district","standard","stream","medium","source","plan","planExpiry","passwordHash"],
+  Scores:            ["timestamp","phone","name","district","standard","subject","chapter","testType","score","total","seconds"],
+  Waitlist:          ["timestamp","name","phone","plan","notes"],
+  Coupons:           ["code","discountPercent","referrerName","referrerPhone","referrerUpi","active"],
+  Referrals:         ["timestamp","code","buyerPhone","plan","amount","discountGiven","referrerShare","payoutStatus"],
+  Subscriptions:     ["timestamp","phone","plan","amount","paymentId","couponCode","status"],
+  Admins:            ["phone","name","passwordHash","active"],
+  CoinLedger:        ["timestamp","phone","delta","balance","reason","ref","note"],
+  QuizSchedule:      ["date","classLevel","medium","subject","chapter","type","count"],
+  Import:            ["help","json"],
+  Textbooks:         ["classLevel","subject","medium","type","unitNo","unitTitle","pageStart","pageEnd","pageCount","driveFileId","fileUrl","sizeMB","sourceUrl","qcNote","updatedAt"],
+  OTPCodes:          ["phone","codeHash","createdAt","expiresAt","attempts","used"],
+  Videos:            ["id","classLevel","subject","chapterNo","topic","videoType","targetSec","order","lang","driveFileId","ytUrl","status","aspectRatio"],
+  ProMaterials:      ["id","classLevel","subject","chapter","title","videoEmbedUrl","notesPdfUrl","conceptQuizUrl","bookbackQuizUrl","importantQuestionsUrl","status","createdAt"],
+  Notes:             ["id","classLevel","subject","chapter","title","notesPdfUrl","driveFileId","status","createdAt"],
+  Diagrams:          ["id","classLevel","subject","chapter","title","imageUrl","driveFileId","marks","status"],
+  Handwritten:       ["id","classLevel","subject","year","title","driveFileId","pdfUrl","marksScored","status"],
+  Tuition:           ["code","ownerName","ownerPhone","ownerUpi","tuitionName","district","mode","discountPercent","commissionPercent","seatsTotal","active","createdAt"],
+  Seats:             ["seatCode","tuitionCode","phone","claimedAt","expiresAt"],
+  TuitionDiary:      ["id","tuitionCode","date","tag","text","createdAt"],
+  TuitionAttendance: ["id","tuitionCode","date","phone","status","note","createdAt"],
+  TuitionFees:       ["id","tuitionCode","phone","studentName","standard","month","amount","status","dueDate","paidAt","paymentMode","note"]
 };
 
 function setupCentum() {
@@ -108,8 +118,38 @@ function setupCentum() {
   seedIfEmpty_(ss, "News", [["n-demo-1","Welcome to Centum 💜",today,"general","Your news feed is live.","Body text here.","https://dge.tn.gov.in","","TRUE"]]);
   seedIfEmpty_(ss, "Questions", [["q-demo-1",10,"Mathematics","Numbers and Sequences","oneword","The LCM of 12 and 18 is","6|12|36|72","2","LCM = 2²×3² = 36","English","free"]]);
   seedIfEmpty_(ss, "DailyQuiz", [[today,10,"","Mathematics","Numbers and Sequences","The mean of the first 10 natural numbers is","5|5.5|6|10","1","Sum = 55 → mean = 5.5.","English"]]);
-  seedIfEmpty_(ss, "Coupons", [["FRIEND20",20,"friend name","friend phone","friend upi id","TRUE"]]);
+  seedIfEmpty_(ss, "Coupons", [
+    ["CENTUM10",10,"Aakaash Founder","6380444830","6380444830@upi","TRUE"],
+    ["FRIEND20",20,"Friend Referrer","6380444830","6380444830@upi","TRUE"]
+  ]);
   seedIfEmpty_(ss, "Admins", [["6380444830","Founder", hash_("6380444830","centum-admin-2026"), "TRUE"]]);
+
+  // Seed Tuition and Pro Student accounts so Google Sheets CENTUM DB is 100% in sync with the app
+  seedIfEmpty_(ss, "Tuition", [
+    ["CENTUM10","Aakaash Founder","6380444830","6380444830@upi","Centum Prime Academy","Chennai","offline",10,20,50,"TRUE",today]
+  ]);
+  seedIfEmpty_(ss, "Seats", [
+    ["SEAT-10-01","CENTUM10","7200200088",today,"2027-03-31"],
+    ["SEAT-10-02","CENTUM10","","",""],
+    ["SEAT-10-03","CENTUM10","","",""],
+    ["SEAT-10-04","CENTUM10","","",""],
+    ["SEAT-10-05","CENTUM10","","",""]
+  ]);
+  seedIfEmpty_(ss, "Students", [
+    [today,"Aakaash Pro","7200200088","Chennai","10th","","English","CENTUM10","pro","2027-03-31",hash_("7200200088","123456")],
+    [today,"Aakaash Founder","6380444830","Chennai","10th","","English","CENTUM10","pro","2027-03-31",hash_("6380444830","centum-admin-2026")]
+  ]);
+  seedIfEmpty_(ss, "TuitionAttendance", [
+    ["att-10-01","CENTUM10",today,"7200200088","present","On time",today]
+  ]);
+  seedIfEmpty_(ss, "TuitionDiary", [
+    ["diary-10-01","CENTUM10",today,"homework","Maths: Completed Relations Ex 1.1; Science: Laws of Motion notes recap",today]
+  ]);
+  seedIfEmpty_(ss, "TuitionFees", [
+    ["fee-10-nov","CENTUM10","7200200088","Aakaash Pro","10th","November 2026",1500,"paid",today,today,"UPI","November tuition fee"],
+    ["fee-10-dec","CENTUM10","7200200088","Aakaash Pro","10th","December 2026",1500,"pending","2026-12-05","","","December tuition fee"]
+  ]);
+
   const imp = ss.getSheetByName("Import");
   if (imp && imp.getRange("A2").getValue() === "") {
     imp.getRange("A2").setValue("paste your AI JSON array here, then menu CENTUM ▸ Import questions");
@@ -118,20 +158,23 @@ function setupCentum() {
 
   let rb = ss.getSheetByName("CONFIG_README"); if (!rb) rb = ss.insertSheet("CONFIG_README", 99);
   rb.clear();
-  rb.getRange("A1:B10").setValues([
-    ["🟣 CENTUM HANDBOOK (v4 — accounts+admin)",""],
+  rb.getRange("A1:B13").setValues([
+    ["🟣 CENTUM HANDBOOK (v5.2 — full sync edition)",""],
     ["Script /exec URL = APPS_SCRIPT_URL","paste here for safe-keeping"],
     ["SECRET = APPS_SCRIPT_SECRET", p.getProperty("SECRET")],
     ["Your spreadsheet", ss.getUrl()],
     ["PDFs Drive folder", p.getProperty("DRIVE_FOLDER_URL")],
-    ["Admin login","phone 6380444830 + password you set (starts as centum-admin-2026 — CHANGE IT in /admin)"],
-    ["You edit","Papers · News · Questions · DailyQuiz · Coupons(payout status) · Import(for quiz JSON)"],
-    ["App fills","Students · Scores · Waitlist · Subscriptions · Referrals"],
-    ["Never edit hashes manually","Students.passwordHash + Admins.passwordHash are salted; use /admin or registration to change"],
+    ["Admin login","phone 6380444830 + password you set in /admin"],
+    ["Tuition Owner login","phone 6380444830 / 7200200088 (code: CENTUM10)"],
+    ["Videos tab","Paste YouTube or Drive links. Columns: id, classLevel, subject, chapterNo, topic, driveFileId, ytUrl, status"],
+    ["Fees & Attendance","TuitionFees, TuitionAttendance & TuitionDiary tabs sync directly with the teacher owner portal"],
+    ["You edit","Papers · News · Questions · DailyQuiz · Videos · Notes · Diagrams · Handwritten"],
+    ["App fills","Students · Scores · Waitlist · Subscriptions · Referrals · TuitionFees · TuitionAttendance"],
+    ["Never edit hashes manually","Students.passwordHash + Admins.passwordHash are salted"],
     ["Plan columns","free|pro — Pro rows show 🔒 to free students"]
   ]);
   rb.getRange("A1:B1").setFontWeight("bold"); rb.setColumnWidths(1,2,400);
-  Logger.log("✅ v4 ready. Secret: " + p.getProperty("SECRET"));
+  Logger.log("✅ v5.2 ready with full sync. Secret: " + p.getProperty("SECRET"));
 }
 
 // =================== auth helpers ===================
@@ -252,13 +295,196 @@ function doGet(e) {
     }
 
     if ((e.parameter.action||"").indexOf("classroom")===0 || (e.parameter.action||"").indexOf("seat-")===0 || (e.parameter.action||"").indexOf("tuition-")===0 || (e.parameter.action||"")==="ops-classroom-add" || (e.parameter.action||"")==="ops-classrooms-list") { const _out = typeof classroomRouteGet === 'function' ? classroomRouteGet(e.parameter) : null; if (_out) return json_(_out); }
-    if (a === "founderStats") { const _out = typeof founderStats === 'function' ? founderStats(e) : null; if (_out) return json_(_out); }
-    if (a === "proMaterials") { const _out = typeof proMaterials === 'function' ? proMaterials(e) : null; if (_out) return json_(_out); }
+    // ==== BUILT-IN PRO CONTENT & TUITION MANAGEMENT GET DISPATCH ====
+    if (a === "videos" || a === "proVideos") {
+      const cl = String(e.parameter.classLevel || "").replace(/\D/g, "");
+      const sub = String(e.parameter.subject || "").trim().toLowerCase();
+      const ch = e.parameter.chapter ? Number(String(e.parameter.chapter).replace(/\D/g, "")) : 0;
+      let allVideos = [];
+      try { allVideos = rows_("Videos"); } catch (e1) {
+        try { allVideos = rows_("ProVideos"); } catch (e2) {}
+      }
+      const filtered = allVideos.filter(function(v) {
+        const itemCl = String(v.classLevel || v.standard || v.class || "").replace(/\D/g, "");
+        if (cl && itemCl && itemCl !== cl) return false;
+        const itemSub = String(v.subject || "").trim().toLowerCase();
+        if (sub && !itemSub.includes(sub) && !sub.includes(itemSub)) return false;
+        const itemCh = Number(String(v.chapterNo || v.chapter || "").replace(/\D/g, "")) || 0;
+        if (ch && itemCh && itemCh !== ch) return false;
+        const st = String(v.status || "live").trim().toLowerCase();
+        if (st === "draft" || st === "archived" || st === "disabled" || st === "hidden") return false;
+        return true;
+      });
+      return json_({ ok: true, classLevel: cl, subject: sub, videos: filtered });
+    }
 
-    // ==== CLASSROOMS COMPANION (DIARY & ATTENDANCE) GET DISPATCH ====
-    if (a === "classroom") { const _out = typeof classroomView === 'function' ? classroomView(e) : null; if (_out) return json_(_out); }
-    if (a === "ownerDiary") { const _out = typeof ownerDiary === 'function' ? ownerDiary(e) : null; if (_out) return json_(_out); }
-    if (a === "ownerAttendance") { const _out = typeof ownerAttendance === 'function' ? ownerAttendance(e) : null; if (_out) return json_(_out); }
+    if (a === "notes") {
+      const cl = String(e.parameter.classLevel || "").replace(/\D/g, "");
+      const sub = String(e.parameter.subject || "").trim().toLowerCase();
+      const allNotes = rows_("Notes").filter(function(n) {
+        const itemCl = String(n.classLevel || n.standard || "").replace(/\D/g, "");
+        if (cl && itemCl && itemCl !== cl) return false;
+        const itemSub = String(n.subject || "").trim().toLowerCase();
+        if (sub && !itemSub.includes(sub) && !sub.includes(itemSub)) return false;
+        const st = String(n.status || "live").trim().toLowerCase();
+        if (st === "draft" || st === "archived") return false;
+        return true;
+      });
+      return json_({ ok: true, classLevel: cl, subject: sub, items: allNotes });
+    }
+
+    if (a === "diagrams") {
+      const cl = String(e.parameter.classLevel || "").replace(/\D/g, "");
+      const sub = String(e.parameter.subject || "").trim().toLowerCase();
+      const allDiagrams = rows_("Diagrams").filter(function(d) {
+        const itemCl = String(d.classLevel || d.standard || "").replace(/\D/g, "");
+        if (cl && itemCl && itemCl !== cl) return false;
+        const itemSub = String(d.subject || "").trim().toLowerCase();
+        if (sub && !itemSub.includes(sub) && !sub.includes(itemSub)) return false;
+        const st = String(d.status || "live").trim().toLowerCase();
+        if (st === "draft" || st === "archived") return false;
+        return true;
+      });
+      return json_({ ok: true, classLevel: cl, subject: sub, items: allDiagrams });
+    }
+
+    if (a === "handwritten") {
+      const cl = String(e.parameter.classLevel || "").replace(/\D/g, "");
+      const sub = String(e.parameter.subject || "").trim().toLowerCase();
+      const allHw = rows_("Handwritten").filter(function(h) {
+        const itemCl = String(h.classLevel || h.standard || "").replace(/\D/g, "");
+        if (cl && itemCl && itemCl !== cl) return false;
+        const itemSub = String(h.subject || "").trim().toLowerCase();
+        if (sub && !itemSub.includes(sub) && !sub.includes(itemSub)) return false;
+        const st = String(h.status || "live").trim().toLowerCase();
+        if (st === "draft" || st === "archived") return false;
+        return true;
+      });
+      return json_({ ok: true, classLevel: cl, subject: sub, items: allHw });
+    }
+
+    if (a === "proMaterials") {
+      const cl = String(e.parameter.classLevel || "").replace(/\D/g, "");
+      const sub = String(e.parameter.subject || "").trim().toLowerCase();
+      const allMat = rows_("ProMaterials").filter(function(m) {
+        const itemCl = String(m.classLevel || m.standard || "").replace(/\D/g, "");
+        if (cl && itemCl && itemCl !== cl) return false;
+        const itemSub = String(m.subject || "").trim().toLowerCase();
+        if (sub && !itemSub.includes(sub) && !sub.includes(itemSub)) return false;
+        const st = String(m.status || "live").trim().toLowerCase();
+        if (st === "draft" || st === "archived") return false;
+        return true;
+      });
+      return json_({ ok: true, classLevel: cl, subject: sub, materials: allMat });
+    }
+
+    if (a === "ownerFees") {
+      const code = String(e.parameter.code || "").trim().toUpperCase();
+      const targetMonth = String(e.parameter.month || Utilities.formatDate(new Date(), TZ, "yyyy-MM")).slice(0, 7);
+      const allFees = rows_("TuitionFees").filter(function(f) {
+        return String(f.tuitionCode || "").trim().toUpperCase() === code &&
+          (!targetMonth || String(f.month || "").indexOf(targetMonth) === 0);
+      });
+      const totalExpected = allFees.reduce(function(s, f) { return s + (Number(f.amount) || 0); }, 0);
+      const totalCollected = allFees.filter(function(f) { return String(f.status).toLowerCase() === "paid"; })
+                                    .reduce(function(s, f) { return s + (Number(f.amount) || 0); }, 0);
+      const totalPending = totalExpected - totalCollected;
+      const paidCount = allFees.filter(function(f) { return String(f.status).toLowerCase() === "paid"; }).length;
+      const pendingCount = allFees.filter(function(f) { return String(f.status).toLowerCase() === "pending"; }).length;
+      return json_({
+        ok: true,
+        code: code,
+        month: targetMonth,
+        fees: allFees,
+        summary: {
+          totalStudents: allFees.length,
+          totalExpected: totalExpected,
+          totalCollected: totalCollected,
+          totalPending: totalPending,
+          paidCount: paidCount,
+          pendingCount: pendingCount
+        }
+      });
+    }
+
+    if (a === "ownerAttendance") {
+      const code = String(e.parameter.code || "").trim().toUpperCase();
+      const targetDate = String(e.parameter.date || Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd")).slice(0, 10);
+      const attRows = rows_("TuitionAttendance").filter(function(row) {
+        const d = row.date instanceof Date ? Utilities.formatDate(row.date, TZ, "yyyy-MM-dd") : String(row.date || "").slice(0, 10);
+        return String(row.tuitionCode || "").trim().toUpperCase() === code && d === targetDate;
+      });
+      return json_({ ok: true, code: code, date: targetDate, records: attRows });
+    }
+
+    if (a === "ownerDiary") {
+      const code = String(e.parameter.code || "").trim().toUpperCase();
+      const diaryRows = rows_("TuitionDiary").filter(function(d) {
+        return String(d.tuitionCode || "").trim().toUpperCase() === code;
+      }).reverse();
+      return json_({ ok: true, code: code, diary: diaryRows.slice(0, 50) });
+    }
+
+    if (a === "classroom") {
+      const rawPhone = String(e.parameter.phone || "").replace(/\D/g, "");
+      const cleanPhone = rawPhone.length >= 10 ? rawPhone.slice(-10) : "";
+      if (!cleanPhone) return json_({ ok: false, error: "missing-phone" });
+      let tuitionCode = "";
+      const seats = rows_("Seats");
+      for (let i = 0; i < seats.length; i++) {
+        const sPhone = String(seats[i].phone || "").replace(/\D/g, "");
+        if (sPhone.slice(-10) === cleanPhone) {
+          tuitionCode = String(seats[i].tuitionCode || "");
+          break;
+        }
+      }
+      if (!tuitionCode) {
+        const std = findStudent_(cleanPhone);
+        if (std && std.source && String(std.source).indexOf("CENTUM") === 0) {
+          tuitionCode = String(std.source);
+        }
+      }
+      if (!tuitionCode) return json_({ ok: true, joined: false });
+      const tuitions = rows_("Tuition");
+      const t = tuitions.find(function(x) { return String(x.code || "").toUpperCase() === tuitionCode.toUpperCase(); }) || {
+        code: tuitionCode, tuitionName: "Centum Tuition Academy", ownerName: "Teacher"
+      };
+      const diary = rows_("TuitionDiary").filter(function(d) {
+        return String(d.tuitionCode || "").toUpperCase() === tuitionCode.toUpperCase();
+      }).reverse().slice(0, 20);
+      return json_({
+        ok: true,
+        joined: true,
+        tuition: {
+          code: t.code,
+          name: t.tuitionName || "Tuition Centre",
+          teacher: t.ownerName || "Tuition Teacher",
+          district: t.district || ""
+        },
+        diary: diary
+      });
+    }
+
+    if (a === "founderStats") {
+      const students = rows_("Students");
+      const subs = rows_("Subscriptions");
+      const papers = rows_("Papers");
+      const questions = rows_("Questions");
+      const scores = rows_("Scores");
+      const videos = rows_("Videos");
+      return json_({
+        ok: true,
+        stats: {
+          studentsTotal: students.length,
+          proStudents: students.filter(function(s) { return String(s.plan || "").toLowerCase() === "pro"; }).length,
+          papersCount: papers.length,
+          questionsCount: questions.length,
+          scoresCount: scores.length,
+          videosCount: videos.length,
+          subscriptionsCount: subs.length
+        }
+      });
+    }
 
     // ==== TEXTBOOKS DRIVE-TO-DRIVE REHOST & PURGE DISPATCH ====
     if (a === "drive-copy" || a === "ops-copy-drive" || a === "ops-textbooks-purge-probes" || a === "textbooks-audit-owners" || a === "textbooks-batch-rehost") {
@@ -355,16 +581,100 @@ function doPost(e) {
     } else if (body.type === "coin-spend") {
       // v5 — balance-checked spend (avatar store etc.)
       return json_(spendCoins_(String(body.phone || ""), Number(body.amount) || 0, String(body.reason || "spend"), String(body.ref || "")));
-    // ==== CLASSROOMS COMPANION (DIARY & ATTENDANCE) POST DISPATCH ====
+    // ==== BUILT-IN TUITION MANAGEMENT & FEES POST DISPATCH ====
+    } else if (body.type === "saveFeeStatus" || body.action === "saveFeeStatus") {
+      const sh = sheet_("TuitionFees");
+      const data = sh.getDataRange().getValues();
+      const h = data[0].map(String);
+      const idIdx = h.indexOf("id");
+      let found = false;
+      const todayStr = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd");
+      for (let r = 1; r < data.length; r++) {
+        if (String(data[r][idIdx]) === String(body.id)) {
+          if (h.indexOf("status") !== -1) sh.getRange(r + 1, h.indexOf("status") + 1).setValue(body.status);
+          if (h.indexOf("paymentMode") !== -1 && body.paymentMode) sh.getRange(r + 1, h.indexOf("paymentMode") + 1).setValue(body.paymentMode);
+          if (h.indexOf("note") !== -1 && body.note) sh.getRange(r + 1, h.indexOf("note") + 1).setValue(body.note);
+          if (h.indexOf("paidAt") !== -1 && body.status === "paid") sh.getRange(r + 1, h.indexOf("paidAt") + 1).setValue(todayStr);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        append_("TuitionFees", [
+          body.id || ("fee-" + new Date().getTime()),
+          body.code || body.tuitionCode || "",
+          body.phone || "",
+          body.studentName || "",
+          body.standard || "10th",
+          body.month || Utilities.formatDate(new Date(), TZ, "yyyy-MM"),
+          Number(body.amount) || 1000,
+          body.status || "pending",
+          body.dueDate || todayStr,
+          body.status === "paid" ? todayStr : "",
+          body.paymentMode || "",
+          body.note || ""
+        ]);
+      }
+      return json_({ ok: true, id: body.id, status: body.status });
     } else if (body.type === "ownerDiarySave" || body.action === "ownerDiarySave") {
-      const _out = typeof ownerDiarySave === 'function' ? ownerDiarySave(body) : null;
-      if (_out) return json_(_out);
+      const code = String(body.code || body.tuitionCode || "").toUpperCase();
+      const date = String(body.date || Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd")).slice(0, 10);
+      const todayStr = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+      const id = "diary-" + new Date().getTime();
+      append_("TuitionDiary", [id, code, date, body.tag || "homework", body.text || "", todayStr]);
+      return json_({ ok: true, id: id });
     } else if (body.type === "ownerDiaryDelete" || body.action === "ownerDiaryDelete") {
-      const _out = typeof ownerDiaryDelete === 'function' ? ownerDiaryDelete(body) : null;
-      if (_out) return json_(_out);
+      const id = String(body.id || "");
+      const sh = sheet_("TuitionDiary");
+      const data = sh.getDataRange().getValues();
+      const h = data[0].map(String);
+      const idIdx = h.indexOf("id");
+      for (let r = data.length - 1; r >= 1; r--) {
+        if (String(data[r][idIdx]) === id) {
+          sh.deleteRow(r + 1);
+          return json_({ ok: true, deleted: id });
+        }
+      }
+      return json_({ ok: false, error: "not-found" });
     } else if (body.type === "ownerAttendanceSave" || body.action === "ownerAttendanceSave") {
-      const _out = typeof ownerAttendanceSave === 'function' ? ownerAttendanceSave(body) : null;
-      if (_out) return json_(_out);
+      const records = Array.isArray(body.records) ? body.records : [];
+      const code = String(body.code || body.tuitionCode || "").toUpperCase();
+      const date = String(body.date || Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd")).slice(0, 10);
+      const todayStr = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+      const sh = sheet_("TuitionAttendance");
+      const data = sh.getDataRange().getValues();
+      const h = data[0].map(String);
+      const codeIdx = h.indexOf("tuitionCode");
+      const dateIdx = h.indexOf("date");
+      const phoneIdx = h.indexOf("phone");
+      const statusIdx = h.indexOf("status");
+      const noteIdx = h.indexOf("note");
+      records.forEach(function(rec) {
+        const ph = String(rec.phone || "").replace(/\D/g, "").slice(-10);
+        let found = false;
+        for (let r = 1; r < data.length; r++) {
+          const rDate = data[r][dateIdx] instanceof Date ? Utilities.formatDate(data[r][dateIdx], TZ, "yyyy-MM-dd") : String(data[r][dateIdx]).slice(0, 10);
+          const rPh = String(data[r][phoneIdx] || "").replace(/\D/g, "").slice(-10);
+          if (String(data[r][codeIdx]).toUpperCase() === code && rDate === date && rPh === ph) {
+            if (statusIdx !== -1) sh.getRange(r + 1, statusIdx + 1).setValue(rec.status);
+            if (noteIdx !== -1 && rec.note) sh.getRange(r + 1, noteIdx + 1).setValue(rec.note);
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          append_("TuitionAttendance", [
+            "att-" + code + "-" + ph + "-" + date,
+            code,
+            date,
+            ph,
+            rec.status || "present",
+            rec.note || "",
+            todayStr
+          ]);
+        }
+      });
+      return json_({ ok: true, savedCount: records.length, date: date });
     } else if ((body.action || body.type || "").indexOf("classroom") === 0 || (body.action || body.type || "").indexOf("seat-") === 0 || (body.action || body.type || "").indexOf("tuition-") === 0 || (body.action || body.type || "") === "ops-classroom-add" || (body.action || body.type || "") === "ops-seat-generate") {
       const _out = typeof classroomRoutePost === 'function' ? classroomRoutePost(body) : null;
       if (_out) return json_(_out);
@@ -700,9 +1010,43 @@ function backfill_(ss, tab, col, val) {
   for (let r = 1; r < data.length; r++) if (!data[r][idx]) sh.getRange(r + 1, idx + 1).setValue(val);
 }
 function seedIfEmpty_(ss, name, rowsToAdd) { const sh = ss.getSheetByName(name); if (sh.getLastRow() <= 1 && rowsToAdd.length) sh.getRange(2, 1, rowsToAdd.length, rowsToAdd[0].length).setValues(rowsToAdd); }
-function autoSetup_() { if (!PropertiesService.getScriptProperties().getProperty("SHEET_ID")) setupCentum(); }
+function autoSetup_() {
+  const p = PropertiesService.getScriptProperties();
+  const id = p.getProperty("SHEET_ID");
+  if (!id) {
+    setupCentum();
+    return;
+  }
+  try {
+    const ss = SpreadsheetApp.openById(id);
+    Object.keys(SCHEMA).forEach(function (name) {
+      let sh = ss.getSheetByName(name);
+      if (!sh) {
+        sh = ss.insertSheet(name);
+        ensureHeaders_(sh, SCHEMA[name]);
+        sh.setFrozenRows(1);
+      }
+    });
+  } catch (e) {
+    Logger.log("autoSetup_ check error: " + e);
+  }
+}
 function getSecret_() { return PropertiesService.getScriptProperties().getProperty("SECRET"); }
-function sheet_(name) { const id = PropertiesService.getScriptProperties().getProperty("SHEET_ID"); const sh = SpreadsheetApp.openById(id).getSheetByName(name); if (!sh) throw new Error("Missing tab: " + name); return sh; }
+function sheet_(name) {
+  const id = PropertiesService.getScriptProperties().getProperty("SHEET_ID");
+  const ss = SpreadsheetApp.openById(id);
+  let sh = ss.getSheetByName(name);
+  if (!sh) {
+    if (SCHEMA[name]) {
+      sh = ss.insertSheet(name);
+      ensureHeaders_(sh, SCHEMA[name]);
+      sh.setFrozenRows(1);
+    } else {
+      throw new Error("Missing tab: " + name);
+    }
+  }
+  return sh;
+}
 function rows_(name) {
   const values = sheet_(name).getDataRange().getValues();
   if (values.length < 2) return [];

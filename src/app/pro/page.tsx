@@ -192,6 +192,22 @@ function ProHomeContent() {
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Subject cache for instant 0ms switching without getting stuck
+  const subjectCacheRef = useRef<
+    Map<
+      string,
+      {
+        materials: ProMaterialItem[];
+        videos: ProVideoItem[];
+        allVideosCount: number;
+        conceptQuestions: Question[];
+        lockedChapters: Array<{ chapter: string; count: number; locked: boolean }>;
+        conceptTotalCount: number;
+        onewordQuestions: Question[];
+      }
+    >
+  >(new Map());
+
   // Upsell Modal State
   const [upsellModalOpen, setUpsellModalOpen] = useState(false);
   const [upsellContext, setUpsellContext] = useState<ProUpsellContext>({
@@ -235,18 +251,71 @@ function ProHomeContent() {
     fetchLivePapers();
   }, [effectiveClass, medium]);
 
-  // Fetch Materials, Videos & Concept Questions for Selected Subject
+  // Fetch Materials, Videos & Concept Questions for Selected Subject (with instant cache & fast-lane rendering)
   useEffect(() => {
+    let isCancelled = false;
+
     async function loadContent() {
+      const cacheKey = `${effectiveClass}_${selectedSubject}_${medium || 'all'}`;
+      const cached = subjectCacheRef.current.get(cacheKey);
+
+      if (cached) {
+        setMaterials(cached.materials);
+        setVideos(cached.videos);
+        setAllVideosCount(cached.allVideosCount);
+        setConceptQuestions(cached.conceptQuestions);
+        setLockedChapters(cached.lockedChapters);
+        setConceptTotalCount(cached.conceptTotalCount);
+        setOnewordQuestions(cached.onewordQuestions);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
+
       try {
-        const [matRes, vidRes, qRes, owRes] = await Promise.all([
+        // Fast Lane: Fetch materials and videos first (<200ms)
+        const [matRes, vidRes] = await Promise.all([
           fetch(
             `/api/pro-materials?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
           ),
           fetch(
             `/api/pro-videos?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
           ),
+        ]);
+
+        if (isCancelled) return;
+
+        let scopedMaterials: ProMaterialItem[] = [];
+        let scopedVids: ProVideoItem[] = [];
+
+        if (matRes.ok) {
+          const data = await matRes.json();
+          if (data && data.ok && Array.isArray(data.materials)) {
+            scopedMaterials = data.materials.filter(
+              (m: ProMaterialItem) => String(m.classLevel).replace(/\D/g, '') === effectiveClass
+            );
+          }
+        }
+
+        if (vidRes.ok) {
+          const vData = await vidRes.json();
+          if (vData && vData.ok && Array.isArray(vData.videos)) {
+            scopedVids = vData.videos.filter(
+              (v: ProVideoItem) => String(v.classLevel).replace(/\D/g, '') === effectiveClass
+            );
+          }
+        }
+
+        if (!isCancelled) {
+          setMaterials(scopedMaterials);
+          setVideos(scopedVids);
+          setAllVideosCount(scopedVids.length);
+          setIsLoading(false); // Unblock screen immediately!
+        }
+
+        // Concurrently fetch questions in background without freezing UI
+        const [qRes, owRes] = await Promise.all([
           fetch(
             `/api/questions?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}&type=concept&count=all&medium=${encodeURIComponent(medium || 'english')}`
           ),
@@ -255,66 +324,61 @@ function ProHomeContent() {
           ),
         ]);
 
-        if (matRes.ok) {
-          const data = await matRes.json();
-          if (data && data.ok && Array.isArray(data.materials)) {
-            const scoped = data.materials.filter(
-              (m: ProMaterialItem) => String(m.classLevel).replace(/\D/g, '') === effectiveClass
-            );
-            setMaterials(scoped);
-          } else {
-            setMaterials([]);
-          }
-        }
+        if (isCancelled) return;
 
-        if (vidRes.ok) {
-          const vData = await vidRes.json();
-          if (vData && vData.ok && Array.isArray(vData.videos)) {
-            const scopedVids = vData.videos.filter(
-              (v: ProVideoItem) => String(v.classLevel).replace(/\D/g, '') === effectiveClass
-            );
-            setVideos(scopedVids);
-            setAllVideosCount(scopedVids.length);
-          } else {
-            setVideos([]);
-            setAllVideosCount(0);
-          }
-        }
+        let qQuestions: Question[] = [];
+        let qLockedChs: Array<{ chapter: string; count: number; locked: boolean }> = [];
+        let poolCount = medium ? 240 : 480;
+        let owQuestions: Question[] = [];
 
         if (qRes.ok) {
           const qData = await qRes.json();
           if (qData && qData.ok && Array.isArray(qData.questions)) {
-            setConceptQuestions(qData.questions);
+            qQuestions = qData.questions;
             if (Array.isArray(qData.lockedChapters)) {
-              setLockedChapters(qData.lockedChapters);
-            } else {
-              setLockedChapters([]);
+              qLockedChs = qData.lockedChapters;
             }
-            const poolCount = qData.sheetTotal ?? qData.totalMatching ?? (medium ? 240 : 480);
-            setConceptTotalCount(poolCount);
-          } else {
-            setConceptQuestions([]);
-            setLockedChapters([]);
-            setConceptTotalCount(medium ? 240 : 480);
+            poolCount = qData.sheetTotal ?? qData.totalMatching ?? (medium ? 240 : 480);
           }
         }
 
         if (owRes.ok) {
           const owData = await owRes.json();
           if (owData && owData.ok && Array.isArray(owData.questions)) {
-            setOnewordQuestions(owData.questions);
-          } else {
-            setOnewordQuestions([]);
+            owQuestions = owData.questions;
           }
+        }
+
+        if (!isCancelled) {
+          setConceptQuestions(qQuestions);
+          setLockedChapters(qLockedChs);
+          setConceptTotalCount(poolCount);
+          setOnewordQuestions(owQuestions);
+
+          // Store complete data in cache for 0ms instant subsequent switches
+          subjectCacheRef.current.set(cacheKey, {
+            materials: scopedMaterials,
+            videos: scopedVids,
+            allVideosCount: scopedVids.length,
+            conceptQuestions: qQuestions,
+            lockedChapters: qLockedChs,
+            conceptTotalCount: poolCount,
+            onewordQuestions: owQuestions,
+          });
         }
       } catch (e) {
         console.warn('Failed to load pro content', e);
       } finally {
-        setIsLoading(false);
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
       }
     }
 
     loadContent();
+    return () => {
+      isCancelled = true;
+    };
   }, [effectiveClass, selectedSubject, medium]);
 
   // Fetch Textbooks (Task 8)
@@ -695,14 +759,9 @@ function ProHomeContent() {
             <Crown className="w-3.5 h-3.5 fill-current" />
             <span>CENTUM Pro Masterclass Hub</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight mb-1">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">
             {isTamil ? `${effectiveClass}ஆம் வகுப்பு Pro கற்றல் தளம்` : `Class ${effectiveClass}th Pro Learning Hub`}
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-white/85 leading-relaxed max-w-sm">
-            {isTamil
-              ? 'வீடியோ வகுப்புகள், அத்தியாய வாரியான கருத்துத் தேர்வுகள், அரசு பாடநூல்கள் & முந்தைய ஆண்டு வினாத்தாள்கள்.'
-              : 'Masterclasses, chapter concept mastery quizzes, official state textbooks & past examination papers.'}
-          </p>
         </div>
         <div className="absolute -right-8 -bottom-8 w-36 h-36 rounded-full bg-[#A3E635]/15 blur-2xl pointer-events-none" />
         <div className="absolute right-4 top-4 text-4xl opacity-20 pointer-events-none">👑</div>
@@ -831,6 +890,18 @@ function ProHomeContent() {
         </div>
       )}
 
+      {/* Loading Indicator when switching subjects */}
+      {isLoading && (
+        <div data-testid="pro-loading-indicator" className="p-8 my-4 rounded-3xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-md flex flex-col items-center justify-center text-center space-y-3 animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#7C3AED] to-[#A3E635] flex items-center justify-center text-white shadow-lg shadow-[#7C3AED]/25">
+            <Sparkles className="w-6 h-6 animate-spin" />
+          </div>
+          <h3 className="text-base font-black text-[#2E1065] dark:text-[#FAF5FF]">
+            {isTamil ? `${selectedSubject} பாடப் பொருட்கள் ஏற்றப்படுகிறது...` : `Loading ${selectedSubject} Materials...`}
+          </h3>
+        </div>
+      )}
+
       {/* UNIFIED MATERIAL RAILS (One reusable rail component for all 7 material types) */}
       <div className="space-y-6" data-testid="pro-materials-shelf">
         {MATERIAL_TYPES.filter(
@@ -847,18 +918,18 @@ function ProHomeContent() {
             railChildren = videos.map((vid) => (
               <div
                 key={vid.id}
-                className="w-[260px] sm:w-[280px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/50 transition-all flex flex-col justify-between gap-3"
+                className="w-[300px] sm:w-[330px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/50 transition-all flex flex-col justify-between gap-3.5"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="px-2 py-0.5 rounded-md bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-[10px] font-black">
+                    <span className="px-2.5 py-1 rounded-md bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black">
                       Ch {vid.chapterNo || 1}
                     </span>
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                       {vid.targetSec ? Math.round(vid.targetSec / 60) : 15} min
                     </span>
                   </div>
-                  <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                  <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
                     {vid.topic}
                   </h4>
                 </div>
@@ -866,18 +937,18 @@ function ProHomeContent() {
                   <button
                     type="button"
                     onClick={() => setActiveVideoId(vid.id)}
-                    className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    className="w-full py-2.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
-                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <Play className="w-4 h-4 fill-current" />
                     <span>{isTamil ? 'பார்க்க' : 'Watch'}</span>
                   </button>
                   <button
                     type="button"
                     data-testid="understand-check-pill"
                     onClick={() => handleStartUnderstandCheck(vid)}
-                    className="w-full inline-flex items-center justify-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-[10px] font-black transition-all cursor-pointer"
+                    className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-black transition-all cursor-pointer"
                   >
-                    <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>{isTamil ? 'உணர்ந்தேனா? (3–5 Q)' : 'Got it? (3–5 Q)'}</span>
                   </button>
                 </div>
@@ -903,39 +974,39 @@ function ProHomeContent() {
                       );
                     }
                   }}
-                  className={`w-[240px] sm:w-[260px] shrink-0 snap-start p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3 text-left ${
+                  className={`w-[290px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-3.5 text-left ${
                     isLocked
                       ? 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-400/40 hover:border-amber-500'
                       : 'bg-white dark:bg-[#1B0B2E] border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs'
                   }`}
                 >
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between gap-1.5">
                       {isLocked ? (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-400/25 text-amber-900 dark:text-amber-200">
                           PRO 🔒
                         </span>
                       ) : (
-                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300">
                           FREE TEASER
                         </span>
                       )}
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                         {row.count} Qs
                       </span>
                     </div>
-                    <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                    <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
                       {row.title}
                     </h4>
                   </div>
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                     {isLocked ? (
-                      <span className="w-full py-1.5 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5">
+                      <span className="w-full py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5">
                         <span>Unlock</span>
                         <Lock className="w-3.5 h-3.5" />
                       </span>
                     ) : (
-                      <span className="w-full py-1.5 px-3 rounded-xl bg-[#A3E635] text-[#18181B] text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5">
+                      <span className="w-full py-2 px-3 rounded-xl bg-[#A3E635] text-[#18181B] text-xs font-black transition-all shadow-xs flex items-center justify-center gap-1.5">
                         <span>{isTamil ? 'தொடங்குக' : 'Play'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </span>
@@ -949,13 +1020,13 @@ function ProHomeContent() {
             railChildren = materials.map((mat) => (
               <div
                 key={mat.id}
-                className="w-[230px] sm:w-[250px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3 text-left"
+                className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3.5 text-left"
               >
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                     {mat.chapter}
                   </span>
-                  <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                  <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
                     {mat.title}
                   </h4>
                 </div>
@@ -963,13 +1034,13 @@ function ProHomeContent() {
                   {mat.notesPdfUrl ? (
                     <Link
                       href={`/viewer?page=notes&id=${encodeURIComponent(mat.notesPdfUrl)}&title=${encodeURIComponent(mat.title)}&subject=${encodeURIComponent(mat.subject)}`}
-                      className="w-full py-1.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>{isTamil ? 'படிக்க' : 'Read'}</span>
                     </Link>
                   ) : (
-                    <span className="w-full py-1.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold text-center block">
+                    <span className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold text-center block">
                       {isTamil ? 'விரைவில்' : 'Coming soon'}
                     </span>
                   )}
@@ -981,20 +1052,20 @@ function ProHomeContent() {
             railChildren = classPapers.slice(0, 15).map((paper) => (
               <div
                 key={paper.id}
-                className="w-[230px] sm:w-[250px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex flex-col justify-between gap-3 text-left"
+                className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex flex-col justify-between gap-3.5 text-left"
               >
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-[#7C3AED] dark:text-[#A78BFA]">
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA]">
                     {paper.year} · {paper.exam}
                   </span>
-                  <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                  <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
                     {paper.title}
                   </h4>
                 </div>
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                   <Link
                     href={`/viewer?page=papers&id=${encodeURIComponent(paper.pdfUrl || paper.driveFileId || paper.id)}&title=${encodeURIComponent(paper.title)}&subject=${encodeURIComponent(paper.subject)}&year=${encodeURIComponent(paper.year)}`}
-                    className="w-full py-1.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <span>{isTamil ? 'திறக்க' : 'Open'}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -1011,25 +1082,25 @@ function ProHomeContent() {
                 {fullBook && (
                   <div
                     key="full-book-card"
-                    className="w-[250px] sm:w-[270px] shrink-0 snap-start p-3.5 rounded-2xl bg-gradient-to-br from-[#7C3AED]/15 via-purple-500/10 to-amber-500/10 border-2 border-[#7C3AED]/40 hover:border-[#7C3AED] transition-all flex flex-col justify-between gap-3 text-left shadow-xs"
+                    className="w-[300px] sm:w-[340px] shrink-0 snap-start p-4.5 rounded-2xl bg-gradient-to-br from-[#7C3AED]/15 via-purple-500/10 to-amber-500/10 border-2 border-[#7C3AED]/40 hover:border-[#7C3AED] transition-all flex flex-col justify-between gap-3.5 text-left shadow-xs"
                   >
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-[#7C3AED] text-white">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-[#7C3AED] text-white">
                           FULL BOOK
                         </span>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                           {fullBook.pages} {isTamil ? 'பக்' : 'pages'}
                         </span>
                       </div>
-                      <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                      <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
                         {fullBook.title}
                       </h4>
                     </div>
                     <div className="pt-2 border-t border-[#7C3AED]/20">
                       <Link
                         href={`/viewer?page=textbooks&id=${encodeURIComponent(fullBook.driveFileId)}&title=${encodeURIComponent(fullBook.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
-                        className="w-full py-1.5 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                       >
                         <span>{isTamil ? 'முழு நூல் திறக்க' : 'Open Full Book'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -1040,25 +1111,25 @@ function ProHomeContent() {
                 {otherBooks.map((unit) => (
                   <div
                     key={`unit-${unit.id || unit.unitNo || unit.title}`}
-                    className="w-[230px] sm:w-[250px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex flex-col justify-between gap-3 text-left"
+                    className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] hover:border-[#7C3AED]/40 shadow-xs transition-all flex flex-col justify-between gap-3.5 text-left"
                   >
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="w-6 h-6 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black flex items-center justify-center">
+                        <span className="w-7 h-7 rounded-lg bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] text-xs font-black flex items-center justify-center">
                           {unit.unitNo > 0 ? unit.unitNo : '📖'}
                         </span>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                           {unit.pages} {isTamil ? 'பக்' : 'pages'}
                         </span>
                       </div>
-                      <h4 className="text-xs font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-tight">
+                      <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
                         {unit.title}
                       </h4>
                     </div>
                     <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                       <Link
                         href={`/viewer?page=textbooks&id=${encodeURIComponent(unit.driveFileId)}&title=${encodeURIComponent(unit.title)}&classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`}
-                        className="w-full py-1.5 px-3 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] hover:bg-[#7C3AED] hover:text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                        className="w-full py-2 px-3 rounded-xl bg-[#FAF5FF] dark:bg-[#2A1247] text-[#7C3AED] dark:text-[#A78BFA] border border-[#DDD6FE] dark:border-[#3B2063] hover:bg-[#7C3AED] hover:text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                       >
                         <span>{isTamil ? 'திறக்க' : 'Open'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />

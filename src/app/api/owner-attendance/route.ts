@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import {
   getMockOwnerAttendance,
   saveMockOwnerAttendance,
+  getTuitionByCode,
+  findMockUser,
 } from '@/lib/server-mock-store';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,6 +64,12 @@ export async function POST(request: Request) {
         });
         if (res.ok) {
           const data = await res.json();
+          // Also trigger notifications if requested
+          if (body.notifyParents !== false && Array.isArray(body.records)) {
+            dispatchAttendanceAlerts(body.code, body.date, body.records).catch((e) =>
+              console.warn('Attendance WhatsApp notification error', e)
+            );
+          }
           return NextResponse.json(data);
         }
       } catch (e) {
@@ -69,8 +78,55 @@ export async function POST(request: Request) {
     }
 
     const result = saveMockOwnerAttendance(body.code, body.ownerPhone, body.date, body.records || []);
+
+    // Dispatch WhatsApp notifications to parents
+    if (result.ok && body.notifyParents !== false && Array.isArray(body.records)) {
+      dispatchAttendanceAlerts(body.code, body.date, body.records).catch((e) =>
+        console.warn('Attendance WhatsApp notification error', e)
+      );
+    }
+
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
   }
 }
+
+async function dispatchAttendanceAlerts(
+  code: string,
+  date: string,
+  records: Array<{ phone: string; status: 'P' | 'A'; note?: string }>
+) {
+  const tuition = getTuitionByCode(code);
+  const tuitionName = tuition?.tuitionName || 'CENTUM Tuition Centre';
+  const targetDate = date || new Date().toISOString().slice(0, 10);
+
+  for (const record of records) {
+    const user = findMockUser(record.phone);
+    const studentName = user?.name || `Student ${record.phone.slice(-4)}`;
+
+    let message = '';
+    if (record.status === 'P') {
+      message =
+        `✅ *CENTUM Tuition Attendance Update*\n\n` +
+        `Dear Parent, your ward *${studentName}* was marked *PRESENT* today (${targetDate}) at *${tuitionName}*.\n\n` +
+        `Keep up the regular attendance for great board results! 🌟\n\n_${tuitionName}_`;
+    } else {
+      message =
+        `⚠️ *CENTUM Tuition Attendance Alert*\n\n` +
+        `Dear Parent, your ward *${studentName}* was marked *ABSENT* today (${targetDate}) at *${tuitionName}*.\n\n` +
+        `Please ensure regular attendance for consistent academic progress. 🙏\n\n_${tuitionName}_`;
+    }
+
+    try {
+      await sendWhatsAppMessage({
+        phone: record.phone,
+        message,
+        type: 'text',
+      });
+    } catch (e) {
+      console.warn(`Failed to dispatch attendance WhatsApp to ${record.phone}`, e);
+    }
+  }
+}
+

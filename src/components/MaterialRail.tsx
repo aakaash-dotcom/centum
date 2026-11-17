@@ -35,10 +35,10 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
         return [1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="w-[260px] sm:w-[280px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
+            className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
           >
             <div className="space-y-2.5">
-              <div className="w-full h-32 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
+              <div className="w-full h-36 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                 <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700 flex items-center justify-center text-slate-400">
                   ▶
                 </div>
@@ -58,21 +58,21 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
         return [1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="w-[260px] sm:w-[280px] shrink-0 snap-start p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
+            className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="h-4 w-14 bg-slate-200 dark:bg-slate-800 rounded-md" />
                 <div className="h-4 w-12 bg-slate-200 dark:bg-slate-800 rounded-md" />
               </div>
-              <div className="h-3 w-full bg-slate-200 dark:bg-slate-800 rounded mt-1" />
+              <div className="h-3.5 w-full bg-slate-200 dark:bg-slate-800 rounded mt-1" />
               <div className="h-3 w-4/5 bg-slate-200 dark:bg-slate-800 rounded" />
               <div className="space-y-1.5 pt-2">
-                <div className="h-7 w-full bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
-                <div className="h-7 w-full bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
+                <div className="h-8 w-full bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
+                <div className="h-8 w-full bg-slate-100 dark:bg-slate-800/60 rounded-xl" />
               </div>
             </div>
-            <div className="h-8 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
+            <div className="h-9 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
           </div>
         ));
       }
@@ -83,17 +83,17 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
         return [1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="w-[240px] sm:w-[260px] shrink-0 snap-start p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
+            className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
           >
             <div className="space-y-2.5">
               <div className="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                 {material.icon}
               </div>
-              <div className="h-3 w-full bg-slate-200 dark:bg-slate-800 rounded" />
+              <div className="h-3.5 w-full bg-slate-200 dark:bg-slate-800 rounded" />
               <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-800 rounded" />
-              <div className="h-2 w-1/2 bg-slate-200 dark:bg-slate-800 rounded mt-1" />
+              <div className="h-2.5 w-1/2 bg-slate-200 dark:bg-slate-800 rounded mt-1" />
             </div>
-            <div className="h-7 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
+            <div className="h-8 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
           </div>
         ));
       }
@@ -104,14 +104,14 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
         return [1, 2, 3, 4].map((i) => (
           <div
             key={i}
-            className="w-[220px] sm:w-[240px] shrink-0 snap-start p-3.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
+            className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-3 select-none"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="h-4 w-12 bg-slate-200 dark:bg-slate-800 rounded-md" />
                 <div className="h-4 w-16 bg-slate-200 dark:bg-slate-800 rounded-md" />
               </div>
-              <div className="h-3 w-full bg-slate-200 dark:bg-slate-800 rounded" />
+              <div className="h-3.5 w-full bg-slate-200 dark:bg-slate-800 rounded" />
               <div className="h-3 w-3/4 bg-slate-200 dark:bg-slate-800 rounded" />
             </div>
             <div className="h-8 w-full bg-slate-200 dark:bg-slate-800 rounded-xl" />
@@ -129,7 +129,7 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
       data-status={material.status}
       className="mb-6 space-y-2.5"
     >
-      {/* Rail Header */}
+      {/* Rail Header (Clean heading alone, no explainer lines) */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-base shrink-0">{material.icon}</span>
@@ -137,9 +137,6 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
             <h3 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] truncate flex items-center gap-1.5">
               <span>{label}</span>
             </h3>
-            <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 block truncate">
-              {description}
-            </span>
           </div>
         </div>
 
@@ -186,9 +183,6 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
               <div className="space-y-0.5">
                 <span className="text-sm font-black text-white tracking-tight block drop-shadow-sm">
                   {isTamil ? 'Pro-வில் திறக்கவும்' : 'Unlock with Pro'}
-                </span>
-                <span className="text-[11px] font-bold text-[#DDD6FE] block drop-shadow-xs">
-                  {isTamil ? 'அனைத்து அணுகல்களுக்கும் கிளிக் செய்யவும்' : 'Tap to unlock full access'}
                 </span>
               </div>
             </div>

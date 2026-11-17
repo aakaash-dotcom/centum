@@ -47,11 +47,9 @@ export async function POST(request: Request) {
 
     recordRateLimitAttempt(phone);
 
-    // 3. Generate 6-digit code (fixed 4321 for demo numbers)
+    // 3. Generate 6-digit code
     const isDemo = isDemoPhone(phone);
-    const code = isDemo
-      ? DEMO_OTP
-      : Math.floor(100000 + Math.random() * 900000).toString();
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
 
     const codeHash = hashCode(code);
     const now = Date.now();
@@ -72,12 +70,14 @@ export async function POST(request: Request) {
     // Clean expired rows >24h on every send
     purgeOldOtpRecords().catch(() => {});
 
-    // 5. Send via Deropo (below), log the send
-    if (!isDemo) {
-      const message = `Your CENTUM login code is ${code}. Valid 5 minutes.`;
-      await sendDeropoMessage(phone, message);
-    } else {
-      console.log(`[Demo] OTP 4321 ready for demo phone: ${phone}`);
+    // 5. Send via WhatsApp gateway, log the send
+    const message = isDemo
+      ? `⚡ CENTUM Login Code: *${code}*\n\nYour security code is valid for 5 minutes. (Test bypass code: 4321)\n\nஉங்கள் சென்டம் சரிபார்ப்புக் குறியீடு: *${code}*`
+      : `⚡ CENTUM Login Code: *${code}*\n\nYour security code is valid for 5 minutes. Do not share this code.\n\nஉங்கள் சென்டம் சரிபார்ப்புக் குறியீடு: *${code}*`;
+
+    await sendDeropoMessage(phone, message);
+    if (isDemo) {
+      console.log(`[Demo] OTP ${code} (or bypass 4321) ready for phone: ${phone}`);
     }
 
     // Always return { ok: true }
