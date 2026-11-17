@@ -116,8 +116,8 @@ export function ProVideoPlayer({
     ? `https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&modestbranding=1&rel=0&playsinline=1`
     : (video.ytUrl || '');
 
-  // Choose initial mode: prefer drive if cleanDriveId or isDirectMp4, else youtube
-  const initialSourceMode: 'drive' | 'youtube' = (cleanDriveId || isDirectMp4) ? 'drive' : 'youtube';
+  // Prefer YouTube first whenever available
+  const initialSourceMode: 'drive' | 'youtube' = (ytId || video.ytUrl) ? 'youtube' : 'drive';
   const [sourceMode, setSourceMode] = useState<'drive' | 'youtube'>(initialSourceMode);
   const [hasFallbackTriggered, setHasFallbackTriggered] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -157,7 +157,6 @@ export function ProVideoPlayer({
     setSourceMode('youtube');
     setHasFallbackTriggered(true);
 
-    // Telemetry log event to measure Drive reliability
     if (typeof window !== 'undefined') {
       try {
         window.dispatchEvent(
@@ -172,9 +171,7 @@ export function ProVideoPlayer({
             },
           })
         );
-      } catch (err) {
-        // silent
-      }
+      } catch (err) {}
     }
   };
 
@@ -229,7 +226,6 @@ export function ProVideoPlayer({
         } else if ((container as any).webkitRequestFullscreen) {
           (container as any).webkitRequestFullscreen();
         } else if (videoElem && (videoElem as any).webkitEnterFullscreen) {
-          // Mobile Safari iOS native video fullscreen
           (videoElem as any).webkitEnterFullscreen();
         }
       }
@@ -269,93 +265,20 @@ export function ProVideoPlayer({
     );
   }
 
-  // 2. LANDSCAPE 16:9 HTML5 VIDEO PLAYER WITH YOUTUBE FALLBACK
+  // 2. CLEAN PURE VIDEO PLAYER (No artificial frames or banners)
   return (
     <div
       ref={containerRef}
-      className={`relative w-full aspect-[16/9] bg-black rounded-2xl overflow-hidden shadow-xl border border-[#DDD6FE]/20 group ${className}`}
+      className={`relative w-full h-full aspect-[16/9] bg-black overflow-hidden flex items-center justify-center ${className}`}
       data-testid="pro-video-player"
     >
-      {/* Stream Source Badge & Fallback Info Bar */}
-      <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 pointer-events-none">
-        <span
-          className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm backdrop-blur-md ${
-            sourceMode === 'drive'
-              ? 'bg-[#10B981]/90 text-white'
-              : 'bg-[#7C3AED]/90 text-white'
-          }`}
-        >
-          <span>{sourceMode === 'drive' ? '⚡ Google Drive' : '📺 YouTube'}</span>
-        </span>
-        {hasFallbackTriggered && (
-          <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/90 text-white backdrop-blur-md animate-fade-in">
-            Switched from Drive (404/Limit)
-          </span>
-        )}
-      </div>
-
-      {/* Google Drive Privacy & Anti-Download Shield: blocks the Drive pop-out & download button */}
-      {sourceMode === 'drive' ? (
-        <div
-          className="absolute top-0 left-0 right-0 h-14 z-20 flex items-center justify-between px-3 bg-gradient-to-b from-black/85 via-black/45 to-transparent pointer-events-auto select-none"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center gap-1.5">
-            <span className="px-2 py-0.5 rounded bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider">
-              CENTUM STREAM
-            </span>
-            <span className="text-xs font-bold text-white/90 truncate max-w-[160px] sm:max-w-xs">
-              {video.topic}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <span className="text-[10px] font-bold text-white/80 bg-black/70 px-2 py-1 rounded-md border border-white/15 hidden sm:inline-flex items-center gap-1">
-              🔒 In-App Stream
-            </span>
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-              className="w-8 h-8 rounded-lg bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all cursor-pointer border border-white/20 active:scale-95"
-              title={isFullscreen ? 'Exit Fullscreen (⛶)' : 'Fullscreen 16:9 (⛶)'}
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-4 h-4 text-[#A3E635]" />
-              ) : (
-                <Maximize2 className="w-4 h-4 text-white" />
-              )}
-            </button>
-          </div>
-        </div>
-      ) : (
-        /* Fullscreen button for YouTube or Direct MP4 */
-        <button
-          type="button"
-          onClick={toggleFullscreen}
-          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-          className="absolute top-2 right-2 z-20 w-8 h-8 rounded-lg bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/20 hover:scale-105 active:scale-95"
-          title={isFullscreen ? 'Exit Fullscreen (⛶)' : 'Fullscreen 16:9 (⛶)'}
-        >
-          {isFullscreen ? (
-            <Minimize2 className="w-4 h-4 text-[#A3E635]" />
-          ) : (
-            <Maximize2 className="w-4 h-4 text-white" />
-          )}
-        </button>
-      )}
-
-      {/* PRIMARY VIDEO DISPLAY (Drive Preview iframe / Direct MP4 / YouTube embed) */}
-      {sourceMode === 'drive' && drivePreviewUrl ? (
+      {/* PRIMARY VIDEO DISPLAY (YouTube embed / Drive Preview iframe / Direct MP4) */}
+      {sourceMode === 'youtube' || (!cleanDriveId && !isDirectMp4) ? (
         <iframe
-          src={drivePreviewUrl}
+          src={ytEmbedUrl}
           title={video.topic}
           className="w-full h-full bg-black border-0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
         />
       ) : sourceMode === 'drive' && isDirectMp4 ? (
@@ -363,6 +286,7 @@ export function ProVideoPlayer({
           ref={videoRef}
           controls
           playsInline
+          autoPlay
           preload="metadata"
           poster={posterUrl}
           disablePictureInPicture={true}
@@ -377,12 +301,11 @@ export function ProVideoPlayer({
           Your browser does not support HTML5 video streaming.
         </video>
       ) : (
-        /* YouTube Minimal Chrome Embed */
         <iframe
-          src={ytEmbedUrl}
+          src={drivePreviewUrl}
           title={video.topic}
           className="w-full h-full bg-black border-0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           allowFullScreen
         />
       )}

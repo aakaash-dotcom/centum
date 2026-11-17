@@ -913,61 +913,54 @@ function ProHomeContent() {
         </div>
       </div>
 
-      {/* ACTIVE VIDEO FULL-SCREEN THEATER LIGHTBOX MODAL */}
+      {/* ACTIVE VIDEO FULL-SCREEN PURE THEATER OVERLAY (Edge-to-edge, rotates with phone) */}
       {mounted && activeVideoId && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Video Player Theater"
-          className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-md flex flex-col justify-center items-center p-2 sm:p-4 md:p-6 animate-fade-in"
-          onClick={() => setActiveVideoId(null)}
+          className="fixed inset-0 z-[99999] bg-black flex items-center justify-center animate-fade-in"
         >
           {(() => {
             const vid = videos.find((v) => v.id === activeVideoId);
             if (!vid) return null;
             return (
-              <div
-                className="w-full max-w-4xl max-h-[96vh] flex flex-col bg-slate-950 rounded-2xl sm:rounded-3xl border border-white/15 shadow-2xl overflow-hidden animate-scale-up"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* Theater Header */}
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-white/10 shrink-0">
-                  <div className="flex items-center gap-2 min-w-0 pr-2">
-                    <span className="px-2.5 py-1 rounded-md bg-[#7C3AED] text-white text-xs font-black shrink-0">
-                      Ch {vid.chapterNo || 1}
-                    </span>
-                    <h3 className="text-xs sm:text-sm font-black text-white truncate">
-                      {vid.topic}
-                    </h3>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActiveVideoId(null)}
-                    className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95"
-                  >
-                    <X className="w-4 h-4" />
-                    <span>{isTamil ? 'மூடு' : 'Close'}</span>
-                  </button>
+              <div className="relative w-full h-full flex items-center justify-center bg-black">
+                {/* Floating Close Button (Top-Right) */}
+                <button
+                  type="button"
+                  onClick={() => setActiveVideoId(null)}
+                  aria-label="Close"
+                  className="absolute top-4 right-4 z-50 w-11 h-11 rounded-full bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all cursor-pointer border border-white/25 active:scale-90 shadow-2xl backdrop-blur-md"
+                >
+                  <X className="w-5 h-5 stroke-[2.5]" />
+                </button>
+
+                {/* Floating Chapter/Topic Pill (Top-Left) */}
+                <div className="absolute top-4 left-4 z-50 pointer-events-none max-w-[70vw] truncate">
+                  <span className="px-3 py-1.5 rounded-full bg-black/60 text-white text-xs font-black backdrop-blur-md border border-white/20 truncate inline-block">
+                    Ch {vid.chapterNo || 1} • {vid.topic}
+                  </span>
                 </div>
 
-                {/* 16:9 Landscape Video Player without cropping */}
-                <div className="w-full aspect-[16/9] bg-black flex-1 min-h-0">
-                  <ProVideoPlayer video={vid} subjectName={selectedSubject} />
+                {/* Pure 100% Video: fills screen without framing boxes, adapts when phone is rotated */}
+                <div className="w-full h-full flex items-center justify-center bg-black">
+                  <ProVideoPlayer
+                    video={vid}
+                    subjectName={selectedSubject}
+                    className="w-full h-full max-w-full max-h-full aspect-[16/9] border-0 rounded-none shadow-none"
+                  />
                 </div>
 
-                {/* Theater Footer with Direct Understanding Quiz button */}
-                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/90 border-t border-white/10 shrink-0">
-                  <div className="flex items-center gap-2 text-xs text-slate-300">
-                    <Sparkles className="w-4 h-4 text-[#A3E635]" />
-                    <span>{isTamil ? 'வீடியோ முடிந்ததா? புரிதலை சோதிக்கவும்:' : 'Finished watching? Test your mastery:'}</span>
-                  </div>
+                {/* Floating Quiz Button (Bottom-Right) */}
+                <div className="absolute bottom-5 right-5 z-50">
                   <button
                     type="button"
                     onClick={() => {
                       setActiveVideoId(null);
                       handleStartUnderstandCheck(vid);
                     }}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer active:scale-95"
+                    className="px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-2xl border border-white/20 backdrop-blur-md cursor-pointer active:scale-95"
                   >
                     <Sparkles className="w-3.5 h-3.5 fill-current" />
                     <span>{isTamil ? 'உணர்ந்தேனா? தேர்வு (3–5 Q)' : 'Got it? Quiz (3–5 Q)'}</span>
