@@ -21,6 +21,7 @@ function normalizeVideo(v: any, index: number) {
   let ytUrl = String(v.ytUrl || v.youtube || v.youtubeUrl || v.videoUrl || v.url || v.link || '').trim();
   const status = String(v.status || 'live').trim().toLowerCase();
   const aspectRatio = String(v.aspectRatio || '16:9').trim();
+  const questionIds = String(v.questionIds || v.quizQuestionIds || v.quizIds || v.questions || '').trim();
 
   // If a YouTube URL was accidentally pasted into the driveFileId column
   if (!ytUrl && (driveFileId.includes('youtube.com') || driveFileId.includes('youtu.be'))) {
@@ -57,6 +58,7 @@ function normalizeVideo(v: any, index: number) {
     ytUrl,
     status: 'live',
     aspectRatio,
+    questionIds: questionIds || undefined,
   };
 }
 

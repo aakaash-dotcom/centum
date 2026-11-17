@@ -587,16 +587,60 @@ function ProHomeContent() {
 
   // Handler for Understand-check popup (Task 6)
   const handleStartUnderstandCheck = async (video: ProVideoItem) => {
-    // Pick 3-5 concept questions for this chapter/topic
     const chNo = video.chapterNo || 1;
     const vTopic = video.topic || 'Current Topic';
-    let pool = conceptQuestions.filter((q) => {
-      const qCh = q.chapter || '';
-      return qCh.includes(String(chNo)) || qCh.toLowerCase().includes(vTopic.toLowerCase());
-    });
 
+    let pool: Question[] = [];
+
+    // 1. Direct Question IDs: If the video specifies exact questions in its `questionIds` column (e.g. "q-1, q-2, q-3, q-4, q-5" or "1, 2, 3, 4, 5")
+    if ((video as any).questionIds) {
+      const targetIds = String((video as any).questionIds)
+        .split(/[,\s|]+/)
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+
+      if (targetIds.length > 0) {
+        pool = targetIds
+          .map((targetId) =>
+            conceptQuestions.find((q) => {
+              const qId = String(q.id || '').toLowerCase();
+              return (
+                qId === targetId ||
+                qId.endsWith(`-${targetId}`) ||
+                qId === `q-${targetId}` ||
+                qId === targetId.replace(/^q-/, '')
+              );
+            })
+          )
+          .filter(Boolean) as Question[];
+      }
+    }
+
+    // 2. Sub-Topic Keyword Match: If video has a specific topic, match questions with that topic in their chapter title
+    if (pool.length === 0 && vTopic && vTopic !== 'Current Topic') {
+      const cleanTopic = vTopic.toLowerCase().trim();
+      pool = conceptQuestions.filter((q) => {
+        const qCh = (q.chapter || '').toLowerCase();
+        return qCh.includes(cleanTopic) || cleanTopic.includes(qCh);
+      });
+    }
+
+    // 3. Chapter Number Match: If still not matched, slice questions based on video order
+    // e.g. Video 1 gets questions 1–5, Video 2 gets 6–10, Video 3 gets 11–15 from the 30-question chapter bank!
     if (pool.length < 3) {
-      pool = conceptQuestions.slice(0, 5);
+      const chapterPool = conceptQuestions.filter((q) => {
+        const qCh = q.chapter || '';
+        return qCh.includes(String(chNo));
+      });
+
+      if (chapterPool.length > 0) {
+        const order = Math.max(1, Number(video.order) || 1);
+        const startIndex = ((order - 1) * 5) % chapterPool.length;
+        pool = chapterPool.slice(startIndex, startIndex + 5);
+        if (pool.length < 3) {
+          pool = chapterPool.slice(0, 5);
+        }
+      }
     }
 
     // Fallback questions if remote returned none

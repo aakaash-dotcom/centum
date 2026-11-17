@@ -78,7 +78,7 @@ const SCHEMA = {
   Import:            ["help","json"],
   Textbooks:         ["classLevel","subject","medium","type","unitNo","unitTitle","pageStart","pageEnd","pageCount","driveFileId","fileUrl","sizeMB","sourceUrl","qcNote","updatedAt"],
   OTPCodes:          ["phone","codeHash","createdAt","expiresAt","attempts","used"],
-  Videos:            ["id","classLevel","subject","chapterNo","topic","videoType","targetSec","order","lang","driveFileId","ytUrl","status","aspectRatio"],
+  Videos:            ["id","classLevel","subject","chapterNo","topic","videoType","targetSec","order","lang","driveFileId","ytUrl","status","aspectRatio","questionIds"],
   ProMaterials:      ["id","classLevel","subject","chapter","title","videoEmbedUrl","notesPdfUrl","conceptQuizUrl","bookbackQuizUrl","importantQuestionsUrl","status","createdAt"],
   Notes:             ["id","classLevel","subject","chapter","title","notesPdfUrl","driveFileId","status","createdAt"],
   Diagrams:          ["id","classLevel","subject","chapter","title","imageUrl","driveFileId","marks","status"],

@@ -1254,6 +1254,7 @@ export interface ProVideoItem {
   ytUrl?: string;
   status: 'live' | 'draft';
   aspectRatio?: '16:9' | 'portrait' | '9:16' | string;
+  questionIds?: string;
 }
 
 const mockProVideos: ProVideoItem[] = [
