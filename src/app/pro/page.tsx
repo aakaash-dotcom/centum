@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
@@ -191,6 +192,11 @@ function ProHomeContent() {
 
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Subject cache for instant 0ms switching without getting stuck
   const subjectCacheRef = useRef<
@@ -863,31 +869,72 @@ function ProHomeContent() {
         </div>
       </div>
 
-      {/* ACTIVE VIDEO EMBED PLAYER (In-app 16:9 full embed) */}
-      {activeVideoId && (
-        <div className="mb-5 p-3 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl">
+      {/* ACTIVE VIDEO FULL-SCREEN THEATER LIGHTBOX MODAL */}
+      {mounted && activeVideoId && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Video Player Theater"
+          className="fixed inset-0 z-[99999] bg-black/95 backdrop-blur-md flex flex-col justify-center items-center p-2 sm:p-4 md:p-6 animate-fade-in"
+          onClick={() => setActiveVideoId(null)}
+        >
           {(() => {
             const vid = videos.find((v) => v.id === activeVideoId);
             if (!vid) return null;
             return (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-300 truncate">
-                    {vid.topic}
-                  </span>
+              <div
+                className="w-full max-w-4xl max-h-[96vh] flex flex-col bg-slate-950 rounded-2xl sm:rounded-3xl border border-white/15 shadow-2xl overflow-hidden animate-scale-up"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Theater Header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-slate-900/90 border-b border-white/10 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <span className="px-2.5 py-1 rounded-md bg-[#7C3AED] text-white text-xs font-black shrink-0">
+                      Ch {vid.chapterNo || 1}
+                    </span>
+                    <h3 className="text-xs sm:text-sm font-black text-white truncate">
+                      {vid.topic}
+                    </h3>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setActiveVideoId(null)}
-                    className="text-xs font-bold text-rose-400 hover:text-rose-300"
+                    className="px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95"
                   >
-                    Close ✕
+                    <X className="w-4 h-4" />
+                    <span>{isTamil ? 'மூடு' : 'Close'}</span>
                   </button>
                 </div>
-                <ProVideoPlayer video={vid} subjectName={selectedSubject} />
+
+                {/* 16:9 Landscape Video Player without cropping */}
+                <div className="w-full aspect-[16/9] bg-black flex-1 min-h-0">
+                  <ProVideoPlayer video={vid} subjectName={selectedSubject} />
+                </div>
+
+                {/* Theater Footer with Direct Understanding Quiz button */}
+                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-900/90 border-t border-white/10 shrink-0">
+                  <div className="flex items-center gap-2 text-xs text-slate-300">
+                    <Sparkles className="w-4 h-4 text-[#A3E635]" />
+                    <span>{isTamil ? 'வீடியோ முடிந்ததா? புரிதலை சோதிக்கவும்:' : 'Finished watching? Test your mastery:'}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveVideoId(null);
+                      handleStartUnderstandCheck(vid);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black transition-all flex items-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer active:scale-95"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 fill-current" />
+                    <span>{isTamil ? 'உணர்ந்தேனா? தேர்வு (3–5 Q)' : 'Got it? Quiz (3–5 Q)'}</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             );
           })()}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Loading Indicator when switching subjects */}
@@ -1168,17 +1215,18 @@ function ProHomeContent() {
         context={upsellContext}
       />
 
-      {/* TASK 6: UNDERSTAND-CHECK POPUP MODAL (In-page 3-5 Q interactive quiz, NO navigation) */}
-      {understandPopup && (
+      {/* TASK 6: UNDERSTAND-CHECK POPUP MODAL (Rendered at document.body via createPortal to stay locked in active view) */}
+      {mounted && understandPopup && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-labelledby="understand-popup-title"
           data-testid="understand-check-modal"
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setUnderstandPopup(null)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-emerald-400 dark:border-emerald-500/50 shadow-2xl p-5 text-[#2E1065] dark:text-[#FAF5FF] relative overflow-hidden"
+            className="w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl bg-white dark:bg-[#1B0B2E] border-2 border-emerald-400 dark:border-emerald-500/50 shadow-2xl p-5 text-[#2E1065] dark:text-[#FAF5FF] relative animate-scale-up"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -1308,7 +1356,8 @@ function ProHomeContent() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

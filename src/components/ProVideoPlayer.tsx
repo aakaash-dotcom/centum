@@ -294,20 +294,60 @@ export function ProVideoPlayer({
         )}
       </div>
 
-      {/* Custom Fullscreen ⛶ Button (Top-Right) */}
-      <button
-        type="button"
-        onClick={toggleFullscreen}
-        aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-        className="absolute top-2 right-2 z-20 w-8 h-8 rounded-lg bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/20 hover:scale-105 active:scale-95"
-        title={isFullscreen ? 'Exit Fullscreen (⛶)' : 'Fullscreen 16:9 (⛶)'}
-      >
-        {isFullscreen ? (
-          <Minimize2 className="w-4 h-4 text-[#A3E635]" />
-        ) : (
-          <Maximize2 className="w-4 h-4 text-white" />
-        )}
-      </button>
+      {/* Google Drive Privacy & Anti-Download Shield: blocks the Drive pop-out & download button */}
+      {sourceMode === 'drive' ? (
+        <div
+          className="absolute top-0 left-0 right-0 h-14 z-20 flex items-center justify-between px-3 bg-gradient-to-b from-black/85 via-black/45 to-transparent pointer-events-auto select-none"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded bg-emerald-500/90 text-white text-[10px] font-black uppercase tracking-wider">
+              CENTUM STREAM
+            </span>
+            <span className="text-xs font-bold text-white/90 truncate max-w-[160px] sm:max-w-xs">
+              {video.topic}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold text-white/80 bg-black/70 px-2 py-1 rounded-md border border-white/15 hidden sm:inline-flex items-center gap-1">
+              🔒 In-App Stream
+            </span>
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+              className="w-8 h-8 rounded-lg bg-black/70 hover:bg-black/90 text-white flex items-center justify-center transition-all cursor-pointer border border-white/20 active:scale-95"
+              title={isFullscreen ? 'Exit Fullscreen (⛶)' : 'Fullscreen 16:9 (⛶)'}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-4 h-4 text-[#A3E635]" />
+              ) : (
+                <Maximize2 className="w-4 h-4 text-white" />
+              )}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Fullscreen button for YouTube or Direct MP4 */
+        <button
+          type="button"
+          onClick={toggleFullscreen}
+          aria-label={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          className="absolute top-2 right-2 z-20 w-8 h-8 rounded-lg bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/20 hover:scale-105 active:scale-95"
+          title={isFullscreen ? 'Exit Fullscreen (⛶)' : 'Fullscreen 16:9 (⛶)'}
+        >
+          {isFullscreen ? (
+            <Minimize2 className="w-4 h-4 text-[#A3E635]" />
+          ) : (
+            <Maximize2 className="w-4 h-4 text-white" />
+          )}
+        </button>
+      )}
 
       {/* PRIMARY VIDEO DISPLAY (Drive Preview iframe / Direct MP4 / YouTube embed) */}
       {sourceMode === 'drive' && drivePreviewUrl ? (
