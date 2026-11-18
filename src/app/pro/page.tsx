@@ -184,6 +184,7 @@ function ProHomeContent() {
   const [livePapers, setLivePapers] = useState<Paper[]>(() => rawPapers as unknown as Paper[]);
   const [papersTotalCount, setPapersTotalCount] = useState<number>(4500);
   const [conceptQuestions, setConceptQuestions] = useState<Question[]>([]);
+  const [gotitQuestions, setGotitQuestions] = useState<Question[]>([]);
   const [onewordQuestions, setOnewordQuestions] = useState<Question[]>([]);
   const [lockedChapters, setLockedChapters] = useState<Array<{ chapter: string; count: number; locked: boolean }>>([]);
   const [conceptTotalCount, setConceptTotalCount] = useState<number>(240);
@@ -210,6 +211,7 @@ function ProHomeContent() {
         lockedChapters: Array<{ chapter: string; count: number; locked: boolean }>;
         conceptTotalCount: number;
         onewordQuestions: Question[];
+        gotitQuestions: Question[];
       }
     >
   >(new Map());
@@ -273,6 +275,7 @@ function ProHomeContent() {
         setLockedChapters(cached.lockedChapters);
         setConceptTotalCount(cached.conceptTotalCount);
         setOnewordQuestions(cached.onewordQuestions);
+        setGotitQuestions(cached.gotitQuestions || []);
         setIsLoading(false);
         return;
       }
@@ -321,12 +324,15 @@ function ProHomeContent() {
         }
 
         // Concurrently fetch questions in background without freezing UI
-        const [qRes, owRes] = await Promise.all([
+        const [qRes, owRes, gotitRes] = await Promise.all([
           fetch(
             `/api/questions?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}&type=concept&count=all&medium=${encodeURIComponent(medium || 'english')}`
           ),
           fetch(
             `/api/questions?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}&type=oneword&count=10&medium=${encodeURIComponent(medium || 'english')}`
+          ),
+          fetch(
+            `/api/questions?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}&type=gotit&count=all&medium=${encodeURIComponent(medium || 'english')}`
           ),
         ]);
 
@@ -336,6 +342,7 @@ function ProHomeContent() {
         let qLockedChs: Array<{ chapter: string; count: number; locked: boolean }> = [];
         let poolCount = medium ? 240 : 480;
         let owQuestions: Question[] = [];
+        let gQuestions: Question[] = [];
 
         if (qRes.ok) {
           const qData = await qRes.json();
@@ -355,11 +362,19 @@ function ProHomeContent() {
           }
         }
 
+        if (gotitRes.ok) {
+          const gData = await gotitRes.json();
+          if (gData && gData.ok && Array.isArray(gData.questions)) {
+            gQuestions = gData.questions;
+          }
+        }
+
         if (!isCancelled) {
           setConceptQuestions(qQuestions);
           setLockedChapters(qLockedChs);
           setConceptTotalCount(poolCount);
           setOnewordQuestions(owQuestions);
+          setGotitQuestions(gQuestions);
 
           // Store complete data in cache for 0ms instant subsequent switches
           subjectCacheRef.current.set(cacheKey, {
@@ -370,6 +385,7 @@ function ProHomeContent() {
             lockedChapters: qLockedChs,
             conceptTotalCount: poolCount,
             onewordQuestions: owQuestions,
+            gotitQuestions: gQuestions,
           });
         }
       } catch (e) {
@@ -587,12 +603,9 @@ function ProHomeContent() {
 
   // Handler for Understand-check popup (Task 6)
   const handleStartUnderstandCheck = async (video: ProVideoItem) => {
-    const chNo = video.chapterNo || 1;
-    const vTopic = video.topic || 'Current Topic';
-
     let pool: Question[] = [];
 
-    // 1. Direct Question IDs: If the video specifies exact questions in its `questionIds` column
+    // 1. Direct Question IDs: Reads video's `questionIds` column
     if ((video as any).questionIds) {
       const rawStr = String((video as any).questionIds).trim();
       const isTamil = String(medium || '').toLowerCase() === 'tamil' || String(medium || '').toLowerCase() === 'tm';
@@ -602,13 +615,13 @@ function ProHomeContent() {
       if (/(?:tm|ta|tamil)\s*:/i.test(rawStr) || /(?:em|en|english)\s*:/i.test(rawStr)) {
         const parts = rawStr.split('|');
         const matchedPart = parts.find((p) => {
-          const lower = p.toLowerCase().trim();
+          const trimmedLower = p.trim().toLowerCase();
           return isTamil
-            ? lower.startsWith('tm:') || lower.startsWith('ta:') || lower.startsWith('tamil:')
-            : lower.startsWith('em:') || lower.startsWith('en:') || lower.startsWith('english:');
+            ? trimmedLower.startsWith('tm:') || trimmedLower.startsWith('ta:') || trimmedLower.startsWith('tamil:')
+            : trimmedLower.startsWith('em:') || trimmedLower.startsWith('en:') || trimmedLower.startsWith('english:');
         });
         if (matchedPart) {
-          targetIdsStr = matchedPart.replace(/^(?:tm|ta|tamil|em|en|english)\s*:\s*/i, '');
+          targetIdsStr = matchedPart.trim().replace(/^(?:tm|ta|tamil|em|en|english)\s*:\s*/i, '');
         }
       }
 
@@ -618,9 +631,12 @@ function ProHomeContent() {
         .filter(Boolean);
 
       if (targetTokens.length > 0) {
+        // Exclusively search in gotitQuestions, plus bridge to conceptQuestions ONLY for exact ID matches (for pilot rows before type=gotit change)
+        const candidateBank = [...gotitQuestions, ...conceptQuestions];
+
         pool = targetTokens
           .map((targetToken) =>
-            conceptQuestions.find((q) => {
+            candidateBank.find((q) => {
               const qId = String(q.id || '').toLowerCase();
 
               // Exact match or simple prefix/suffix
@@ -655,27 +671,6 @@ function ProHomeContent() {
                 return true;
               }
 
-              // Number normalization: e.g. "-001" or "-01" -> "-101" within chapter
-              const numMatch = targetToken.match(/(\d+)$/);
-              if (numMatch) {
-                const rawNum = parseInt(numMatch[1], 10);
-                if (rawNum > 0 && rawNum <= 30) {
-                  const expectedSuffix = `-${100 + rawNum}`;
-                  if (qId.endsWith(expectedSuffix)) {
-                    const chMatch = targetToken.match(/c0?(\d+)/);
-                    if (chMatch) {
-                      const chNum = parseInt(chMatch[1], 10);
-                      const qChMatch = qId.match(/c0?(\d+)/);
-                      if (qChMatch && parseInt(qChMatch[1], 10) === chNum) {
-                        return true;
-                      }
-                    } else {
-                      return true;
-                    }
-                  }
-                }
-              }
-
               return false;
             })
           )
@@ -683,90 +678,8 @@ function ProHomeContent() {
       }
     }
 
-    // 2. Sub-Topic Keyword Match: If video has a specific topic, match questions with that topic in their chapter title
-    if (pool.length === 0 && vTopic && vTopic !== 'Current Topic') {
-      const cleanTopic = vTopic.toLowerCase().trim();
-      pool = conceptQuestions.filter((q) => {
-        const qCh = (q.chapter || '').toLowerCase();
-        return qCh.includes(cleanTopic) || cleanTopic.includes(qCh);
-      });
-    }
-
-    // 3. Chapter Number Match: If still not matched, slice questions based on video order
-    // e.g. Video 1 gets questions 1–5, Video 2 gets 6–10, Video 3 gets 11–15 from the 30-question chapter bank!
-    if (pool.length < 3) {
-      const chapterPool = conceptQuestions.filter((q) => {
-        const qCh = q.chapter || '';
-        return qCh.includes(String(chNo));
-      });
-
-      if (chapterPool.length > 0) {
-        const order = Math.max(1, Number(video.order) || 1);
-        const startIndex = ((order - 1) * 5) % chapterPool.length;
-        pool = chapterPool.slice(startIndex, startIndex + 5);
-        if (pool.length < 3) {
-          pool = chapterPool.slice(0, 5);
-        }
-      }
-    }
-
-    // Fallback questions if remote returned none
-    if (pool.length === 0) {
-      pool = [
-        {
-          id: `uc-sample-1`,
-          classLevel: `${effectiveClass}th`,
-          subject: selectedSubject,
-          chapter: `Chapter ${chNo}`,
-          type: 'concept',
-          question: `In this topic (${vTopic}), what is the primary core principle tested in board exams?`,
-          options: [
-            'Direct formula derivation & boundary value limits',
-            'Rote memorization without application',
-            'Arbitrary guessing technique',
-            'None of the above',
-          ],
-          answerIndex: 0,
-          explanation: 'Board exams evaluate conceptual boundary testing and logical steps.',
-          medium: (medium || 'english') as any,
-        },
-        {
-          id: `uc-sample-2`,
-          classLevel: `${effectiveClass}th`,
-          subject: selectedSubject,
-          chapter: `Chapter ${chNo}`,
-          type: 'concept',
-          question: `Which common pitfall should students avoid when solving problems in ${vTopic}?`,
-          options: [
-            'Checking signs (+/-) in intermediate steps',
-            'Misinterpreting domain restrictions and sign conventions',
-            'Writing neat units in the final answer',
-            'Re-verifying given parameters',
-          ],
-          answerIndex: 1,
-          explanation: 'Sign errors and domain restrictions account for over 60% of lost marks.',
-          medium: (medium || 'english') as any,
-        },
-        {
-          id: `uc-sample-3`,
-          classLevel: `${effectiveClass}th`,
-          subject: selectedSubject,
-          chapter: `Chapter ${chNo}`,
-          type: 'concept',
-          question: `How does mastering this concept benefit the 100/100 Centum score target?`,
-          options: [
-            'Only solves 1 mark objective questions',
-            'Guarantees speed & zero error in both 2-mark and 5-mark applications',
-            'It is not needed for public exams',
-            'Applicable only in term tests',
-          ],
-          answerIndex: 1,
-          explanation: 'Foundational clarity guarantees speed and zero-mistake execution.',
-          medium: medium || 'english',
-        },
-      ];
-    }
-
+    // STRICT ISOLATION: No fallback to Concept Quiz chapters, no sequential slices, no sample questions.
+    // If questions are missing or invalid, open popup with empty list to display friendly unavailable message.
     const selectedSample = pool.slice(0, Math.min(pool.length, 5));
 
     setUnderstandPopup({
@@ -1341,10 +1254,14 @@ function ProHomeContent() {
                 </span>
                 <div>
                   <h3 id="understand-popup-title" className="text-xs font-black leading-tight">
-                    உணர்ந்தேனா? (புரிதல் தேர்வு)
+                    {isTamil ? 'உணர்ந்தேனா? (புரிதல் தேர்வு)' : 'Got it? Video Quiz'}
                   </h3>
                   <span className="text-[10px] font-bold text-slate-500">
-                    கேள்வி {understandPopup.currentIdx + 1} / {understandPopup.questions.length}
+                    {understandPopup.questions.length > 0
+                      ? isTamil
+                        ? `கேள்வி ${understandPopup.currentIdx + 1} / ${understandPopup.questions.length}`
+                        : `Question ${understandPopup.currentIdx + 1} / ${understandPopup.questions.length}`
+                      : isTamil ? 'வினாக்கள் இல்லை' : 'No questions'}
                   </span>
                 </div>
               </div>
@@ -1359,8 +1276,31 @@ function ProHomeContent() {
               </button>
             </div>
 
-            {/* Question or Summary */}
-            {!understandPopup.isFinished ? (
+            {/* Empty State, Question, or Summary */}
+            {understandPopup.questions.length === 0 ? (
+              <div className="py-6 text-center space-y-4 animate-scale-up">
+                <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center text-2xl">
+                  📋
+                </div>
+                <div className="space-y-1.5 px-2">
+                  <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF]">
+                    {isTamil ? 'புரிதல் வினாக்கள் இன்னும் தயாராகவில்லை' : 'Video Quiz Not Available Yet'}
+                  </h4>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                    {isTamil
+                      ? `"${understandPopup.video.topic}" வீடியோவிற்கான பிரத்யேக வினாக்கள் இன்னும் பதிவேற்றப்படவில்லை.`
+                      : `Video-specific quiz questions for "${understandPopup.video.topic}" have not been linked yet.`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUnderstandPopup(null)}
+                  className="w-full min-h-[42px] rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-black transition-all cursor-pointer"
+                >
+                  {isTamil ? 'சரி (Close)' : 'Close'}
+                </button>
+              </div>
+            ) : !understandPopup.isFinished ? (
               <div className="py-4 space-y-3">
                 {(() => {
                   const q = understandPopup.questions[understandPopup.currentIdx];
@@ -1423,7 +1363,7 @@ function ProHomeContent() {
                             onClick={handleNextUnderstandQuestion}
                             className="w-full min-h-[40px] rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black transition-all flex items-center justify-center gap-1 cursor-pointer"
                           >
-                            <span>அடுத்த கேள்வி</span>
+                            <span>{isTamil ? 'அடுத்த கேள்வி' : 'Next Question'}</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
@@ -1442,11 +1382,13 @@ function ProHomeContent() {
                       const correctCount = understandPopup.answers.filter(
                         (a) => a.selected === a.correct
                       ).length;
-                      return `${correctCount} / ${understandPopup.questions.length} உணர்ந்தேன்!`;
+                      return isTamil
+                        ? `${correctCount} / ${understandPopup.questions.length} உணர்ந்தேன்!`
+                        : `${correctCount} / ${understandPopup.questions.length} Mastered!`;
                     })()}
                   </h4>
                   <p className="text-xs font-bold text-slate-500 mt-1">
-                    பாட தலைப்பு புரிதல் பதிவு செய்யப்பட்டது ✨
+                    {isTamil ? 'பாட தலைப்பு புரிதல் பதிவு செய்யப்பட்டது ✨' : 'Topic comprehension recorded ✨'}
                   </p>
                 </div>
 
@@ -1455,7 +1397,7 @@ function ProHomeContent() {
                   onClick={() => setUnderstandPopup(null)}
                   className="w-full min-h-[44px] rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-black shadow-md shadow-emerald-500/20 cursor-pointer"
                 >
-                  முடிந்தது ✓
+                  {isTamil ? 'முடிந்தது ✓' : 'Done ✓'}
                 </button>
               </div>
             )}

@@ -85,6 +85,7 @@ interface FilterParams {
   stream?: string | null;
   count?: string | null;
   plan?: string | null;
+  ids?: string[] | null;
 }
 
 // Memory cache for raw questions from upstream GAS (ops-rows)
@@ -114,8 +115,11 @@ function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
     const qClass = normClass(q.classLevel || q.standard);
     const qClassNum = qClass.replace(/\D/g, '');
 
+    // Fast-path: If specific IDs are requested, pass through by ID match
+    const isExplicitIdMatch = Boolean(params.ids && params.ids.includes(qId.toLowerCase()));
+
     // 1. Class filter
-    if (targetClassNum && qClassNum && qClassNum !== targetClassNum) {
+    if (!isExplicitIdMatch && targetClassNum && qClassNum && qClassNum !== targetClassNum) {
       continue;
     }
 
@@ -125,8 +129,7 @@ function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
     const qSubj = normalizeSubject(qRawSubj);
 
     // Only apply stream filtering if stream was explicitly requested in the query params.
-    // For global requests (e.g. GET /api/questions with no stream param), all valid canonical subjects pass.
-    if (stream && !isSubjectAllowedForClassStream(effectiveClass, qRawSubj, stream)) {
+    if (!isExplicitIdMatch && stream && !isSubjectAllowedForClassStream(effectiveClass, qRawSubj, stream)) {
       skippedList.push({ id: qId, reason: `subject_not_allowed_for_class_stream: ${qRawSubj}` });
       continue;
     }
@@ -134,6 +137,7 @@ function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
     const qSubjKey = toCanonicalSubjKey(qSubj);
     const qRawSubjKey = toCanonicalSubjKey(qRawSubj);
     if (
+      !isExplicitIdMatch &&
       targetSubjKey &&
       qSubjKey !== targetSubjKey &&
       qRawSubjKey !== targetSubjKey &&
@@ -155,17 +159,22 @@ function sanitizeAndFilterQuestions(rawQuestions: any[], params: FilterParams) {
       }
     }
 
-    // 4. Type filter (mock, pyq, daily, all draw across types)
+    // 4. Type filter (mock, pyq, daily, all draw across types; supports comma-separated like "gotit,concept")
     const qType = String(q.type || 'oneword').trim().toLowerCase();
+    const typeTokens = targetType
+      ? targetType.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)
+      : [];
     if (
-      targetType &&
-      targetType !== 'all' &&
-      targetType !== 'mock' &&
-      targetType !== 'pyq' &&
-      targetType !== 'daily' &&
-      qType !== targetType
+      typeTokens.length > 0 &&
+      !typeTokens.includes('all') &&
+      !typeTokens.includes('mock') &&
+      !typeTokens.includes('pyq') &&
+      !typeTokens.includes('daily') &&
+      !typeTokens.includes(qType)
     ) {
-      continue;
+      if (!isExplicitIdMatch) {
+        continue;
+      }
     }
 
     // 5. Chapter filter
@@ -317,6 +326,8 @@ export async function GET(request: Request) {
   const medium = searchParams.get('medium');
   const stream = searchParams.get('stream');
   const count = searchParams.get('count');
+  const idsParam = searchParams.get('ids');
+  const ids = idsParam ? idsParam.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) : null;
   const bypassCache = searchParams.has('ts') || searchParams.has('nocache');
 
   const { plan: callerPlan, isPro } = extractPlanFromRequest(request);
@@ -330,6 +341,7 @@ export async function GET(request: Request) {
     stream,
     count,
     plan: callerPlan,
+    ids,
   };
 
   const scriptUrl = process.env.APPS_SCRIPT_URL;
