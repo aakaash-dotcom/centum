@@ -592,24 +592,91 @@ function ProHomeContent() {
 
     let pool: Question[] = [];
 
-    // 1. Direct Question IDs: If the video specifies exact questions in its `questionIds` column (e.g. "q-1, q-2, q-3, q-4, q-5" or "1, 2, 3, 4, 5")
+    // 1. Direct Question IDs: If the video specifies exact questions in its `questionIds` column
     if ((video as any).questionIds) {
-      const targetIds = String((video as any).questionIds)
+      const rawStr = String((video as any).questionIds).trim();
+      const isTamil = String(medium || '').toLowerCase() === 'tamil' || String(medium || '').toLowerCase() === 'tm';
+
+      // Support separate medium sets: e.g. "tm: id1, id2 | em: id3, id4" or "ta: ... | en: ..."
+      let targetIdsStr = rawStr;
+      if (/(?:tm|ta|tamil)\s*:/i.test(rawStr) || /(?:em|en|english)\s*:/i.test(rawStr)) {
+        const parts = rawStr.split('|');
+        const matchedPart = parts.find((p) => {
+          const lower = p.toLowerCase().trim();
+          return isTamil
+            ? lower.startsWith('tm:') || lower.startsWith('ta:') || lower.startsWith('tamil:')
+            : lower.startsWith('em:') || lower.startsWith('en:') || lower.startsWith('english:');
+        });
+        if (matchedPart) {
+          targetIdsStr = matchedPart.replace(/^(?:tm|ta|tamil|em|en|english)\s*:\s*/i, '');
+        }
+      }
+
+      const targetTokens = targetIdsStr
         .split(/[,\s|]+/)
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
 
-      if (targetIds.length > 0) {
-        pool = targetIds
-          .map((targetId) =>
+      if (targetTokens.length > 0) {
+        pool = targetTokens
+          .map((targetToken) =>
             conceptQuestions.find((q) => {
               const qId = String(q.id || '').toLowerCase();
-              return (
-                qId === targetId ||
-                qId.endsWith(`-${targetId}`) ||
-                qId === `q-${targetId}` ||
-                qId === targetId.replace(/^q-/, '')
-              );
+
+              // Exact match or simple prefix/suffix
+              if (
+                qId === targetToken ||
+                qId.endsWith(`-${targetToken}`) ||
+                qId === `q-${targetToken}` ||
+                qId === targetToken.replace(/^q-/, '')
+              ) {
+                return true;
+              }
+
+              // Cross-medium automatic translation: if target has -tm- but student is in English, check -em-, and vice-versa
+              const targetTrans = isTamil
+                ? targetToken.replace(/-em-/, '-tm-').replace(/-en-/, '-ta-')
+                : targetToken.replace(/-tm-/, '-em-').replace(/-ta-/, '-en-');
+
+              if (
+                qId === targetTrans ||
+                qId.endsWith(`-${targetTrans}`) ||
+                qId === targetTrans.replace(/^q-/, '')
+              ) {
+                return true;
+              }
+
+              // Subject abbreviation normalization: science <-> sci, maths <-> mat, social <-> soc
+              const normTarget = targetTrans
+                .replace(/-science-/, '-sci-')
+                .replace(/-maths-/, '-mat-')
+                .replace(/-social-/, '-soc-');
+              if (qId === normTarget || qId.endsWith(`-${normTarget}`)) {
+                return true;
+              }
+
+              // Number normalization: e.g. "-001" or "-01" -> "-101" within chapter
+              const numMatch = targetToken.match(/(\d+)$/);
+              if (numMatch) {
+                const rawNum = parseInt(numMatch[1], 10);
+                if (rawNum > 0 && rawNum <= 30) {
+                  const expectedSuffix = `-${100 + rawNum}`;
+                  if (qId.endsWith(expectedSuffix)) {
+                    const chMatch = targetToken.match(/c0?(\d+)/);
+                    if (chMatch) {
+                      const chNum = parseInt(chMatch[1], 10);
+                      const qChMatch = qId.match(/c0?(\d+)/);
+                      if (qChMatch && parseInt(qChMatch[1], 10) === chNum) {
+                        return true;
+                      }
+                    } else {
+                      return true;
+                    }
+                  }
+                }
+              }
+
+              return false;
             })
           )
           .filter(Boolean) as Question[];
