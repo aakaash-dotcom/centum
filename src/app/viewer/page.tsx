@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { texts } from '@/data/texts';
 import rawPapers from '@/data/papers.json';
 import ViewerInteractiveDrawer from './ViewerInteractiveDrawer';
+import CentumPdfViewer from '@/components/CentumPdfViewer';
 
 const FORBIDDEN_SUBSTRINGS = ['evil', 'script', 'replace', 'pending', 'test', 'probe'];
 const TOKEN_REGEX = /^[a-zA-Z0-9_-]{25,64}$/;
@@ -18,7 +19,7 @@ function extractDriveFileId(raw: string): string {
   return trimmed;
 }
 
-export function validateViewerToken(raw: string): {
+function validateViewerToken(raw: string): {
   isValid: boolean;
   driveFileId: string;
   error?: string;
@@ -197,13 +198,8 @@ export default async function ViewerPage({ searchParams }: PageProps) {
             </p>
           </div>
         ) : (
-          <div className="w-full h-[72vh] sm:h-[80vh] bg-white dark:bg-[#1B0B2E] rounded-2xl overflow-hidden border border-[#EDE9FE] dark:border-[#2D124D] shadow-sm relative">
-            <iframe
-              src={`https://drive.google.com/file/d/${driveFileId}/preview`}
-              className="w-full h-full border-0 absolute inset-0"
-              allow="autoplay"
-              title={title}
-            />
+          <div className="w-full h-[75vh] sm:h-[82vh] rounded-2xl overflow-hidden shadow-sm relative">
+            <CentumPdfViewer fileId={driveFileId} title={title} />
           </div>
         )}
 

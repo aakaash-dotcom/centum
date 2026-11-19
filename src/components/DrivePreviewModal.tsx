@@ -6,6 +6,7 @@ import { Paper } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { texts } from '@/data/texts';
 import { X, Download, FileText } from 'lucide-react';
+import CentumPdfViewer from '@/components/CentumPdfViewer';
 
 interface DrivePreviewModalProps {
   paper: Paper | null;
@@ -35,17 +36,14 @@ export const DrivePreviewModal: React.FC<DrivePreviewModalProps> = ({ paper, onC
     driveFileId.toUpperCase().includes('PLACEHOLDER');
 
   const [hasError, setHasError] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setHasError(isPlaceholder);
-    setIsLoading(!isPlaceholder);
   }, [paper, isPlaceholder]);
 
   if (!paper) return null;
 
   const downloadUrl = `https://drive.google.com/uc?export=download&id=${driveFileId}`;
-  const previewUrl = `https://drive.google.com/file/d/${driveFileId}/preview`;
 
   const handleDownload = () => {
     if (isPlaceholder) {
@@ -128,15 +126,8 @@ export const DrivePreviewModal: React.FC<DrivePreviewModalProps> = ({ paper, onC
           </div>
         </div>
 
-        {/* Embedded Drive Preview */}
+        {/* Embedded CENTUM PDF Preview */}
         <div className="relative flex-1 bg-[#F4F4F5] dark:bg-[#0F0618] min-h-[380px] overflow-hidden flex flex-col">
-          {isLoading && !hasError && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-white dark:bg-[#1B0B2E] p-6 text-center">
-              <div className="w-10 h-10 rounded-full border-4 border-[#EDE9FE] dark:border-[#3B2063] border-t-[#7C3AED] animate-spin mb-3" />
-              <p className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA]">opening paper... ⚡</p>
-            </div>
-          )}
-
           {hasError ? (
             <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
               <span className="text-4xl mb-3">📄</span>
@@ -146,24 +137,10 @@ export const DrivePreviewModal: React.FC<DrivePreviewModalProps> = ({ paper, onC
             </div>
           ) : (
             <div className="w-full h-full min-h-[380px] overflow-hidden relative">
-              {/* Drive Popout Blocker */}
-              <div
-                className="absolute top-0 right-0 w-32 h-14 z-10 pointer-events-auto cursor-default bg-transparent"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                }}
-              />
-              <iframe
-                src={previewUrl}
+              <CentumPdfViewer
+                fileId={driveFileId}
                 title={paper.title}
-                className="w-full h-[calc(100%+52px)] -mt-[52px] min-h-[432px] border-0"
-                allow="autoplay"
-                onLoad={() => setIsLoading(false)}
-                onError={() => {
-                  setHasError(true);
-                  setIsLoading(false);
-                }}
+                onDownload={handleDownload}
               />
             </div>
           )}
