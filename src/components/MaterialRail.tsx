@@ -141,11 +141,7 @@ export const MaterialRail: React.FC<MaterialRailProps> = ({
         </div>
 
         <div className="shrink-0 flex items-center gap-1.5">
-          {isComingSoon ? (
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-              {isTamil ? 'விரைவில் 🌱' : 'Coming soon'}
-            </span>
-          ) : !isPro ? (
+          {!isPro ? (
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-900 dark:text-amber-200 border border-amber-400/40 flex items-center gap-1">
               <Lock className="w-2.5 h-2.5" />
               <span>PRO</span>

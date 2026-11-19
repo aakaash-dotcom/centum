@@ -17,10 +17,14 @@ function matchesClass(itemClass: unknown, queryClass: string): boolean {
   return s1 === s2;
 }
 
+import { normalizeSubject } from '@/data/canonicalSubjects';
+
 function matchesSubject(itemSubject: unknown, querySubject: string): boolean {
   if (!querySubject) return true;
   if (!itemSubject) return false;
-  return String(itemSubject).trim().toLowerCase() === querySubject.trim().toLowerCase();
+  const s1 = normalizeSubject(String(itemSubject)).trim().toLowerCase();
+  const s2 = normalizeSubject(querySubject).trim().toLowerCase();
+  return s1 === s2 || s1.includes(s2) || s2.includes(s1);
 }
 
 export async function GET(request: Request) {
@@ -40,23 +44,37 @@ export async function GET(request: Request) {
       if (subject) externalUrl.searchParams.set('subject', subject);
       externalUrl.searchParams.set('key', secretKey);
 
-      const res = await fetch(externalUrl.toString(), { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.ok && Array.isArray(data.items)) {
-          const filtered = data.items.filter((item: Record<string, unknown>) =>
-            matchesClass(item.classLevel || item.class, classLevel) &&
-            matchesSubject(item.subject, subject)
-          );
-          return NextResponse.json({
-            ok: true,
-            classLevel,
-            subject,
-            items: filtered,
-            source: 'sheet',
-            servedFrom: 'gas',
-          });
+      let res = await fetch(externalUrl.toString(), { cache: 'no-store' });
+      let data = res.ok ? await res.json() : null;
+
+      // Fallback: If querying with specific subject returned no items, fetch all notes for this classLevel
+      if (subject && (!data || !data.ok || !Array.isArray(data.items) || data.items.length === 0)) {
+        const broadUrl = new URL(scriptUrl);
+        broadUrl.searchParams.set('action', 'notes');
+        broadUrl.searchParams.set('classLevel', classLevel);
+        broadUrl.searchParams.set('key', secretKey);
+        const broadRes = await fetch(broadUrl.toString(), { cache: 'no-store' });
+        if (broadRes.ok) {
+          const broadData = await broadRes.json();
+          if (broadData && broadData.ok && Array.isArray(broadData.items)) {
+            data = broadData;
+          }
         }
+      }
+
+      if (data && data.ok && Array.isArray(data.items)) {
+        const filtered = data.items.filter((item: Record<string, unknown>) =>
+          matchesClass(item.classLevel || item.class, classLevel) &&
+          matchesSubject(item.subject, subject)
+        );
+        return NextResponse.json({
+          ok: true,
+          classLevel,
+          subject,
+          items: filtered,
+          source: 'sheet',
+          servedFrom: 'gas',
+        });
       }
     } catch (e) {
       console.warn('Apps Script notes GET failed, returning empty items array', e);

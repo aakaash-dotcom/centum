@@ -111,8 +111,7 @@ function ProHomeContent() {
     student?.plan === 'pro' ||
     student?.plan === 'live';
 
-  const [streamOverride, setStreamOverride] = useState<string>('');
-  const effectiveStream = streamOverride || student?.stream;
+  const effectiveStream = student?.stream;
 
   const canonicalSubjects = useMemo(() => {
     return getCanonicalSubjects(effectiveClass, effectiveStream);
@@ -181,6 +180,9 @@ function ProHomeContent() {
   const [materials, setMaterials] = useState<ProMaterialItem[]>([]);
   const [videos, setVideos] = useState<ProVideoItem[]>([]);
   const [allVideosCount, setAllVideosCount] = useState<number>(42);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [diagrams, setDiagrams] = useState<any[]>([]);
+  const [handwritten, setHandwritten] = useState<any[]>([]);
   const [livePapers, setLivePapers] = useState<Paper[]>(() => rawPapers as unknown as Paper[]);
   const [papersTotalCount, setPapersTotalCount] = useState<number>(4500);
   const [conceptQuestions, setConceptQuestions] = useState<Question[]>([]);
@@ -212,6 +214,9 @@ function ProHomeContent() {
         conceptTotalCount: number;
         onewordQuestions: Question[];
         gotitQuestions: Question[];
+        notes: any[];
+        diagrams: any[];
+        handwritten: any[];
       }
     >
   >(new Map());
@@ -276,6 +281,9 @@ function ProHomeContent() {
         setConceptTotalCount(cached.conceptTotalCount);
         setOnewordQuestions(cached.onewordQuestions);
         setGotitQuestions(cached.gotitQuestions || []);
+        setNotes(cached.notes || []);
+        setDiagrams(cached.diagrams || []);
+        setHandwritten(cached.handwritten || []);
         setIsLoading(false);
         return;
       }
@@ -283,13 +291,22 @@ function ProHomeContent() {
       setIsLoading(true);
 
       try {
-        // Fast Lane: Fetch materials and videos first (<200ms)
-        const [matRes, vidRes] = await Promise.all([
+        // Fast Lane: Fetch materials, videos, notes, diagrams, and handwritten
+        const [matRes, vidRes, notesRes, diagRes, hwRes] = await Promise.all([
           fetch(
             `/api/pro-materials?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
           ),
           fetch(
             `/api/pro-videos?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
+          ),
+          fetch(
+            `/api/notes?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
+          ),
+          fetch(
+            `/api/diagrams?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
+          ),
+          fetch(
+            `/api/handwritten?classLevel=${encodeURIComponent(effectiveClass)}&subject=${encodeURIComponent(selectedSubject)}`
           ),
         ]);
 
@@ -297,6 +314,9 @@ function ProHomeContent() {
 
         let scopedMaterials: ProMaterialItem[] = [];
         let scopedVids: ProVideoItem[] = [];
+        let scopedNotes: any[] = [];
+        let scopedDiagrams: any[] = [];
+        let scopedHandwritten: any[] = [];
 
         if (matRes.ok) {
           const data = await matRes.json();
@@ -316,10 +336,34 @@ function ProHomeContent() {
           }
         }
 
+        if (notesRes.ok) {
+          const nData = await notesRes.json();
+          if (nData && nData.ok && Array.isArray(nData.items)) {
+            scopedNotes = nData.items;
+          }
+        }
+
+        if (diagRes.ok) {
+          const dData = await diagRes.json();
+          if (dData && dData.ok && Array.isArray(dData.items)) {
+            scopedDiagrams = dData.items;
+          }
+        }
+
+        if (hwRes.ok) {
+          const hData = await hwRes.json();
+          if (hData && hData.ok && Array.isArray(hData.items)) {
+            scopedHandwritten = hData.items;
+          }
+        }
+
         if (!isCancelled) {
           setMaterials(scopedMaterials);
           setVideos(scopedVids);
           setAllVideosCount(scopedVids.length);
+          setNotes(scopedNotes);
+          setDiagrams(scopedDiagrams);
+          setHandwritten(scopedHandwritten);
           setIsLoading(false); // Unblock screen immediately!
         }
 
@@ -386,6 +430,9 @@ function ProHomeContent() {
             conceptTotalCount: poolCount,
             onewordQuestions: owQuestions,
             gotitQuestions: gQuestions,
+            notes: scopedNotes,
+            diagrams: scopedDiagrams,
+            handwritten: scopedHandwritten,
           });
         }
       } catch (e) {
@@ -730,7 +777,7 @@ function ProHomeContent() {
     }
   };
 
-  const isTamil = Boolean(student?.medium ? String(student.medium).toLowerCase().startsWith('t') : medium === 'tamil');
+  const isTamil = String(medium || '').toLowerCase() === 'tamil' || String(medium || '').toLowerCase() === 'tm';
 
   // Handler for opening paywall directly with no full-screen blur intermediate
   const handleLockedTileClick = () => {
@@ -803,36 +850,10 @@ function ProHomeContent() {
           <span className="text-[11px] font-black uppercase tracking-wider text-[#7C3AED] dark:text-[#A78BFA]">
             {isTamil ? `பாடங்கள் (${effectiveClass}th)` : `Subjects (${effectiveClass}th)`}
           </span>
-          {parseInt(effectiveClass, 10) >= 11 && (
-            <div className="flex items-center gap-1">
-              {(['maths', 'bio', 'commerce'] as const).map((st) => {
-                const activeStream = normalizeStream(effectiveStream);
-                const isStActive = activeStream === st;
-                const label = st === 'maths' ? (isTamil ? 'கணிதம்' : 'Maths') : st === 'bio' ? (isTamil ? 'உயிரியல்' : 'Biology') : (isTamil ? 'வணிகவியல்' : 'Commerce');
-                return (
-                  <button
-                    key={st}
-                    type="button"
-                    onClick={() => {
-                      setStreamOverride(st);
-                    }}
-                    className={`min-h-[32px] px-3 py-1 rounded-full text-xs font-black transition-all border ${
-                      isStActive
-                        ? 'bg-[#7C3AED] text-white border-[#7C3AED]'
-                        : 'bg-white dark:bg-[#1B0B2E] text-slate-500 border-[#DDD6FE] dark:border-[#3B2063]'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
         </div>
         <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none">
           {canonicalSubjects.map((sub) => {
             const isSelected = selectedSubject.toLowerCase() === sub.toLowerCase();
-            const hasContent = hasSubjectContent(sub);
             return (
               <button
                 key={sub}
@@ -845,11 +866,6 @@ function ProHomeContent() {
                 }`}
               >
                 <span>{sub}</span>
-                {!hasContent && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-400/20 text-amber-600 dark:text-amber-400">
-                    {isTamil ? 'விரைவில் 🌱' : 'Soon 🌱'}
-                  </span>
-                )}
               </button>
             );
           })}
@@ -1080,37 +1096,38 @@ function ProHomeContent() {
               );
             });
           } else if (material.id === 'notes') {
-            hasContent = materials.length > 0;
-            railChildren = materials.map((mat) => (
-              <div
-                key={mat.id}
-                className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3.5 text-left"
-              >
-                <div className="space-y-1.5">
-                  <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    {mat.chapter}
-                  </span>
-                  <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
-                    {mat.title}
-                  </h4>
-                </div>
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
-                  {mat.notesPdfUrl ? (
+            const allNotesList = [
+              ...notes,
+              ...materials.filter((m) => m.notesPdfUrl && !notes.some((n) => (n.notesPdfUrl || n.driveFileId) === m.notesPdfUrl)),
+            ];
+            hasContent = allNotesList.length > 0;
+            railChildren = allNotesList.map((mat: any, idx: number) => {
+              const noteUrl = mat.notesPdfUrl || mat.driveFileId || '';
+              return (
+                <div
+                  key={mat.id || `note-${idx}`}
+                  className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3.5 text-left"
+                >
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                      {mat.chapter || 'All Chapters'}
+                    </span>
+                    <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
+                      {mat.title}
+                    </h4>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
                     <Link
-                      href={`/viewer?page=notes&id=${encodeURIComponent(mat.notesPdfUrl)}&title=${encodeURIComponent(mat.title)}&subject=${encodeURIComponent(mat.subject)}`}
+                      href={`/viewer?page=pro&id=${encodeURIComponent(noteUrl || mat.id)}&title=${encodeURIComponent(mat.title)}&subject=${encodeURIComponent(mat.subject || selectedSubject)}`}
                       className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <FileText className="w-3.5 h-3.5" />
                       <span>{isTamil ? 'படிக்க' : 'Read'}</span>
                     </Link>
-                  ) : (
-                    <span className="w-full py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold text-center block">
-                      {isTamil ? 'விரைவில்' : 'Coming soon'}
-                    </span>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ));
+              );
+            });
           } else if (material.id === 'papers') {
             hasContent = classPapers.length > 0;
             railChildren = classPapers.slice(0, 15).map((paper) => (
@@ -1203,6 +1220,78 @@ function ProHomeContent() {
                 ))}
               </>
             );
+          } else if (material.id === 'diagrams') {
+            hasContent = diagrams.length > 0;
+            railChildren = diagrams.map((diag: any, idx: number) => {
+              const diagUrl = diag.imageUrl || diag.driveFileId || '';
+              return (
+                <div
+                  key={diag.id || `diag-${idx}`}
+                  className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3.5 text-left"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                        {diag.chapter || 'Important Diagram'}
+                      </span>
+                      {diag.marks && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#7C3AED]/15 text-[#7C3AED] dark:text-[#A78BFA]">
+                          {diag.marks} Marks
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
+                      {diag.title}
+                    </h4>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <Link
+                      href={`/viewer?page=pro&id=${encodeURIComponent(diagUrl || diag.id)}&title=${encodeURIComponent(diag.title)}&subject=${encodeURIComponent(diag.subject || selectedSubject)}`}
+                      className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>{isTamil ? 'படத்தை பார்க்க' : 'View Diagram'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            });
+          } else if (material.id === 'handwritten') {
+            hasContent = handwritten.length > 0;
+            railChildren = handwritten.map((hw: any, idx: number) => {
+              const hwUrl = hw.pdfUrl || hw.driveFileId || '';
+              return (
+                <div
+                  key={hw.id || `hw-${idx}`}
+                  className="w-[280px] sm:w-[320px] shrink-0 snap-start p-4.5 rounded-2xl bg-white dark:bg-[#1B0B2E] border border-[#EDE9FE] dark:border-[#3B2063] shadow-xs hover:border-[#7C3AED]/40 transition-all flex flex-col justify-between gap-3.5 text-left"
+                >
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="text-xs font-bold text-[#7C3AED] dark:text-[#A78BFA]">
+                        {hw.year ? `${hw.year} Board Exam` : 'Topper Sheet'}
+                      </span>
+                      {hw.marksScored && (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                          {hw.marksScored} / 100
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-black text-[#2E1065] dark:text-[#FAF5FF] line-clamp-2 leading-snug">
+                      {hw.title}
+                    </h4>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                    <Link
+                      href={`/viewer?page=pro&id=${encodeURIComponent(hwUrl || hw.id)}&title=${encodeURIComponent(hw.title)}&subject=${encodeURIComponent(hw.subject || selectedSubject)}`}
+                      className="w-full py-2 px-3 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>{isTamil ? 'விடைத்தாள் திறக்க' : 'Open Sheet'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            });
           }
 
           return (
