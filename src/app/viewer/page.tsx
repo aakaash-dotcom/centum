@@ -22,6 +22,8 @@ function extractDriveFileId(raw: string): string {
 function validateViewerToken(raw: string): {
   isValid: boolean;
   driveFileId: string;
+  isDirectImage?: boolean;
+  imageUrl?: string;
   error?: string;
 } {
   if (!raw || !raw.trim()) {
@@ -42,6 +44,29 @@ function validateViewerToken(raw: string): {
         driveFileId: '',
         error: `Token contains unauthorized pattern: "${forbidden}".`,
       };
+    }
+  }
+
+  // Check if it's a web URL (e.g. diagrams from CDN/Unsplash or Google Drive URL)
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    if (trimmed.includes('drive.google.com') || trimmed.includes('drive.usercontent.google.com')) {
+      const extracted = extractDriveFileId(trimmed);
+      if (TOKEN_REGEX.test(extracted)) {
+        return {
+          isValid: true,
+          driveFileId: extracted,
+        };
+      }
+    } else {
+      try {
+        new URL(trimmed);
+        return {
+          isValid: true,
+          driveFileId: trimmed,
+          isDirectImage: true,
+          imageUrl: trimmed,
+        };
+      } catch {}
     }
   }
 
@@ -199,7 +224,12 @@ export default async function ViewerPage({ searchParams }: PageProps) {
           </div>
         ) : (
           <div className="w-full h-[75vh] sm:h-[82vh] rounded-2xl overflow-hidden shadow-sm relative">
-            <CentumPdfViewer fileId={driveFileId} title={title} />
+            <CentumPdfViewer
+              fileId={driveFileId}
+              title={title}
+              isImage={validation.isDirectImage}
+              imageUrl={validation.imageUrl}
+            />
           </div>
         )}
 

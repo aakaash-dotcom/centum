@@ -69,9 +69,14 @@ export async function GET(request: Request) {
     }
 
     // Build response headers
+    const isImage = contentType.startsWith('image/');
+    const mimeType = isImage ? contentType : 'application/pdf';
+    const ext = isImage ? (contentType.split('/')[1]?.split(';')[0] || 'png') : 'pdf';
+
     const responseHeaders = new Headers();
-    responseHeaders.set('Content-Type', 'application/pdf');
-    responseHeaders.set('Content-Disposition', `inline; filename="centum-${id}.pdf"`);
+    responseHeaders.set('Content-Type', mimeType);
+    responseHeaders.set('X-Document-Type', isImage ? 'image' : 'pdf');
+    responseHeaders.set('Content-Disposition', `inline; filename="centum-${id}.${ext}"`);
     responseHeaders.set('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
     responseHeaders.set('Accept-Ranges', 'bytes');
 

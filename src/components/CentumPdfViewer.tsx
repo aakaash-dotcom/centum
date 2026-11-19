@@ -14,12 +14,15 @@ import {
   AlertCircle,
   FoldHorizontal,
   Download,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface CentumPdfViewerProps {
   fileId: string;
   title?: string;
   className?: string;
+  isImage?: boolean;
+  imageUrl?: string;
   onDownload?: () => void;
 }
 
@@ -27,10 +30,16 @@ export default function CentumPdfViewer({
   fileId,
   title = 'CENTUM Document',
   className = '',
+  isImage = false,
+  imageUrl,
   onDownload,
 }: CentumPdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Document Type & Media State
+  const [docType, setDocType] = useState<'pdf' | 'image'>('pdf');
+  const [activeImageSrc, setActiveImageSrc] = useState<string>('');
 
   // PDF Document State
   const [pdfDoc, setPdfDoc] = useState<any>(null);
@@ -57,22 +66,57 @@ export default function CentumPdfViewer({
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
   const renderTasksRef = useRef<Map<number, any>>(new Map());
 
-  // 1. Load PDF Document via PDF.js
+  // 1. Load Document (PDF or Diagram Image)
   const loadPdf = useCallback(async () => {
     if (!fileId) return;
 
     setIsLoading(true);
     setErrorMessage(null);
-    setLoadingPercent(5);
+    setLoadingPercent(10);
+
+    // Direct image check
+    const isDirectImg =
+      Boolean(isImage) ||
+      /\.(png|jpe?g|webp|gif|svg)(\?.*)?$/i.test(fileId) ||
+      (typeof imageUrl === 'string' && imageUrl.length > 0);
+
+    if (isDirectImg) {
+      setDocType('image');
+      setActiveImageSrc(imageUrl || fileId);
+      setNumPages(1);
+      setCurrentPage(1);
+      setIsLoading(false);
+      return;
+    }
+
+    const proxyUrl = `/api/drive/pdf?id=${encodeURIComponent(fileId)}`;
 
     try {
+      // Probe file type from server (handles Google Drive image files)
+      try {
+        const probeRes = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: { Range: 'bytes=0-1024' },
+        });
+        const cType = probeRes.headers.get('content-type') || '';
+        const xDocType = probeRes.headers.get('x-document-type') || '';
+        if (cType.startsWith('image/') || xDocType === 'image') {
+          setDocType('image');
+          setActiveImageSrc(proxyUrl);
+          setNumPages(1);
+          setCurrentPage(1);
+          setIsLoading(false);
+          return;
+        }
+      } catch {}
+
+      setDocType('pdf');
+
       // @ts-ignore
       const pdfjs: any = await import(/* webpackIgnore: true */ '/pdf.min.mjs');
       if (typeof window !== 'undefined') {
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
       }
-
-      const proxyUrl = `/api/drive/pdf?id=${encodeURIComponent(fileId)}`;
 
       const loadingTask = pdfjs.getDocument({
         url: proxyUrl,
@@ -113,7 +157,7 @@ export default function CentumPdfViewer({
       );
       setIsLoading(false);
     }
-  }, [fileId]);
+  }, [fileId, isImage, imageUrl]);
 
   useEffect(() => {
     loadPdf();
@@ -387,6 +431,29 @@ export default function CentumPdfViewer({
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
+  // 9. Download Handler (calls onDownload if provided, or default browser download)
+  const handleDownloadAction = () => {
+    if (onDownload) {
+      onDownload();
+      return;
+    }
+    try {
+      const link = document.createElement('a');
+      const targetSrc =
+        docType === 'image' && activeImageSrc
+          ? activeImageSrc
+          : `/api/drive/download?id=${encodeURIComponent(fileId)}`;
+      link.href = targetSrc;
+      link.download = `${title || 'centum-document'}.${docType === 'image' ? 'png' : 'pdf'}`;
+      link.target = '_self';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      window.location.href = `/api/drive/download?id=${encodeURIComponent(fileId)}`;
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -397,45 +464,60 @@ export default function CentumPdfViewer({
         {/* Left: Branding & Page Navigation */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#7C3AED]/30 text-[#DDD6FE] font-bold text-[11px] shrink-0">
-            <FileText className="w-3.5 h-3.5 text-[#A78BFA]" />
-            <span className="hidden sm:inline">CENTUM Doc</span>
+            {docType === 'image' ? (
+              <>
+                <ImageIcon className="w-3.5 h-3.5 text-[#A78BFA]" />
+                <span className="hidden sm:inline">CENTUM Diagram</span>
+              </>
+            ) : (
+              <>
+                <FileText className="w-3.5 h-3.5 text-[#A78BFA]" />
+                <span className="hidden sm:inline">CENTUM Doc</span>
+              </>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 bg-[#1A0933] rounded-lg px-1.5 py-0.5 border border-[#4C1D95]/40">
-            <button
-              type="button"
-              onClick={() => goToPage(currentPage - 1)}
-              disabled={currentPage <= 1 || isLoading}
-              aria-label="Previous Page"
-              className="p-1 rounded hover:bg-[#3B1768] disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            >
-              <ChevronLeft className="w-4 h-4 text-[#E9D5FF]" />
-            </button>
+          {docType === 'pdf' ? (
+            <div className="flex items-center gap-1 bg-[#1A0933] rounded-lg px-1.5 py-0.5 border border-[#4C1D95]/40">
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage <= 1 || isLoading}
+                aria-label="Previous Page"
+                className="p-1 rounded hover:bg-[#3B1768] disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 text-[#E9D5FF]" />
+              </button>
 
-            <div className="flex items-center gap-1 text-[11px] font-semibold text-[#DDD6FE]">
-              <input
-                type="text"
-                value={pageInput}
-                onChange={handlePageInputChange}
-                onKeyDown={handlePageInputKeyDown}
-                onBlur={() => setPageInput(String(currentPage))}
-                aria-label="Current page number"
-                className="w-8 text-center bg-[#2D1254] rounded px-1 py-0.5 text-white font-bold text-[11px] focus:outline-none focus:ring-1 focus:ring-[#A78BFA]"
-              />
-              <span className="text-[#A78BFA]">/</span>
-              <span>{numPages || 1}</span>
+              <div className="flex items-center gap-1 text-[11px] font-semibold text-[#DDD6FE]">
+                <input
+                  type="text"
+                  value={pageInput}
+                  onChange={handlePageInputChange}
+                  onKeyDown={handlePageInputKeyDown}
+                  onBlur={() => setPageInput(String(currentPage))}
+                  aria-label="Current page number"
+                  className="w-8 text-center bg-[#2D1254] rounded px-1 py-0.5 text-white font-bold text-[11px] focus:outline-none focus:ring-1 focus:ring-[#A78BFA]"
+                />
+                <span className="text-[#A78BFA]">/</span>
+                <span>{numPages || 1}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage >= numPages || isLoading}
+                aria-label="Next Page"
+                className="p-1 rounded hover:bg-[#3B1768] disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 text-[#E9D5FF]" />
+              </button>
             </div>
-
-            <button
-              type="button"
-              onClick={() => goToPage(currentPage + 1)}
-              disabled={currentPage >= numPages || isLoading}
-              aria-label="Next Page"
-              className="p-1 rounded hover:bg-[#3B1768] disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            >
-              <ChevronRight className="w-4 h-4 text-[#E9D5FF]" />
-            </button>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1 bg-[#1A0933] rounded-lg px-2 py-0.5 border border-[#4C1D95]/40 text-[11px] font-bold text-[#DDD6FE]">
+              <span>Diagram View</span>
+            </div>
+          )}
         </div>
 
         {/* Center: Zoom & View Controls */}
@@ -493,16 +575,18 @@ export default function CentumPdfViewer({
             <RotateCw className="w-3.5 h-3.5" />
           </button>
 
-          <button
-            type="button"
-            onClick={() => setViewMode((prev) => (prev === 'scroll' ? 'single' : 'scroll'))}
-            disabled={isLoading}
-            aria-label="Toggle Scroll Mode"
-            className="hidden sm:flex items-center px-2 py-1 rounded-lg bg-[#1A0933] hover:bg-[#3B1768] text-[#DDD6FE] text-[11px] font-medium border border-[#4C1D95]/40 transition-colors cursor-pointer"
-            title="Toggle between Continuous Scroll and Single Page"
-          >
-            {viewMode === 'scroll' ? 'Continuous' : 'Single'}
-          </button>
+          {docType === 'pdf' && (
+            <button
+              type="button"
+              onClick={() => setViewMode((prev) => (prev === 'scroll' ? 'single' : 'scroll'))}
+              disabled={isLoading}
+              aria-label="Toggle Scroll Mode"
+              className="hidden sm:flex items-center px-2 py-1 rounded-lg bg-[#1A0933] hover:bg-[#3B1768] text-[#DDD6FE] text-[11px] font-medium border border-[#4C1D95]/40 transition-colors cursor-pointer"
+              title="Toggle between Continuous Scroll and Single Page"
+            >
+              {viewMode === 'scroll' ? 'Continuous' : 'Single'}
+            </button>
+          )}
 
           <button
             type="button"
@@ -514,17 +598,15 @@ export default function CentumPdfViewer({
             {isFullscreen ? <Minimize className="w-3.5 h-3.5" /> : <Maximize className="w-3.5 h-3.5" />}
           </button>
 
-          {onDownload && (
-            <button
-              type="button"
-              onClick={onDownload}
-              aria-label="Download Document"
-              className="p-1.5 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white transition-colors cursor-pointer"
-              title="Download PDF"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleDownloadAction}
+            aria-label={docType === 'image' ? 'Download Diagram' : 'Download Document'}
+            className="p-1.5 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white transition-colors cursor-pointer"
+            title={docType === 'image' ? 'Download Diagram' : 'Download PDF'}
+          >
+            <Download className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -543,7 +625,9 @@ export default function CentumPdfViewer({
                 {loadingPercent}%
               </div>
             </div>
-            <p className="text-sm font-bold text-[#FAF5FF] mb-1">Opening CENTUM Material...</p>
+            <p className="text-sm font-bold text-[#FAF5FF] mb-1">
+              {docType === 'image' ? 'Opening CENTUM Diagram...' : 'Opening CENTUM Material...'}
+            </p>
             <p className="text-xs text-[#A78BFA]/80 max-w-xs">{title}</p>
           </div>
         )}
@@ -567,23 +651,44 @@ export default function CentumPdfViewer({
                 <span>Try Again</span>
               </button>
 
-              {onDownload && (
-                <button
-                  type="button"
-                  onClick={onDownload}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold transition-colors cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download PDF</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleDownloadAction}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-xs font-bold transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
             </div>
           </div>
         )}
 
-        {/* Rendered Document Pages */}
-        {!errorMessage && numPages > 0 && (
-          <div className="flex flex-col items-center gap-4 sm:gap-6 my-auto">
+        {/* Rendered View: Image Diagram or PDF Pages */}
+        {!errorMessage && (
+          docType === 'image' && activeImageSrc ? (
+            <div className="flex-1 w-full h-full flex items-center justify-center p-2 sm:p-6 overflow-auto">
+              <div
+                className="transition-transform duration-150 flex items-center justify-center max-w-full"
+                style={{
+                  transform: `scale(${scale}) rotate(${rotation}deg)`,
+                  transformOrigin: 'center center',
+                }}
+              >
+                <img
+                  src={activeImageSrc}
+                  alt={title}
+                  className="max-w-full max-h-[72vh] object-contain rounded-xl shadow-2xl border border-white/10 select-none bg-white/5"
+                  draggable={false}
+                  onLoad={() => setIsLoading(false)}
+                  onError={() => {
+                    setErrorMessage('Unable to load diagram image. Please verify file availability.');
+                    setIsLoading(false);
+                  }}
+                />
+              </div>
+            </div>
+          ) : numPages > 0 ? (
+            <div className="flex flex-col items-center gap-4 sm:gap-6 my-auto">
             {viewMode === 'scroll'
               ? Array.from({ length: numPages }, (_, index) => {
                   const pageNum = index + 1;
@@ -651,7 +756,7 @@ export default function CentumPdfViewer({
                   );
                 })()}
           </div>
-        )}
+        ) : null)}
       </div>
     </div>
   );
